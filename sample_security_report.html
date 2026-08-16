@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHIO-AI DEFENDER - SECURITY ANALYSIS REPORT - REP-ECE15ABF</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --surface-color: #111827;
+            --border-color: #1f2937;
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-color: #3b82f6;
+            --critical-color: #ef4444;
+            --high-color: #f97316;
+            --medium-color: #eab308;
+            --low-color: #22c55e;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 30px 20px;
+            line-height: 1.6;
+        }
+        .report-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 36px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-title h1 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--text-color);
+            letter-spacing: -0.5px;
+        }
+        .header-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+        .score-box {
+            text-align: center;
+            background: #1f2937;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .score-val {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--accent-color);
+        }
+        .score-level {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        h2 {
+            font-size: 17px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-top: 30px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .info-card {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 14px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #1e293b;
+        }
+        .info-label {
+            color: var(--text-muted);
+        }
+        .info-val {
+            font-family: Consolas, monospace;
+            word-break: break-all;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .badge-observed { background: #065f46; color: #6ee7b7; }
+        .badge-rule { background: #1e40af; color: #93c5fd; }
+        .badge-ai { background: #6b21a8; color: #d8b4fe; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .indicator-item {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .ind-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .ind-id { color: var(--accent-color); font-family: monospace; }
+        .ind-body { font-size: 13px; color: var(--text-color); }
+        .ind-exp { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .disclaimer-footer {
+            margin-top: 40px;
+            padding: 16px;
+            background: #0f172a;
+            border-left: 4px solid var(--accent-color);
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        @media print {
+            body { background: white; color: black; padding: 0; }
+            .report-container { border: none; box-shadow: none; padding: 0; }
+            .info-card, .indicator-item { background: #f8fafc; border: 1px solid #e2e8f0; color: black; }
+            .info-val, .ind-body { color: black; }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-title">
+                <h1>ETHIO-AI DEFENDER - SECURITY ANALYSIS REPORT</h1>
+                <div class="header-meta">
+                    Report ID: <strong>REP-ECE15ABF</strong> | 
+                    Generated: 2026-08-16T20:52:52.937151+00:00 | 
+                    Language: EN
+                </div>
+            </div>
+            <div class="score-box">
+                <div class="score-val">85</div>
+                <div class="score-level">CRITICAL</div>
+            </div>
+        </div>
+
+        <!-- 1. Executive Summary -->
+        <h2>1. Executive Summary</h2>
+        <div class="info-card">
+            <p>Static analysis indicates a CRITICAL threat posture with packed sections, in-memory page permission modifications, and network egress capabilities.</p>
+        </div>
+
+        <!-- 2 & 3. File Info and Hashes -->
+        <div class="grid-2">
+            <div>
+                <h2>2. File Information</h2>
+                <div class="info-card">
+                    <div class="info-row"><span class="info-label">Filename:</span><span class="info-val">cbe_portal_updater.exe</span></div>
+                    <div class="info-row"><span class="info-label">File Size:</span><span class="info-val">48128 bytes</span></div>
+                    <div class="info-row"><span class="info-label">Format:</span><span class="info-val">EXE</span></div>
+                    <div class="info-row"><span class="info-label">Target Architecture:</span><span class="info-val">x64</span></div>
+                </div>
+            </div>
+            <div>
+                <h2>3. Cryptographic Hashes</h2>
+                <div class="info-card">
+                    <div class="info-row"><span class="info-label">SHA-256:</span><span class="info-val">3aca6c684a39c9ecaf3de614663d9c2240be7869d5ed5642b49140034ca9db9e</span></div>
+                    <div class="info-row"><span class="info-label">SHA-1:</span><span class="info-val">b5d848777ff7528e10408bd3725c898c8c7d3db1</span></div>
+                    <div class="info-row"><span class="info-label">MD5:</span><span class="info-val">eef52d1656582cb18a4f2deba3aed525</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4, 5, 6. PE, Sections, Entropy -->
+        <div class="grid-2">
+            <div>
+                <h2>4 & 5. PE & Section Analysis</h2>
+                <div class="info-card">
+                    <div class="info-row"><span class="info-label">Total Sections:</span><span class="info-val">3</span></div>
+                    <div class="info-row"><span class="info-label">W+X Permissions:</span><span class="info-val">DETECTED</span></div>
+                    <div class="info-row"><span class="info-label">Subsystem:</span><span class="info-val">Windows GUI</span></div>
+                </div>
+            </div>
+            <div>
+                <h2>6. Entropy Analysis</h2>
+                <div class="info-card">
+                    <div class="info-row"><span class="info-label">Shannon Entropy:</span><span class="info-val">7.62 / 8.0</span></div>
+                    <div class="info-row"><span class="info-label">Classification:</span><span class="info-val">VERY_HIGH</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7 & 8. Strings & Imports -->
+        <div class="grid-2">
+            <div>
+                <h2>7. String Analysis</h2>
+                <div class="info-card">
+                    <div class="info-row"><span class="info-label">Extracted URLs:</span><span class="info-val">2</span></div>
+                    <div class="info-row"><span class="info-label">IP Addresses:</span><span class="info-val">1</span></div>
+                    <div class="info-row"><span class="info-label">Registry Paths:</span><span class="info-val">1</span></div>
+                </div>
+            </div>
+            <div>
+                <h2>8. Import / API Analysis</h2>
+                <div class="info-card">
+                    <div class="info-row"><span class="info-label">Total Imports:</span><span class="info-val">8</span></div>
+                    <div class="info-row"><span class="info-label">Categories:</span><span class="info-val">MEMORY, NETWORK, PROCESS, REGISTRY</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. Suspicious Indicators -->
+        <h2>9. Correlated Suspicious Indicators</h2>
+        
+            <div class="indicator-item">
+                <div class="ind-header">
+                    <span class="ind-id">IND-STR-001</span>
+                    <span class="ind-name">Writable and Executable (W+X) Section Detected</span>
+                    <span class="ind-sev">HIGH</span>
+                </div>
+                <div class="ind-body">Section &#x27;.packed&#x27; has simultaneous W+X rights</div>
+                <div class="ind-exp"><em></em></div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="ind-header">
+                    <span class="ind-id">IND-MEM-001</span>
+                    <span class="ind-name">Correlated Memory Staging and Protection Modification</span>
+                    <span class="ind-sev">HIGH</span>
+                </div>
+                <div class="ind-body">VirtualAlloc + VirtualProtect imported</div>
+                <div class="ind-exp"><em></em></div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="ind-header">
+                    <span class="ind-id">IND-NET-001</span>
+                    <span class="ind-name">Correlated Network Endpoints and Communication Primitives</span>
+                    <span class="ind-sev">HIGH</span>
+                </div>
+                <div class="ind-body">URL found + InternetOpenA API imported</div>
+                <div class="ind-exp"><em></em></div>
+            </div>
+            
+
+        <!-- 10 & 11. Threat Score & Ethiopian Context -->
+        <div class="grid-2">
+            <div>
+                <h2>10. Heuristic Threat Score</h2>
+                <div class="info-card">
+                    <div class="info-row"><span class="info-label">Calculated Score:</span><span class="info-val">85 / 100</span></div>
+                    <div class="info-row"><span class="info-label">Assigned Risk Level:</span><span class="info-val">CRITICAL</span></div>
+                </div>
+            </div>
+            <div>
+                <h2>11. Ethiopian Context</h2>
+                <div class="info-card">
+                    <div class="info-row"><span class="info-label">Environment:</span><span class="info-val">FINANCIAL</span></div>
+                    <div class="info-row"><span class="info-label">Sector Relevance:</span><span class="info-val">CRITICAL</span></div>
+                    <div class="info-row"><span class="info-label">Reasoning:</span><span class="info-val">Memory manipulation and domestic Ethiopian telecom endpoints present critical risk to financial sector.</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 12. AI Assessment -->
+        <h2>12. AI Security Analyst Interpretation</h2>
+        <div class="info-card">
+            <p><strong>Assessment:</strong> CRITICAL (Confidence: HIGH)</p>
+            <p>Static analysis indicates a CRITICAL threat posture with packed sections, in-memory page permission modifications, and network egress capabilities.</p>
+        </div>
+
+        <!-- 13. Evidence (Tri-tiered Model) -->
+        <h2>13. Epistemological Evidence Model</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 140px;">Certainty Tier</th>
+                    <th style="width: 180px;">Category</th>
+                    <th>Statement / Finding</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+            <tr class="evidence-row">
+                <td><span class="badge badge-observed">OBSERVED</span></td>
+                <td><strong>Cryptographic Hash</strong></td>
+                <td>SHA-256 hash verified as 3aca6c684a39c9ecaf3de614663d9c2240be7869d5ed5642b49140034ca9db9e</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-observed">OBSERVED</span></td>
+                <td><strong>PE Sections</strong></td>
+                <td>Section with simultaneous Writable and Executable (W+X) permissions observed.</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-observed">OBSERVED</span></td>
+                <td><strong>Import Table</strong></td>
+                <td>VirtualAlloc is imported from KERNEL32.dll.</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-observed">OBSERVED</span></td>
+                <td><strong>Import Table</strong></td>
+                <td>VirtualProtect is imported from KERNEL32.dll.</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-observed">OBSERVED</span></td>
+                <td><strong>Import Table</strong></td>
+                <td>InternetOpenA is imported from WININET.dll.</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-observed">OBSERVED</span></td>
+                <td><strong>Import Table</strong></td>
+                <td>RegSetValueExA is imported from ADVAPI32.dll.</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-observed">OBSERVED</span></td>
+                <td><strong>Embedded Strings</strong></td>
+                <td>Embedded network URL observed: https://auth.telecom.et/login.php</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-observed">OBSERVED</span></td>
+                <td><strong>Embedded Strings</strong></td>
+                <td>Embedded network URL observed: https://c2-egress.net/payload.bin</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-rule">RULE-BASED</span></td>
+                <td><strong>Correlated Indicator</strong></td>
+                <td>Writable and Executable (W+X) Section Detected detected (HIGH).</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-rule">RULE-BASED</span></td>
+                <td><strong>Correlated Indicator</strong></td>
+                <td>Correlated Memory Staging and Protection Modification detected (HIGH).</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-rule">RULE-BASED</span></td>
+                <td><strong>Correlated Indicator</strong></td>
+                <td>Correlated Network Endpoints and Communication Primitives detected (HIGH).</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-rule">RULE-BASED</span></td>
+                <td><strong>Threat Scoring</strong></td>
+                <td>Heuristic threat scoring calculated score of 85/100 (CRITICAL).</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-rule">RULE-BASED</span></td>
+                <td><strong>Ethiopian Context</strong></td>
+                <td>Operational sector relevance for FINANCIAL assessed as CRITICAL.</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-ai">AI-INTERPRETED</span></td>
+                <td><strong>AI Security Summary</strong></td>
+                <td>Static analysis indicates a CRITICAL threat posture with packed sections, in-memory page permission modifications, and network egress capabilities.</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-ai">AI-INTERPRETED</span></td>
+                <td><strong>AI Key Finding</strong></td>
+                <td>Heuristic Threat Score: 85/100 [CRITICAL].</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-ai">AI-INTERPRETED</span></td>
+                <td><strong>AI Key Finding</strong></td>
+                <td>Direct reference to Ethiopian domestic network infrastructure identified.</td>
+            </tr>
+            
+            <tr class="evidence-row">
+                <td><span class="badge badge-ai">AI-INTERPRETED</span></td>
+                <td><strong>AI Recommended Action</strong></td>
+                <td>Execute in isolated sandbox to monitor dynamic network callbacks.</td>
+            </tr>
+            
+            </tbody>
+        </table>
+
+        <!-- 14, 15, 16. Benign Explanations, Investigation, Limitations -->
+        <h2>14. Possible Benign Explanations</h2>
+        <ul style="color: var(--text-color); font-size: 14px;"><li>Legitimate software packer / DRM compression.</li></ul>
+
+        <h2>15. Recommended Investigation</h2>
+        <ul style="color: var(--text-color); font-size: 14px;"><li>Execute in isolated sandbox to monitor dynamic network callbacks.</li></ul>
+
+        <h2>16. Limitations</h2>
+        <ul style="color: var(--text-color); font-size: 14px;"><li>Static analysis evaluates capabilities without live execution.</li></ul>
+
+        <!-- Mandatory Disclaimer Footer -->
+        <div class="disclaimer-footer">
+            <strong>Mandatory Defensive Notice:</strong> Risk score is a heuristic analyst-support metric and is not a confirmed probability of maliciousness.
+        </div>
+    </div>
+</body>
+</html>

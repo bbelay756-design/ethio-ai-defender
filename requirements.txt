@@ -1,0 +1,22 @@
+# Core Web Framework & Data Validation
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+
+# Static Binary Analysis
+pefile>=2023.2.7
+capstone>=5.0.0
+# Note: yara-python is optional and platform-dependent on Windows
+# yara-python>=4.5.0
+
+# Database ORM
+sqlalchemy>=2.0.28
+
+# Utilities & Security
+python-multipart>=0.0.9
+python-dotenv>=1.0.1
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.5

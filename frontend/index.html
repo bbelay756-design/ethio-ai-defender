@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHIO-AI Defender | Defensive Malware Analysis Platform</title>
+    <meta name="description" content="AI-Powered Defensive Malware Analysis and Reverse Engineering Platform for Ethiopia - Static Binary Triage, Heuristic Scoring, and SOC Learning.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        
+        <!-- Left Sidebar Navigation -->
+        <aside class="app-sidebar" id="sidebar">
+            <div class="brand-header">
+                <div class="brand-icon">🛡️</div>
+                <div class="brand-text">
+                    <h1 class="brand-name">ETHIO-AI Defender</h1>
+                    <span class="brand-tagline">Defensive Security Platform</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links across all 8 Views -->
+            <nav class="nav-container" aria-label="Main Navigation">
+                <ul class="nav-list">
+                    <li>
+                        <button class="nav-link active" data-tab="home" id="nav-home">
+                            <span class="nav-icon">🏠</span>
+                            <span class="nav-label" data-i18n="nav_home">Home</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-link" data-tab="analysis" id="nav-analysis">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-label" data-i18n="nav_analysis">Analysis Overview</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-link" data-tab="pe-analysis" id="nav-pe-analysis">
+                            <span class="nav-icon">🧩</span>
+                            <span class="nav-label" data-i18n="nav_pe">PE Analysis</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-link" data-tab="imports" id="nav-imports">
+                            <span class="nav-icon">🔌</span>
+                            <span class="nav-label" data-i18n="nav_imports">Imports & APIs</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-link" data-tab="strings" id="nav-strings">
+                            <span class="nav-icon">🔤</span>
+                            <span class="nav-label" data-i18n="nav_strings">Strings</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-link" data-tab="indicators" id="nav-indicators">
+                            <span class="nav-icon">⚠️</span>
+                            <span class="nav-label" data-i18n="nav_indicators">Suspicious Indicators</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-link" data-tab="ai-analyst" id="nav-ai-analyst">
+                            <span class="nav-icon">🤖</span>
+                            <span class="nav-label" data-i18n="nav_ai">AI Security Analyst</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-link" data-tab="learning" id="nav-learning">
+                            <span class="nav-icon">🎓</span>
+                            <span class="nav-label" data-i18n="nav_learning">Learning Center</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-status-box">
+                <div class="status-indicator">
+                    <span class="status-pulse-dot"></span>
+                    <span class="status-label" data-i18n="engine_status">Static Engine: Operational</span>
+                </div>
+                <div class="guarantee-note" data-i18n="non_exec_guarantee">Zero-Execution Guarantee Enforced</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="app-main">
+            
+            <!-- Header Top Bar -->
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle-btn" id="mobile-menu-toggle" aria-label="Toggle Sidebar">☰</button>
+                    <div class="active-tab-title" id="topbar-active-title">Home</div>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="sample-badge" id="current-sample-badge" style="display: none;">
+                        <span class="badge-dot"></span>
+                        <span id="current-sample-name">No Sample Loaded</span>
+                    </div>
+
+                    <!-- Language Switcher -->
+                    <div class="lang-selector-group">
+                        <button class="lang-btn active" id="lang-btn-en" onclick="setLanguage('en')">EN</button>
+                        <span class="lang-divider">|</span>
+                        <button class="lang-btn" id="lang-btn-am" onclick="setLanguage('am')">አማርኛ</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Views Container -->
+            <main class="views-wrapper">
+                
+                <!-- ============================================== -->
+                <!-- 1. HOME VIEW                                   -->
+                <!-- ============================================== -->
+                <section class="view-panel active" id="view-home">
+                    <div class="hero-card">
+                        <div class="hero-content">
+                            <h2 class="hero-headline" data-i18n="home_title">ETHIO-AI Defender</h2>
+                            <p class="hero-description" data-i18n="home_description">
+                                Defensive static malware analysis and reverse-engineering platform designed for national cybersecurity resilience, SOC analysts, and university research laboratories.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Upload & Security Section -->
+                    <div class="grid-2col">
+                        <!-- Upload Interface -->
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">📤</span>
+                                <h3 class="card-heading" data-i18n="upload_heading">Upload Binary for Static Analysis</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="dropzone" id="upload-dropzone">
+                                    <div class="dropzone-icon">📁</div>
+                                    <div class="dropzone-title" data-i18n="dropzone_title">Drag and drop Windows PE executable here</div>
+                                    <div class="dropzone-subtitle" data-i18n="dropzone_subtitle">or click to browse local files</div>
+                                    <input type="file" id="file-upload-input" class="hidden-input" accept=".exe,.dll">
+                                    <button class="btn-primary" id="btn-browse-file" data-i18n="btn_choose_file">Select .exe / .dll</button>
+                                </div>
+
+                                <div class="quick-demo-row">
+                                    <span data-i18n="or_try_demo">Or test with safe synthetic sample:</span>
+                                    <button class="btn-secondary" id="btn-load-demo" onclick="loadDemoSample()">🧪 <span data-i18n="btn_load_demo">Load Demo Banking Agent</span></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Parameters & Security Warning -->
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">🔒</span>
+                                <h3 class="card-heading" data-i18n="security_heading">Perimeter & Security Policy</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="warning-box">
+                                    <div class="warning-title">⚠️ <span data-i18n="warning_title">Strict Non-Execution Policy</span></div>
+                                    <div class="warning-body" data-i18n="warning_body">
+                                        Uploaded files are analyzed statically without runtime execution. Files are isolated in memory and quarantined on disk. Never execute untrusted binaries on host machines.
+                                    </div>
+                                </div>
+
+                                <div class="info-list">
+                                    <div class="info-list-item">
+                                        <span class="info-list-label" data-i18n="supported_formats">Supported File Types:</span>
+                                        <span class="info-list-val">Windows PE (.exe, .dll) [x86, x64]</span>
+                                    </div>
+                                    <div class="info-list-item">
+                                        <span class="info-list-label" data-i18n="max_size">Max File Size:</span>
+                                        <span class="info-list-val">50 MB</span>
+                                    </div>
+                                    <div class="info-list-item">
+                                        <span class="info-list-label" data-i18n="analysis_scope">Analysis Scope:</span>
+                                        <span class="info-list-val">Headers, Sections, Entropy, Strings, APIs, Threat Scoring</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
+                <!-- 2. ANALYSIS VIEW                               -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-analysis">
+                    <div class="view-header">
+                        <h2 data-i18n="analysis_overview_title">Analysis Overview & Threat Posture</h2>
+                        <p data-i18n="analysis_overview_subtitle">Cryptographic identity, architectural classification, and heuristic threat score.</p>
+                    </div>
+
+                    <!-- Metric Cards -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label" data-i18n="lbl_filename">Filename</div>
+                            <div class="metric-val" id="ov-filename">N/A</div>
+                            <div class="metric-sub" id="ov-filetype">Windows PE</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label" data-i18n="lbl_arch">Architecture</div>
+                            <div class="metric-val" id="ov-arch">x64</div>
+                            <div class="metric-sub" id="ov-filesize">0 KB</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label" data-i18n="lbl_risk_level">Risk Level</div>
+                            <div class="metric-val" id="ov-risk-level"><span class="badge badge-low">LOW</span></div>
+                            <div class="metric-sub" data-i18n="heuristic_metric">Heuristic Analyst Metric</div>
+                        </div>
+                        <div class="metric-card score-metric-card">
+                            <div class="metric-label" data-i18n="lbl_threat_score">Threat Score</div>
+                            <div class="score-display">
+                                <span class="score-num" id="ov-score-num">0</span>
+                                <span class="score-max">/ 100</span>
+                            </div>
+                            <div class="score-progress-track">
+                                <div class="score-progress-bar" id="ov-score-bar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cryptographic Hashes & Ethiopian Context -->
+                    <div class="grid-2col" style="margin-top: 20px;">
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">🔑</span>
+                                <h3 class="card-heading" data-i18n="lbl_crypto_hashes">Cryptographic Hashes</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="hash-field">
+                                    <span class="hash-type">SHA-256</span>
+                                    <div class="hash-text" id="ov-sha256">None</div>
+                                </div>
+                                <div class="hash-field">
+                                    <span class="hash-type">SHA-1</span>
+                                    <div class="hash-text" id="ov-sha1">None</div>
+                                </div>
+                                <div class="hash-field">
+                                    <span class="hash-type">MD5</span>
+                                    <div class="hash-text" id="ov-md5">None</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">🇪🇹</span>
+                                <h3 class="card-heading" data-i18n="lbl_ethio_context">Ethiopian Context Assessment</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="context-item">
+                                    <span class="context-label" data-i18n="lbl_environment">Target Environment:</span>
+                                    <span class="context-val" id="ov-ethio-env">GENERAL</span>
+                                </div>
+                                <div class="context-item">
+                                    <span class="context-label" data-i18n="lbl_relevance">Sector Relevance:</span>
+                                    <span class="context-val" id="ov-ethio-relevance"><span class="badge badge-low">LOW</span></span>
+                                </div>
+                                <div class="context-item">
+                                    <span class="context-label" data-i18n="lbl_context_reason">Evaluation Context:</span>
+                                    <p class="context-desc" id="ov-ethio-reason">No domestic specific targeting detected.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
+                <!-- 3. PE ANALYSIS VIEW                            -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-pe-analysis">
+                    <div class="view-header">
+                        <h2 data-i18n="pe_analysis_title">Portable Executable (PE) Structure</h2>
+                        <p data-i18n="pe_analysis_subtitle">DOS headers, NT optional headers, entry point, and memory section mapping.</p>
+                    </div>
+
+                    <!-- Header Details Grid -->
+                    <div class="grid-2col">
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">📄</span>
+                                <h3 class="card-heading" data-i18n="lbl_pe_headers">PE Header Parameters</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="key-val-row"><span class="kv-key">Subsystem:</span><span class="kv-val" id="pe-subsystem">Windows GUI</span></div>
+                                <div class="key-val-row"><span class="kv-key">Entry Point (RVA):</span><span class="kv-val font-mono" id="pe-entry-point">0x00001000</span></div>
+                                <div class="key-val-row"><span class="kv-key">Image Base:</span><span class="kv-val font-mono" id="pe-image-base">0x00400000</span></div>
+                                <div class="key-val-row"><span class="kv-key">Compilation Time:</span><span class="kv-val" id="pe-compile-time">N/A</span></div>
+                            </div>
+                        </div>
+
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">📊</span>
+                                <h3 class="card-heading" data-i18n="lbl_entropy_summary">Entropy & Anomaly Summary</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="key-val-row"><span class="kv-key">File Entropy:</span><span class="kv-val font-mono" id="pe-file-entropy">0.0 / 8.0</span></div>
+                                <div class="key-val-row"><span class="kv-key">Entropy Classification:</span><span class="kv-val" id="pe-entropy-class"><span class="badge badge-low">NORMAL</span></span></div>
+                                <div class="key-val-row"><span class="kv-key">W+X Sections:</span><span class="kv-val" id="pe-wx-status">None Detected</span></div>
+                                <div class="key-val-row"><span class="kv-key">Total Sections:</span><span class="kv-val" id="pe-total-sections">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sections Table -->
+                    <div class="soc-card" style="margin-top: 20px;">
+                        <div class="card-head">
+                            <span class="card-icon">📑</span>
+                            <h3 class="card-heading" data-i18n="lbl_sections_table">PE Memory Sections Table</h3>
+                        </div>
+                        <div class="card-body no-padding table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Virtual Address</th>
+                                        <th>Virtual Size</th>
+                                        <th>Raw Size</th>
+                                        <th>Entropy</th>
+                                        <th>Permissions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pe-sections-tbody">
+                                    <tr><td colspan="6" class="empty-table-msg" data-i18n="msg_no_sections">No sections data available.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
+                <!-- 4. IMPORTS VIEW                                -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-imports">
+                    <div class="view-header">
+                        <div class="flex-between">
+                            <div>
+                                <h2 data-i18n="imports_title">Windows API & DLL Imports</h2>
+                                <p data-i18n="imports_subtitle">Categorized external functions and technical capability primitives.</p>
+                            </div>
+                            <input type="text" id="imports-search-input" class="search-input" placeholder="Search API or DLL..." onkeyup="filterImportsTable()">
+                        </div>
+                    </div>
+
+                    <div class="soc-card">
+                        <div class="card-body no-padding table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>DLL Name</th>
+                                        <th>API Function</th>
+                                        <th>Category</th>
+                                        <th>Risk Relevance</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="imports-tbody">
+                                    <tr><td colspan="4" class="empty-table-msg" data-i18n="msg_no_imports">No imported APIs detected.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
+                <!-- 5. STRINGS VIEW                                -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-strings">
+                    <div class="view-header">
+                        <h2 data-i18n="strings_title">Extracted Static Strings</h2>
+                        <p data-i18n="strings_subtitle">Classified ASCII and UTF-16LE Unicode sequences (URLs, IPs, Registry, Commands).</p>
+                    </div>
+
+                    <div class="grid-2col">
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">🌐</span>
+                                <h3 class="card-heading">URLs & Network Endpoints (<span id="count-urls">0</span>)</h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="string-list" id="strings-urls-list">
+                                    <li class="empty-str-item">No URLs found</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">🖥️</span>
+                                <h3 class="card-heading">IP Addresses (<span id="count-ips">0</span>)</h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="string-list" id="strings-ips-list">
+                                    <li class="empty-str-item">No IP addresses found</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">🗂️</span>
+                                <h3 class="card-heading">Registry Paths (<span id="count-regs">0</span>)</h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="string-list" id="strings-regs-list">
+                                    <li class="empty-str-item">No registry paths found</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">⚡</span>
+                                <h3 class="card-heading">Commands & Scripts (<span id="count-cmds">0</span>)</h3>
+                            </div>
+                            <div class="card-body">
+                                <ul class="string-list" id="strings-cmds-list">
+                                    <li class="empty-str-item">No command references found</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
+                <!-- 6. INDICATORS VIEW                             -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-indicators">
+                    <div class="view-header">
+                        <h2 data-i18n="indicators_title">Correlated Suspicious Indicators</h2>
+                        <p data-i18n="indicators_subtitle">Multi-feature heuristic correlations evaluated across headers, sections, and APIs.</p>
+                    </div>
+
+                    <div id="indicators-container" class="indicators-grid">
+                        <div class="soc-card">
+                            <div class="card-body empty-table-msg" data-i18n="msg_no_indicators">
+                                No suspicious indicators detected for the current sample.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
+                <!-- 7. AI ANALYST VIEW                             -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-ai-analyst">
+                    <div class="view-header">
+                        <h2 data-i18n="ai_analyst_title">AI Security Analyst Assessment</h2>
+                        <p data-i18n="ai_analyst_subtitle">Grounded interpretation of deterministic static findings with privacy boundary protections.</p>
+                    </div>
+
+                    <div class="soc-card ai-report-card">
+                        <div class="card-head">
+                            <div class="flex-between" style="width: 100%;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🤖</span>
+                                    <h3 class="card-heading" data-i18n="ai_summary_head">Executive Security Summary</h3>
+                                </div>
+                                <span class="badge badge-rule" id="ai-confidence-badge">Confidence: HIGH</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="ai-summary-text" id="ai-summary-display">No AI assessment generated yet.</p>
+
+                            <h4 class="sub-head" data-i18n="ai_key_findings">Key Findings</h4>
+                            <ul class="clean-bullet-list" id="ai-key-findings-list">
+                                <li>Heuristic score awaiting binary analysis.</li>
+                            </ul>
+
+                            <h4 class="sub-head" data-i18n="ai_benign_explanations">Possible Benign Explanations</h4>
+                            <ul class="clean-bullet-list" id="ai-benign-list">
+                                <li>Legitimate administrative and diagnostic tools use similar system APIs.</li>
+                            </ul>
+
+                            <h4 class="sub-head" data-i18n="ai_recommended_investigation">Recommended Investigation Steps</h4>
+                            <ul class="clean-bullet-list" id="ai-recommendations-list">
+                                <li>Execute in an isolated sandbox environment to observe dynamic runtime activity.</li>
+                            </ul>
+
+                            <div class="disclaimer-callout" id="ai-limitations-display">
+                                <strong>Scientific Disclaimer:</strong> Static analysis evaluates structural binary capabilities without live code execution. Heuristic scores do not constitute confirmed malicious intent.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
+                <!-- 8. LEARNING VIEW                               -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-learning">
+                    <div class="view-header">
+                        <div class="flex-between">
+                            <div>
+                                <h2 data-i18n="learning_title">Cybersecurity Reverse-Engineering Learning Center</h2>
+                                <p data-i18n="learning_subtitle">Interactive reverse-engineering lessons for cybersecurity students and apprentices.</p>
+                            </div>
+                            <div class="difficulty-toggle-group">
+                                <button class="diff-btn active" id="diff-beginner" onclick="setLearningDifficulty('BEGINNER')">Beginner</button>
+                                <button class="diff-btn" id="diff-advanced" onclick="setLearningDifficulty('ADVANCED')">Advanced</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2col" style="margin-bottom: 20px;">
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">📚</span>
+                                <h3 class="card-heading" data-i18n="select_concept">Explore a Concept</h3>
+                            </div>
+                            <div class="card-body">
+                                <select id="learning-topic-select" class="dropdown-select" onchange="renderSelectedConcept()">
+                                    <option value="WINDOWS_APIS">Windows APIs & VirtualProtect</option>
+                                    <option value="PE_FORMAT">Portable Executable (PE) Format</option>
+                                    <option value="DOS_HEADER">DOS Header & MZ Stub</option>
+                                    <option value="PE_HEADER">PE NT & Optional Headers</option>
+                                    <option value="SECTIONS">PE Memory Sections & W+X Permissions</option>
+                                    <option value="ENTRY_POINT">Address of Entry Point (EP)</option>
+                                    <option value="IMPORTS">Import Address Table (IAT)</option>
+                                    <option value="STRINGS">Static String Extraction</option>
+                                    <option value="ENTROPY">Shannon Entropy & Randomness</option>
+                                    <option value="PACKING">Software Packing & Unpacking</option>
+                                    <option value="OBFUSCATION">Code & String Obfuscation</option>
+                                    <option value="STATIC_ANALYSIS">Deterministic Static Analysis</option>
+                                    <option value="REVERSE_ENGINEERING">Defensive Reverse Engineering</option>
+                                    <option value="THREAT_INDICATORS">Correlated Threat Indicators</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lesson Container -->
+                    <div class="soc-card" id="lesson-card">
+                        <div class="card-head">
+                            <span class="card-icon">💡</span>
+                            <h3 class="card-heading" id="lesson-title">Concept Breakdown</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="lesson-section">
+                                <h4 class="lesson-subhead" data-i18n="learn_what_is_it">1. What is it?</h4>
+                                <p class="lesson-text" id="lesson-what-is-it">Loading concept definition...</p>
+                            </div>
+
+                            <div class="lesson-section">
+                                <h4 class="lesson-subhead" data-i18n="learn_why_it_matters">2. Why does it matter?</h4>
+                                <p class="lesson-text" id="lesson-why-matters">Loading operational relevance...</p>
+                            </div>
+
+                            <div class="lesson-section">
+                                <h4 class="lesson-subhead" data-i18n="learn_explanation">3. Explanation (<span id="lesson-level-badge">Beginner</span>)</h4>
+                                <p class="lesson-text lesson-explanation-box" id="lesson-explanation-body">Loading explanation...</p>
+                            </div>
+
+                            <div class="lesson-section">
+                                <h4 class="lesson-subhead" data-i18n="learn_does_it_prove_malware">4. Does it prove malicious behavior?</h4>
+                                <div class="disclaimer-callout" id="lesson-proves-malicious">
+                                    No. This feature alone does not prove malicious behavior.
+                                </div>
+                            </div>
+
+                            <div class="lesson-section">
+                                <h4 class="lesson-subhead" data-i18n="learn_what_next">5. What should I learn next?</h4>
+                                <ul class="clean-bullet-list" id="lesson-next-steps">
+                                    <li>Explore related assembly disassembly.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

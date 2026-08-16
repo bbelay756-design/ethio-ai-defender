@@ -1,0 +1,716 @@
+/**
+ * ETHIO-AI DEFENDER - DEFENSIVE SECURITY DASHBOARD CONTROLLER
+ * Handles tab navigation, dual-language localization (EN/AM),
+ * sample upload & live rendering across all 8 views.
+ */
+
+// Application State
+const state = {
+    currentLanguage: 'en',
+    currentDifficulty: 'BEGINNER',
+    currentTab: 'home',
+    sampleData: null,
+};
+
+// Bilingual Translation Dictionary (English & Amharic)
+const I18N = {
+    en: {
+        nav_home: "Home",
+        nav_analysis: "Analysis Overview",
+        nav_pe: "PE Analysis",
+        nav_imports: "Imports & APIs",
+        nav_strings: "Strings",
+        nav_indicators: "Suspicious Indicators",
+        nav_ai: "AI Security Analyst",
+        nav_learning: "Learning Center",
+        engine_status: "Static Engine: Operational",
+        non_exec_guarantee: "Zero-Execution Guarantee Enforced",
+        home_title: "ETHIO-AI Defender",
+        home_description: "Defensive static malware analysis and reverse-engineering platform designed for national cybersecurity resilience, SOC analysts, and university research laboratories.",
+        upload_heading: "Upload Binary for Static Analysis",
+        dropzone_title: "Drag and drop Windows PE executable here",
+        dropzone_subtitle: "or click to browse local files",
+        btn_choose_file: "Select .exe / .dll",
+        or_try_demo: "Or test with safe synthetic sample:",
+        btn_load_demo: "Load Demo Banking Agent",
+        security_heading: "Perimeter & Security Policy",
+        warning_title: "Strict Non-Execution Policy",
+        warning_body: "Uploaded files are analyzed statically without runtime execution. Files are isolated in memory and quarantined on disk. Never execute untrusted binaries on host machines.",
+        supported_formats: "Supported File Types:",
+        max_size: "Max File Size:",
+        analysis_scope: "Analysis Scope:",
+        analysis_overview_title: "Analysis Overview & Threat Posture",
+        analysis_overview_subtitle: "Cryptographic identity, architectural classification, and heuristic threat score.",
+        lbl_filename: "Filename",
+        lbl_arch: "Architecture",
+        lbl_risk_level: "Risk Level",
+        lbl_threat_score: "Threat Score",
+        heuristic_metric: "Heuristic Analyst Metric",
+        lbl_crypto_hashes: "Cryptographic Hashes",
+        lbl_ethio_context: "Ethiopian Context Assessment",
+        lbl_environment: "Target Environment:",
+        lbl_relevance: "Sector Relevance:",
+        lbl_context_reason: "Evaluation Context:",
+        pe_analysis_title: "Portable Executable (PE) Structure",
+        pe_analysis_subtitle: "DOS headers, NT optional headers, entry point, and memory section mapping.",
+        lbl_pe_headers: "PE Header Parameters",
+        lbl_entropy_summary: "Entropy & Anomaly Summary",
+        lbl_sections_table: "PE Memory Sections Table",
+        msg_no_sections: "No sections data available.",
+        imports_title: "Windows API & DLL Imports",
+        imports_subtitle: "Categorized external functions and technical capability primitives.",
+        msg_no_imports: "No imported APIs detected.",
+        strings_title: "Extracted Static Strings",
+        strings_subtitle: "Classified ASCII and UTF-16LE Unicode sequences (URLs, IPs, Registry, Commands).",
+        indicators_title: "Correlated Suspicious Indicators",
+        indicators_subtitle: "Multi-feature heuristic correlations evaluated across headers, sections, and APIs.",
+        msg_no_indicators: "No suspicious indicators detected for the current sample.",
+        ai_analyst_title: "AI Security Analyst Assessment",
+        ai_analyst_subtitle: "Grounded interpretation of deterministic static findings with privacy boundary protections.",
+        ai_summary_head: "Executive Security Summary",
+        ai_key_findings: "Key Findings",
+        ai_benign_explanations: "Possible Benign Explanations",
+        ai_recommended_investigation: "Recommended Investigation Steps",
+        learning_title: "Cybersecurity Reverse-Engineering Learning Center",
+        learning_subtitle: "Interactive reverse-engineering lessons for cybersecurity students and apprentices.",
+        select_concept: "Explore a Concept",
+        learn_what_is_it: "1. What is it?",
+        learn_why_it_matters: "2. Why does it matter?",
+        learn_explanation: "3. Explanation",
+        learn_does_it_prove_malware: "4. Does it prove malicious behavior?",
+        learn_what_next: "5. What should I learn next?",
+    },
+    am: {
+        nav_home: "መነሻ (Home)",
+        nav_analysis: "የትንተና አጠቃላይ እይታ",
+        nav_pe: "የ PE ትንተና",
+        nav_imports: "የተጠሩ APIs እና DLLs",
+        nav_strings: "ጽሁፎች (Strings)",
+        nav_indicators: "የስጋት አመልካቾች",
+        nav_ai: "የ AI ደህንነት ተንታኝ",
+        nav_learning: "የሳይበር ደህንነት ትምህርት",
+        engine_status: "የ Static ሞተር፡ ዝግጁ ነው",
+        non_exec_guarantee: "ፋይሉ ሳይሰራ የመመርመር ዋስትና ተረጋግጧል",
+        home_title: "ኢትዮ-አይአይ ደህንነት (ETHIO-AI Defender)",
+        home_description: "የሀገራዊ የሳይበር ደህንነትን ለማጠናከር እና የተጠቃሚዎችን መረጃ ለመጠበቅ የተሰራ የ PE ፋይሎች static መመርመሪያ እና የ Reverse Engineering ስርዓት።",
+        upload_heading: "ፋይል ለ Static ትንተና ያስገቡ",
+        dropzone_title: "የ Windows PE ፋይል እዚህ ይጎትቱ እና ይልቀቁ",
+        dropzone_subtitle: "ወይም ከኮምፒውተርዎ ለመምረጥ ይጫኑ",
+        btn_choose_file: "የ .exe / .dll ፋይል ይምረጡ",
+        or_try_demo: "ወይም ዝግጁ የሙከራ ናሙና ይጠቀሙ፡",
+        btn_load_demo: "የሙከራ የባንክ ወኪል ፋይል ጫን",
+        security_heading: "የደህንነት እና የጥበቃ ፖሊሲ",
+        warning_title: "ፋይልን ያለማስኬድ ጥብቅ ፖሊሲ",
+        warning_body: "የገቡ ፋይሎች ሳይከፈቱ እና ወደ ስራ ሳይገቡ በ static ትንተና ብቻ ይመረመራሉ። ማናቸውንም አጠራጣሪ ፋይሎች በዋናው ኮምፒውተር ላይ ፈጽሞ እንዳይከፍቱ።",
+        supported_formats: "የሚደገፉ የፋይል አይነቶች፡",
+        max_size: "ከፍተኛ የፋይል መጠን፡",
+        analysis_scope: "የትንተናው ወሰን፡",
+        analysis_overview_title: "የትንተና አጠቃላይ እይታ እና የስጋት ደረጃ",
+        analysis_overview_subtitle: "የፋይሉ የሃሽ ማንነት፣ አርክቴክቸር እና የ Heuristic ስጋት ውጤት።",
+        lbl_filename: "የፋይል ስም",
+        lbl_arch: "አርክቴክቸር",
+        lbl_risk_level: "የስጋት ደረጃ",
+        lbl_threat_score: "የስጋት ውጤት",
+        heuristic_metric: "የትንተና ድጋፍ ሰጪ መረጃ",
+        lbl_crypto_hashes: "የክሪፕቶግራፊክ ሃሾች",
+        lbl_ethio_context: "የኢትዮጵያ ተቋማት ደህንነት ግምገማ",
+        lbl_environment: "ዒላማ ተቋም፡",
+        lbl_relevance: "የደህንነት ቅድሚያ፡",
+        lbl_context_reason: "የግምገማ ምክንያት፡",
+        pe_analysis_title: "የ Portable Executable (PE) መዋቅር",
+        pe_analysis_subtitle: "የ DOS headers፣ Optional headers፣ የመግቢያ አድራሻ እና የ Sections አደረጃጀት።",
+        lbl_pe_headers: "የ PE Headers መረጃዎች",
+        lbl_entropy_summary: "የ Entropy እና Anomaly ማጠቃለያ",
+        lbl_sections_table: "የ PE Memory Sections ሰንጠረዥ",
+        msg_no_sections: "ምንም የ Section መረጃ የለም።",
+        imports_title: "የተጠሩ Windows APIs እና DLLs",
+        imports_subtitle: "የተመደቡ የውጭ ፈንክሽኖች እና የፋይሉ ቴክኒካዊ ችሎታዎች።",
+        msg_no_imports: "ምንም የተጠራ API አልተገኘም።",
+        strings_title: "በፋይሉ ውስጥ የተገኙ ጽሁፎች",
+        strings_subtitle: "የተመደቡ ASCII እና Unicode ጽሁፎች (URLs, IPs, Registry, Commands)።",
+        indicators_title: "የተዛመዱ የስጋት አመልካቾች",
+        indicators_subtitle: "በ headers፣ sections እና APIs መካከል የተዛመዱ የደህንነት አመልካቾች።",
+        msg_no_indicators: "ለተመረመረው ፋይል ምንም አጠራጣሪ አመልካች አልተገኘም።",
+        ai_analyst_title: "የ AI የደህንነት ተንታኝ ግምገማ",
+        ai_analyst_subtitle: "የተገኙ static መረጃዎችን በሳይንሳዊ መንገድ የሚያብራራ የ AI ትንተና።",
+        ai_summary_head: "የደህንነት ማጠቃለያ",
+        ai_key_findings: "ቁልፍ ግኝቶች",
+        ai_benign_explanations: "ሊሆኑ የሚችሉ መደበኛ ምክንያቶች",
+        ai_recommended_investigation: "የሚመከሩ የክትትል እርምጃዎች",
+        learning_title: "የሳይበር ደህንነት Reverse-Engineering ማሰልጠኛ",
+        learning_subtitle: "ለተማሪዎች እና ለደህንነት ተመራማሪዎች የተዘጋጁ በይነ-ተግባራዊ ትምህርቶች።",
+        select_concept: "ርዕስ ይምረጡ",
+        learn_what_is_it: "1. ይህ ምን ማለት ነው?",
+        learn_why_it_matters: "2. ለምን ይጠቅማል?",
+        learn_explanation: "3. ማብራሪያ",
+        learn_does_it_prove_malware: "4. ይህ ብቻውን ቫይረስ መሆኑን ያረጋግጣል?",
+        learn_what_next: "5. ቀጥሎ ምን ማጥናት አለብኝ?",
+    }
+};
+
+// Educational Concepts Database (Dual Language & Difficulty)
+const CONCEPTS_DB = {
+    WINDOWS_APIS: {
+        en: {
+            title: "Windows APIs & VirtualProtect",
+            what_is_it: "Documented OS system calls provided by Microsoft Windows for memory, process, and file operations.",
+            why_it_matters: "Categorizing APIs reveals technical primitives without running the file.",
+            beginner: "Windows APIs are standard tools provided by Microsoft so programs can safely use memory, draw windows, or read files.",
+            advanced: "VirtualProtect alters page permissions via the Virtual Memory Manager (e.g. PAGE_EXECUTE_READWRITE). While essential for JIT compilers, W+X pages violate DEP policies.",
+            proves: "No. This API alone does not prove malicious behavior. Legitimate utilities invoke the same APIs for normal tasks.",
+            next: ["Study correlated API combinations (e.g. VirtualAlloc + VirtualProtect).", "Learn about user-mode API hooking and native Nt syscalls."]
+        },
+        am: {
+            title: "Windows APIs እና VirtualProtect",
+            what_is_it: "በ Microsoft Windows የሚሰጡ የስርዓት ጥሪዎች (System Calls) ሲሆኑ የማህደረ-ትውስታ እና የፋይል ስራዎችን ያከናውናሉ።",
+            why_it_matters: "የ API ፈንክሽኖችን መመደብ የፋይሉን ቴክኒካዊ ችሎታ በቀላሉ ለመረዳት ያስችላል።",
+            beginner: "Windows APIs ፕሮግራሞች ከኮምፒውተሩ ጋር በሰላም እንዲነጋገሩ የተሰሩ ዝግጁ መመሪያዎች ናቸው።",
+            advanced: "እንደ VirtualProtect ያሉ APIs የማህደረ-ትውስታ ገጽ ፈቃድን ወደ PAGE_EXECUTE_READWRITE ይቀይራሉ። ይህም ለ JIT compilers ጠቃሚ ሲሆን ለ W+X ጥናትም ይመረመራል።",
+            proves: "አያረጋግጥም። ይህ API ብቻውን የስጋት ወይም የጥቃት ማረጋገጫ ሊሆን አይችልም።",
+            next: ["ተዛማጅ የ API ጥንዶችን ማጥናት።", "የ Windows Native System Calls አሰራርን መረዳት።"]
+        }
+    },
+    PE_FORMAT: {
+        en: {
+            title: "Portable Executable (PE) Format",
+            what_is_it: "The standard file structure used by Windows for executables (.exe) and libraries (.dll).",
+            why_it_matters: "Defines how the operating system loader maps binary code into process memory.",
+            beginner: "Think of the PE format like the table of contents of a book, telling Windows where code and images are stored.",
+            advanced: "PE format contains IMAGE_DOS_HEADER, IMAGE_NT_HEADERS, Section Headers, and Data Directories (IAT, Exports, Resources).",
+            proves: "No. The PE format alone does not prove malicious behavior. It is used by virtually all standard Windows software.",
+            next: ["Explore Relative Virtual Address (RVA) calculations.", "Learn how the Windows loader parses section headers."]
+        },
+        am: {
+            title: "የ Portable Executable (PE) ፎርማት",
+            what_is_it: "በ Windows ኦፕሬቲንግ ሲስተም ለ Executables (.exe) እና DLLs የሚያገለግል መደበኛ የፋይል መዋቅር ነው።",
+            why_it_matters: "Windows ፋይሎችን ወደ ማህደረ-ትውስታ እንዴት እንደሚጭን ይገልጻል።",
+            beginner: "PE format ልክ እንደ መጽሐፍ ማውጫ ነው። ለ Windows የትኛው ክፍል ኮድ እንደሆነ ይነግረዋል።",
+            advanced: "የ PE መዋቅር ከ DOS MZ header ተነስቶ ወደ IMAGE_NT_HEADERS ይሸጋገራል፤ ይህም ImageBase እና DataDirectory ን ያካትታል።",
+            proves: "አያረጋግጥም። ይህ መዋቅር ብቻውን የስጋት ወይም የጥቃት ማረጋገጫ ሊሆን አይችልም።",
+            next: ["የ Relative Virtual Address (RVA) ስሌትን መማር።", "የ PE loader አሰራርን መመርመር።"]
+        }
+    },
+    ENTROPY: {
+        en: {
+            title: "Shannon Entropy & Randomness",
+            what_is_it: "A mathematical measurement of information density on a scale from 0.0 to 8.0.",
+            why_it_matters: "High entropy (> 7.2) indicates compressed data, encrypted payloads, or software packing.",
+            beginner: "Entropy measures how crowded and jumbled data is. Plain text has low entropy; encrypted or zipped files have very high entropy.",
+            advanced: "Shannon entropy H(X) = -sum(p * log2(p)). In PE analysis, section entropy is correlated with raw-to-virtual size ratios to detect runtime unpackers.",
+            proves: "No. High entropy alone does not prove malicious behavior. It is completely normal for compressed media (PNG/ZIP) and installers.",
+            next: ["Calculate entropy per section to isolate packed stubs.", "Learn how to distinguish standard compression from custom encryption."]
+        },
+        am: {
+            title: "የ Shannon Entropy እና የመረጃ እፍጋት",
+            what_is_it: "የመረጃን ድብልቅነት እና እፍጋት ከ 0.0 እስከ 8.0 በሚደርስ የሂሳብ ቀመር የሚለካ ስሌት ነው።",
+            why_it_matters: "ከፍተኛ Entropy (> 7.2) የታመቀ ወይም የተመሰጠረ ዳታ መኖሩን ያመለክታል።",
+            beginner: "Entropy ዳታው ምን ያህል የተዘበራረቀ እንደሆነ ይለካል፤ የተመሰጠሩ ወይም ዚፕ የተደረጉ ፋይሎች ከፍተኛ Entropy አላቸው።",
+            advanced: "የ Shannon entropy በአንድ ባይት ውስጥ ያለውን የመረጃ እርግጠኛ-አልባነት ይለካል። በ PE ትንተና packing ን ለመለየት ይረዳል።",
+            proves: "አያረጋግጥም። ከፍተኛ Entropy ብቻውን የስጋት ወይም የጥቃት ማረጋገጫ ሊሆን አይችልም።",
+            next: ["የእያንዳንዱን section entropy ለይቶ ማስላት።", "በ compression እና encryption መካከል ያለውን ልዩነት መረዳት።"]
+        }
+    }
+};
+
+// Initialization on DOM Loaded
+document.addEventListener('DOMContentLoaded', () => {
+    initNavigation();
+    initUploadDropzone();
+    initLanguage();
+    renderSelectedConcept();
+});
+
+/**
+ * Tab Navigation Setup
+ */
+function initNavigation() {
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.getAttribute('data-tab');
+            switchTab(tabId);
+        });
+    });
+
+    // Mobile Menu Toggle
+    const mobileToggle = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+    }
+}
+
+function switchTab(tabId) {
+    state.currentTab = tabId;
+
+    // Update active nav link
+    document.querySelectorAll('.nav-link').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+    });
+
+    // Update active view panel
+    document.querySelectorAll('.view-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `view-${tabId}`);
+    });
+
+    // Update topbar title
+    const activeBtn = document.querySelector(`.nav-link[data-tab="${tabId}"] .nav-label`);
+    if (activeBtn) {
+        document.getElementById('topbar-active-title').textContent = activeBtn.textContent;
+    }
+
+    // Close sidebar on mobile
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('open');
+}
+
+/**
+ * Language Switching (EN / AM)
+ */
+function setLanguage(lang) {
+    state.currentLanguage = lang;
+
+    // Toggle button UI
+    document.getElementById('lang-btn-en').classList.toggle('active', lang === 'en');
+    document.getElementById('lang-btn-am').classList.toggle('active', lang === 'am');
+
+    // Translate all elements with data-i18n attribute
+    const dictionary = I18N[lang] || I18N.en;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dictionary[key]) {
+            el.textContent = dictionary[key];
+        }
+    });
+
+    // Re-render concept breakdown in selected language
+    renderSelectedConcept();
+
+    // If a sample is loaded, re-render its text if appropriate
+    if (state.sampleData) {
+        renderSampleData(state.sampleData);
+    }
+}
+
+function initLanguage() {
+    setLanguage('en');
+}
+
+/**
+ * File Upload & Dropzone Handling
+ */
+function initUploadDropzone() {
+    const dropzone = document.getElementById('upload-dropzone');
+    const fileInput = document.getElementById('file-upload-input');
+    const browseBtn = document.getElementById('btn-browse-file');
+
+    if (!dropzone || !fileInput) return;
+
+    browseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.click();
+    });
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            uploadFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files && fileInput.files.length > 0) {
+            uploadFile(fileInput.files[0]);
+        }
+    });
+}
+
+async function uploadFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const dropzoneTitle = document.querySelector('.dropzone-title');
+    const originalText = dropzoneTitle ? dropzoneTitle.textContent : '';
+    if (dropzoneTitle) dropzoneTitle.textContent = `Analyzing ${file.name}... (Zero-Execution Sandbox)`;
+
+    try {
+        const response = await fetch(`/api/dashboard/analyze?language=${state.currentLanguage}`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Analysis request failed.');
+        }
+
+        const data = await response.json();
+        state.sampleData = data;
+        renderSampleData(data);
+        switchTab('analysis');
+    } catch (err) {
+        alert(`Intake Notice: ${err.message}`);
+    } finally {
+        if (dropzoneTitle) dropzoneTitle.textContent = originalText;
+    }
+}
+
+/**
+ * Load Safe Synthetic Sample
+ */
+function loadDemoSample() {
+    const demoData = {
+        analysis_id: "ANL-DEMO-CBE01",
+        filename: "commercial_banking_agent.exe",
+        language: state.currentLanguage,
+        file_information: {
+            filename: "commercial_banking_agent.exe",
+            file_size: 48128,
+            file_kind: "EXE",
+            machine_type: "x64",
+            compile_time: "2026-02-16 14:22:00"
+        },
+        hashes: {
+            sha256: "3aca6c684a39c9ecaf3de614663d9c2240be7869d5ed5642b49140034ca9db9e",
+            sha1: "b5d848777ff7528e10408bd3725c898c8c7d3db1",
+            md5: "eef52d1656582cb18a4f2deba3aed525"
+        },
+        pe_information: {
+            subsystem: "Windows GUI",
+            machine_architecture: "x64",
+            characteristics: 0x0102,
+            entry_point: "0x000024B0",
+            image_base: "0x00400000",
+            compile_time: "2026-02-16 14:22:00"
+        },
+        sections: {
+            total_sections: 3,
+            has_wx_sections: true,
+            sections: [
+                { name: ".text", virtual_address: 4096, virtual_size: 16384, raw_size: 16384, entropy: 6.42, characteristics: "0x60000020" },
+                { name: ".packed", virtual_address: 20480, virtual_size: 24576, raw_size: 24576, entropy: 7.74, characteristics: "0xE0000020" },
+                { name: ".rsrc", virtual_address: 45056, virtual_size: 7168, raw_size: 7168, entropy: 4.15, characteristics: "0x40000040" }
+            ]
+        },
+        entropy: {
+            file_entropy: 7.48,
+            classification: "VERY_HIGH"
+        },
+        strings: {
+            urls: ["https://auth.telecom.et/login.php", "https://threat-c2.net/payload.bin"],
+            ip_addresses: ["196.188.120.10", "10.0.0.1"],
+            registry_paths: ["HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"],
+            commands: ["cmd.exe /c powershell -enc JABz..."]
+        },
+        imports: {
+            total_imports: 4,
+            imports: [
+                { dll: "KERNEL32.dll", api: "VirtualAlloc", category: "MEMORY", risk_relevance: "MEDIUM" },
+                { dll: "KERNEL32.dll", api: "VirtualProtect", category: "MEMORY", risk_relevance: "MEDIUM" },
+                { dll: "WININET.dll", api: "InternetOpenA", category: "NETWORK", risk_relevance: "HIGH" },
+                { dll: "ADVAPI32.dll", api: "RegSetValueExA", category: "REGISTRY", risk_relevance: "LOW" }
+            ]
+        },
+        indicators: {
+            total_indicators: 3,
+            indicators: [
+                {
+                    id: "IND-STR-001",
+                    name: "Writable and Executable (W+X) Section Detected",
+                    category: "PE_STRUCTURE",
+                    severity: "HIGH",
+                    evidence: "Section '.packed' has simultaneous W+X permissions",
+                    confidence: 1.0,
+                    explanation: "Violates standard DEP policies; often used for runtime unpacking."
+                },
+                {
+                    id: "IND-MEM-001",
+                    name: "Correlated Memory Staging & Permission Alteration",
+                    category: "MEMORY",
+                    severity: "HIGH",
+                    evidence: "VirtualAlloc + VirtualProtect APIs imported",
+                    confidence: 0.95,
+                    explanation: "Allows allocating and changing memory pages to executable at runtime."
+                },
+                {
+                    id: "IND-NET-001",
+                    name: "Correlated Network Endpoints & Egress Primitives",
+                    category: "NETWORK",
+                    severity: "HIGH",
+                    evidence: "URL extracted + InternetOpenA API imported",
+                    confidence: 0.9,
+                    explanation: "Indicates network connectivity capability."
+                }
+            ]
+        },
+        threat_score: {
+            score: 85,
+            risk_level: "CRITICAL"
+        },
+        ethiopian_context: {
+            environment: "FINANCIAL",
+            relevance: "CRITICAL",
+            reason: "Memory manipulation and domestic Ethiopian telecom endpoints present critical risk to financial infrastructure."
+        },
+        ai_assessment: {
+            assessment: "CRITICAL",
+            confidence: "HIGH",
+            summary: "Static analysis indicates a CRITICAL threat posture with packed sections, in-memory page permission modifications, and network egress capabilities targeting Ethiopian banking context.",
+            key_findings: [
+                "Heuristic Threat Score: 85/100 [CRITICAL].",
+                "Direct reference to Ethiopian domestic network infrastructure (telecom.et) identified."
+            ],
+            possible_benign_explanations: ["Legitimate commercial software packer or DRM protection."],
+            recommended_investigation: ["Execute in isolated sandbox to observe live network connections."],
+            limitations: ["Static analysis evaluates capabilities without live execution."]
+        }
+    };
+
+    state.sampleData = demoData;
+    renderSampleData(demoData);
+    switchTab('analysis');
+}
+
+/**
+ * Render Sample Data Across All Views
+ */
+function renderSampleData(data) {
+    if (!data) return;
+
+    // Show Sample Badge in Topbar
+    const sampleBadge = document.getElementById('current-sample-badge');
+    const sampleName = document.getElementById('current-sample-name');
+    if (sampleBadge && sampleName) {
+        sampleBadge.style.display = 'flex';
+        sampleName.textContent = data.filename || 'sample.exe';
+    }
+
+    // 1. Overview View
+    const fi = data.file_information || {};
+    const hashes = data.hashes || {};
+    const ts = data.threat_score || { score: 0, risk_level: "LOW" };
+    const ec = data.ethiopian_context || {};
+
+    document.getElementById('ov-filename').textContent = fi.filename || data.filename || 'N/A';
+    document.getElementById('ov-filetype').textContent = fi.file_kind || 'Windows PE';
+    document.getElementById('ov-arch').textContent = fi.machine_type || 'x64';
+    document.getElementById('ov-filesize').textContent = `${((fi.file_size || 0) / 1024).toFixed(1)} KB`;
+    
+    // Risk Level Badge
+    const riskLevelEl = document.getElementById('ov-risk-level');
+    const levelClass = getRiskBadgeClass(ts.risk_level);
+    riskLevelEl.innerHTML = `<span class="badge ${levelClass}">${ts.risk_level}</span>`;
+
+    // Threat Score Gauge
+    document.getElementById('ov-score-num').textContent = ts.score || 0;
+    const scoreBar = document.getElementById('ov-score-bar');
+    if (scoreBar) {
+        scoreBar.style.width = `${Math.min(100, Math.max(0, ts.score || 0))}%`;
+        scoreBar.style.backgroundColor = getScoreColor(ts.risk_level);
+    }
+
+    // Hashes
+    document.getElementById('ov-sha256').textContent = hashes.sha256 || 'N/A';
+    document.getElementById('ov-sha1').textContent = hashes.sha1 || 'N/A';
+    document.getElementById('ov-md5').textContent = hashes.md5 || 'N/A';
+
+    // Ethiopian Context
+    document.getElementById('ov-ethio-env').textContent = ec.environment || 'GENERAL';
+    const ethioRelEl = document.getElementById('ov-ethio-relevance');
+    if (ethioRelEl) {
+        ethioRelEl.innerHTML = `<span class="badge ${getRiskBadgeClass(ec.relevance || 'LOW')}">${ec.relevance || 'LOW'}</span>`;
+    }
+    document.getElementById('ov-ethio-reason').textContent = ec.reason || 'No domestic targeting observed.';
+
+    // 2. PE Analysis View
+    const pe = data.pe_information || {};
+    const sec = data.sections || { sections: [] };
+    const ent = data.entropy || {};
+
+    document.getElementById('pe-subsystem').textContent = pe.subsystem || 'Windows GUI';
+    document.getElementById('pe-entry-point').textContent = pe.entry_point || '0x00001000';
+    document.getElementById('pe-image-base').textContent = pe.image_base || '0x00400000';
+    document.getElementById('pe-compile-time').textContent = pe.compile_time || 'N/A';
+    document.getElementById('pe-file-entropy').textContent = `${(ent.file_entropy || 0).toFixed(2)} / 8.0`;
+    
+    const entClassEl = document.getElementById('pe-entropy-class');
+    if (entClassEl) {
+        entClassEl.innerHTML = `<span class="badge ${getRiskBadgeClass(ent.classification || 'NORMAL')}">${ent.classification || 'NORMAL'}</span>`;
+    }
+
+    document.getElementById('pe-wx-status').textContent = sec.has_wx_sections ? 'DETECTED (W+X Sections Present)' : 'None Detected';
+    document.getElementById('pe-total-sections').textContent = sec.total_sections || (sec.sections ? sec.sections.length : 0);
+
+    // Render Sections Table
+    const secTbody = document.getElementById('pe-sections-tbody');
+    if (secTbody && sec.sections) {
+        secTbody.innerHTML = sec.sections.map(s => `
+            <tr>
+                <td><strong>${escapeHtml(s.name)}</strong></td>
+                <td class="font-mono">0x${(s.virtual_address || 0).toString(16).toUpperCase()}</td>
+                <td>${s.virtual_size || 0} bytes</td>
+                <td>${s.raw_size || 0} bytes</td>
+                <td>${(s.entropy || 0).toFixed(2)}</td>
+                <td><span class="font-mono">${escapeHtml(s.characteristics || '')}</span></td>
+            </tr>
+        `).join('');
+    }
+
+    // 3. Imports View
+    const imp = data.imports || { imports: [] };
+    const impTbody = document.getElementById('imports-tbody');
+    if (impTbody && imp.imports) {
+        impTbody.innerHTML = imp.imports.map(i => `
+            <tr>
+                <td class="font-mono">${escapeHtml(i.dll)}</td>
+                <td><strong>${escapeHtml(i.api)}</strong></td>
+                <td><span class="badge badge-rule">${escapeHtml(i.category || 'GENERAL')}</span></td>
+                <td><span class="badge ${getRiskBadgeClass(i.risk_relevance || 'LOW')}">${escapeHtml(i.risk_relevance || 'LOW')}</span></td>
+            </tr>
+        `).join('');
+    }
+
+    // 4. Strings View
+    const strData = data.strings || {};
+    renderStringList('strings-urls-list', 'count-urls', strData.urls);
+    renderStringList('strings-ips-list', 'count-ips', strData.ip_addresses);
+    renderStringList('strings-regs-list', 'count-regs', strData.registry_paths);
+    renderStringList('strings-cmds-list', 'count-cmds', strData.commands);
+
+    // 5. Indicators View
+    const indData = data.indicators || { indicators: [] };
+    const indContainer = document.getElementById('indicators-container');
+    if (indContainer) {
+        if (indData.indicators && indData.indicators.length > 0) {
+            indContainer.innerHTML = indData.indicators.map(ind => `
+                <div class="indicator-card">
+                    <div class="indicator-top">
+                        <span class="indicator-title">${escapeHtml(ind.name || 'Indicator')}</span>
+                        <span class="badge ${getRiskBadgeClass(ind.severity || 'LOW')}">${escapeHtml(ind.severity || 'LOW')}</span>
+                    </div>
+                    <div class="indicator-evidence"><strong>Evidence:</strong> ${escapeHtml(ind.evidence || '')}</div>
+                    <div class="indicator-explanation">${escapeHtml(ind.explanation || '')}</div>
+                </div>
+            `).join('');
+        } else {
+            indContainer.innerHTML = `<div class="soc-card"><div class="card-body empty-table-msg">No suspicious indicators detected.</div></div>`;
+        }
+    }
+
+    // 6. AI Analyst View
+    const ai = data.ai_assessment || {};
+    document.getElementById('ai-summary-display').textContent = ai.summary || 'No summary generated.';
+    document.getElementById('ai-confidence-badge').textContent = `Confidence: ${ai.confidence || 'MEDIUM'}`;
+
+    renderBulletList('ai-key-findings-list', ai.key_findings);
+    renderBulletList('ai-benign-list', ai.possible_benign_explanations);
+    renderBulletList('ai-recommendations-list', ai.recommended_investigation);
+}
+
+function renderStringList(containerId, countId, list) {
+    const countEl = document.getElementById(countId);
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (countEl) countEl.textContent = list ? list.length : 0;
+
+    if (list && list.length > 0) {
+        container.innerHTML = list.map(item => `<li class="string-item">${escapeHtml(item)}</li>`).join('');
+    } else {
+        container.innerHTML = `<li class="empty-str-item">None found</li>`;
+    }
+}
+
+function renderBulletList(containerId, list) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (list && list.length > 0) {
+        container.innerHTML = list.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+    } else {
+        container.innerHTML = `<li>None available.</li>`;
+    }
+}
+
+/**
+ * Filter Imports Table
+ */
+function filterImportsTable() {
+    const query = (document.getElementById('imports-search-input').value || '').toLowerCase();
+    const rows = document.querySelectorAll('#imports-tbody tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+
+/**
+ * Learning Center Concept Renderer
+ */
+function setLearningDifficulty(diff) {
+    state.currentDifficulty = diff;
+    document.getElementById('diff-beginner').classList.toggle('active', diff === 'BEGINNER');
+    document.getElementById('diff-advanced').classList.toggle('active', diff === 'ADVANCED');
+    renderSelectedConcept();
+}
+
+function renderSelectedConcept() {
+    const select = document.getElementById('learning-topic-select');
+    const topicKey = select ? select.value : 'WINDOWS_APIS';
+    const lang = state.currentLanguage;
+    const diff = state.currentDifficulty;
+
+    const concept = (CONCEPTS_DB[topicKey] && CONCEPTS_DB[topicKey][lang]) ? CONCEPTS_DB[topicKey][lang] : CONCEPTS_DB.WINDOWS_APIS.en;
+
+    document.getElementById('lesson-title').textContent = concept.title;
+    document.getElementById('lesson-what-is-it').textContent = concept.what_is_it;
+    document.getElementById('lesson-why-matters').textContent = concept.why_it_matters;
+    
+    document.getElementById('lesson-level-badge').textContent = diff === 'BEGINNER' ? 'Beginner' : 'Advanced';
+    document.getElementById('lesson-explanation-body').textContent = diff === 'BEGINNER' ? concept.beginner : concept.advanced;
+    
+    document.getElementById('lesson-proves-malicious').textContent = concept.proves;
+    renderBulletList('lesson-next-steps', concept.next);
+}
+
+/**
+ * Helpers
+ */
+function getRiskBadgeClass(level) {
+    const l = (level || '').toUpperCase();
+    if (l === 'CRITICAL') return 'badge-crit';
+    if (l === 'HIGH') return 'badge-high';
+    if (l === 'SUSPICIOUS') return 'badge-susp';
+    if (l === 'MODERATE') return 'badge-mod';
+    return 'badge-low';
+}
+
+function getScoreColor(level) {
+    const l = (level || '').toUpperCase();
+    if (l === 'CRITICAL') return 'var(--sev-crit)';
+    if (l === 'HIGH') return 'var(--sev-high)';
+    if (l === 'SUSPICIOUS') return 'var(--sev-susp)';
+    if (l === 'MODERATE') return 'var(--sev-mod)';
+    return 'var(--sev-low)';
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
