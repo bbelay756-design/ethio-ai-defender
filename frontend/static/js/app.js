@@ -323,6 +323,9 @@ function setLanguage(lang) {
     // Re-render concept breakdown in selected language
     renderSelectedConcept();
 
+    // Re-render user auth widget and banner in selected language
+    renderUserAuthWidget();
+
     // If a sample is loaded, re-render its text if appropriate
     if (state.sampleData) {
         renderSampleData(state.sampleData);
@@ -756,6 +759,9 @@ function escapeHtml(str) {
 async function initAuth() {
     if (state.token) {
         await fetchUserProfile();
+        if (state.user && state.currentTab === 'home') {
+            routeUserByRole();
+        }
     } else {
         renderUserAuthWidget();
     }
@@ -947,6 +953,11 @@ function renderUserAuthWidget() {
     const nameText = document.getElementById('user-display-name');
     const roleBadge = document.getElementById('user-role-badge');
     const navAdmin = document.getElementById('nav-item-admin');
+    const roleBanner = document.getElementById('role-workspace-banner');
+    const bannerIcon = document.getElementById('role-banner-icon');
+    const bannerTitle = document.getElementById('role-banner-title');
+    const bannerDesc = document.getElementById('role-banner-desc');
+    const isAm = state.currentLanguage === 'am';
 
     if (state.user) {
         if (btnSignIn) btnSignIn.style.display = 'none';
@@ -962,10 +973,31 @@ function renderUserAuthWidget() {
         if (navAdmin) {
             navAdmin.style.display = state.user.role === 'ADMIN' ? 'block' : 'none';
         }
+        if (roleBanner) {
+            roleBanner.style.display = 'flex';
+            roleBanner.className = 'role-workspace-banner';
+            if (state.user.role === 'ADMIN') {
+                roleBanner.classList.add('banner-admin');
+                if (bannerIcon) bannerIcon.textContent = '🛡️';
+                if (bannerTitle) bannerTitle.textContent = isAm ? 'የአስተዳዳሪ ማዕከል ገቢር ነው (Administrator Control Active)' : 'Administrator Control Center Active';
+                if (bannerDesc) bannerDesc.textContent = isAm ? 'ሙሉ የስርዓት ቁጥጥር: የተጠቃሚዎች ሚና አስተዳደር እና የደህንነት ኦዲት መዝገቦች።' : 'Full platform access: manage users, configure RBAC permissions, and view audit trail logs.';
+            } else if (state.user.role === 'ANALYST') {
+                roleBanner.classList.add('banner-analyst');
+                if (bannerIcon) bannerIcon.textContent = '🔍';
+                if (bannerTitle) bannerTitle.textContent = isAm ? 'የ SOC ስጋት ትንተና የስራ ቦታ (SOC Threat Analysis Active)' : 'SOC Threat Analysis Workspace Active';
+                if (bannerDesc) bannerDesc.textContent = isAm ? 'የማልዌር ስጋት ትንተና: PE መዋቅር፣ የ entropy ስሌት፣ ጽሁፎች እና የደህንነት ሪፖርት ማመንጨት።' : 'Operational malware triage: static PE inspection, entropy analysis, string extraction, and report generation.';
+            } else {
+                roleBanner.classList.add('banner-student');
+                if (bannerIcon) bannerIcon.textContent = '🎓';
+                if (bannerTitle) bannerTitle.textContent = isAm ? 'የተማሪዎች የሳይበር ደህንነት ትምህርት ቤት (Student Lab Active)' : 'Cybersecurity Student Learning Lab Active';
+                if (bannerDesc) bannerDesc.textContent = isAm ? 'በይነተገናኝ የ reverse engineering ትምህርቶች፣ የፅንሰ-ሀሳብ ማብራሪያዎች እና የናሙና ልምምዶች።' : 'Interactive educational reverse-engineering lessons, concept breakdowns, and safe sample practice.';
+            }
+        }
     } else {
         if (btnSignIn) btnSignIn.style.display = 'flex';
         if (profilePill) profilePill.style.display = 'none';
         if (navAdmin) navAdmin.style.display = 'none';
+        if (roleBanner) roleBanner.style.display = 'none';
     }
 }
 
@@ -984,9 +1016,7 @@ async function logoutUser(callApi = true) {
     state.token = null;
     localStorage.removeItem('ethio_auth_token');
     renderUserAuthWidget();
-    if (state.currentTab === 'admin') {
-        switchTab('home');
-    }
+    switchTab('home');
 }
 
 async function loadUsersList() {
