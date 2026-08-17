@@ -144,12 +144,23 @@ class AuthService:
             "role": user.role,
         }
         token, jti, expires_at = create_access_token(payload)
+        role_str = str(user.role).upper()
+        role_path = role_str.lower()
+        dashboard_url = f"/{role_path}/dashboard"
         return {
             "access_token": token,
             "token_type": "bearer",
             "jti": jti,
+            "user_id": user.id,
             "username": user.username,
-            "role": user.role,
+            "role": role_str,
+            "dashboard_url": dashboard_url,
+            "user": {
+                "user_id": user.id,
+                "username": user.username,
+                "role": role_str,
+                "dashboard_url": dashboard_url,
+            },
             "expires_at": expires_at.isoformat()
         }
 

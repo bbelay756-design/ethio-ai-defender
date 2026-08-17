@@ -738,6 +738,23 @@
                     </div>
                 </section>
 
+                <!-- ============================================== -->
+                <!-- 9. UNAUTHORIZED / 403 VIEW                     -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-unauthorized">
+                    <div class="soc-card" style="text-align: center; padding: 48px 24px; max-width: 680px; margin: 40px auto;">
+                        <div style="font-size: 54px; margin-bottom: 16px;">🛑</div>
+                        <h2 style="font-size: 24px; font-weight: 700; color: var(--sev-crit); margin-bottom: 8px;">403 Forbidden - Access Denied</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 14px;" id="unauthorized-message">
+                            You do not have the required role or permission level to access this dashboard.
+                        </p>
+                        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                            <button class="btn-primary" onclick="goToMyRoleDashboard()">Go To My Dashboard</button>
+                            <button class="btn-secondary" onclick="openAuthModal()">Switch Account</button>
+                        </div>
+                    </div>
+                </section>
+
             </main>
         </div>
     </div>
@@ -802,6 +819,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=2.1"></script>
+    <script src="/static/js/app.js?v=2.2"></script>
 </body>
 </html>

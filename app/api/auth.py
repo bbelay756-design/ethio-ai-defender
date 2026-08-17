@@ -42,20 +42,32 @@ class UserLoginRequest(BaseModel):
     password: str = Field(..., min_length=1)
 
 
+class AuthUserInfo(BaseModel):
+    user_id: int
+    username: str
+    role: str
+    dashboard_url: str
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     jti: str
+    user_id: int
     username: str
     role: str
+    dashboard_url: str
+    user: Optional[AuthUserInfo] = None
     expires_at: str
 
 
 class UserProfileResponse(BaseModel):
     id: int
+    user_id: Optional[int] = None
     username: str
     email: str
     role: str
+    dashboard_url: Optional[str] = None
     permissions: List[str]
     is_active: bool
 
@@ -93,11 +105,14 @@ def register(
             db=db,
         )
 
+        role_str = str(user.role).upper()
         return UserProfileResponse(
             id=user.id,
+            user_id=user.id,
             username=user.username,
             email=user.email,
-            role=user.role,
+            role=role_str,
+            dashboard_url=f"/{role_str.lower()}/dashboard",
             permissions=perms,
             is_active=bool(user.is_active)
         )
@@ -197,11 +212,14 @@ def get_current_user_profile(
     """
     user_role = UserRole(current_user.role)
     perms = [p.value for p in ROLE_PERMISSIONS.get(user_role, set())]
+    role_str = str(current_user.role).upper()
     return UserProfileResponse(
         id=current_user.id,
+        user_id=current_user.id,
         username=current_user.username,
         email=current_user.email,
-        role=current_user.role,
+        role=role_str,
+        dashboard_url=f"/{role_str.lower()}/dashboard",
         permissions=perms,
         is_active=bool(current_user.is_active)
     )
@@ -221,11 +239,14 @@ def list_all_users(
     for u in users:
         u_role = UserRole(u.role)
         perms = [p.value for p in ROLE_PERMISSIONS.get(u_role, set())]
+        role_str = str(u.role).upper()
         res.append(UserProfileResponse(
             id=u.id,
+            user_id=u.id,
             username=u.username,
             email=u.email,
-            role=u.role,
+            role=role_str,
+            dashboard_url=f"/{role_str.lower()}/dashboard",
             permissions=perms,
             is_active=bool(u.is_active)
         ))
@@ -259,11 +280,14 @@ def update_user_role_admin(
 
         u_role = UserRole(user.role)
         perms = [p.value for p in ROLE_PERMISSIONS.get(u_role, set())]
+        role_str = str(user.role).upper()
         return UserProfileResponse(
             id=user.id,
+            user_id=user.id,
             username=user.username,
             email=user.email,
-            role=user.role,
+            role=role_str,
+            dashboard_url=f"/{role_str.lower()}/dashboard",
             permissions=perms,
             is_active=bool(user.is_active)
         )

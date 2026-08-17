@@ -263,6 +263,11 @@ function initNavigation() {
         });
     });
 
+    // Browser back/forward navigation support
+    window.addEventListener('popstate', () => {
+        handleUrlRouting();
+    });
+
     // Mobile Menu Toggle
     const mobileToggle = document.getElementById('mobile-menu-toggle');
     const sidebar = document.getElementById('sidebar');
@@ -273,7 +278,23 @@ function initNavigation() {
     }
 }
 
-function switchTab(tabId) {
+function switchTab(tabId, updateUrl = true) {
+    if (tabId === 'admin') {
+        if (!state.user || state.user.role !== 'ADMIN') {
+            showUnauthorizedView("Access Denied: Only Administrator accounts can access User Management & Security Audit features.");
+            return;
+        }
+        if (updateUrl) updateUrlPath('/admin/dashboard');
+    } else if (tabId === 'learning') {
+        if (updateUrl && state.user && state.user.role === 'STUDENT') {
+            updateUrlPath('/student/dashboard');
+        }
+    } else if (['home', 'analysis', 'pe', 'imports', 'strings', 'indicators', 'ai-analyst'].includes(tabId)) {
+        if (updateUrl && state.user && state.user.role === 'ANALYST') {
+            updateUrlPath('/analyst/dashboard');
+        }
+    }
+
     state.currentTab = tabId;
 
     // Update active nav link
@@ -759,12 +780,10 @@ function escapeHtml(str) {
 async function initAuth() {
     if (state.token) {
         await fetchUserProfile();
-        if (state.user && state.currentTab === 'home') {
-            routeUserByRole();
-        }
     } else {
         renderUserAuthWidget();
     }
+    handleUrlRouting();
 }
 
 function getAuthHeaders(headers = {}) {
@@ -935,15 +954,83 @@ async function fetchUserProfile() {
     renderUserAuthWidget();
 }
 
-function routeUserByRole() {
+function updateUrlPath(newPath) {
+    if (window.location.pathname !== newPath) {
+        window.history.pushState({ path: newPath }, '', newPath);
+    }
+}
+
+function showUnauthorizedView(message = null) {
+    state.currentTab = 'unauthorized';
+    document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.view-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'view-unauthorized');
+    });
+    const msgEl = document.getElementById('unauthorized-message');
+    if (msgEl && message) {
+        msgEl.textContent = message;
+    }
+    const topTitle = document.getElementById('topbar-active-title');
+    if (topTitle) topTitle.textContent = "403 Unauthorized";
+    updateUrlPath('/unauthorized');
+}
+
+function goToMyRoleDashboard() {
+    if (!state.user) {
+        openAuthModal();
+        return;
+    }
+    routeUserByRole(true);
+}
+
+function handleUrlRouting() {
+    const path = window.location.pathname.toLowerCase();
+
+    if (path.includes('/admin/dashboard') || path === '/admin') {
+        if (!state.user) {
+            if (!state.token) {
+                showUnauthorizedView("Authentication required. Please sign in as an Administrator.");
+            } else {
+                switchTab('admin', false);
+            }
+        } else if (state.user.role === 'ADMIN') {
+            switchTab('admin', false);
+        } else {
+            showUnauthorizedView(`Access Denied: Your role (${state.user.role}) is not authorized to access the Administrator Dashboard.`);
+        }
+    } else if (path.includes('/analyst/dashboard') || path === '/analyst') {
+        if (!state.user) {
+            if (!state.token) {
+                showUnauthorizedView("Authentication required. Please sign in as a SOC Analyst.");
+            } else {
+                switchTab(state.sampleData ? 'analysis' : 'home', false);
+            }
+        } else if (state.user.role === 'ADMIN' || state.user.role === 'ANALYST') {
+            switchTab(state.sampleData ? 'analysis' : 'home', false);
+        } else {
+            showUnauthorizedView(`Access Denied: Student accounts cannot access the full SOC Analyst Dashboard.`);
+        }
+    } else if (path.includes('/student/dashboard') || path === '/student') {
+        switchTab('learning', false);
+    } else if (path.includes('/unauthorized')) {
+        showUnauthorizedView();
+    }
+}
+
+function routeUserByRole(updateUrl = true) {
     if (!state.user) return;
-    if (state.user.role === 'ADMIN') {
-        switchTab('admin');
-    } else if (state.user.role === 'STUDENT') {
-        switchTab('learning');
+    const role = (state.user.role || '').toUpperCase();
+    if (role === 'ADMIN') {
+        switchTab('admin', updateUrl);
+        if (updateUrl) updateUrlPath('/admin/dashboard');
+    } else if (role === 'ANALYST') {
+        switchTab(state.sampleData ? 'analysis' : 'home', updateUrl);
+        if (updateUrl) updateUrlPath('/analyst/dashboard');
+    } else if (role === 'STUDENT') {
+        switchTab('learning', updateUrl);
+        if (updateUrl) updateUrlPath('/student/dashboard');
     } else {
-        // ANALYST or default SOC operator
-        switchTab(state.sampleData ? 'analysis' : 'home');
+        showUnauthorizedView(`Unknown user role: '${role}'. Access restricted.`);
     }
 }
 
@@ -1016,7 +1103,8 @@ async function logoutUser(callApi = true) {
     state.token = null;
     localStorage.removeItem('ethio_auth_token');
     renderUserAuthWidget();
-    switchTab('home');
+    updateUrlPath('/');
+    switchTab('home', false);
 }
 
 async function loadUsersList() {

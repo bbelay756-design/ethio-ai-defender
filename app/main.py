@@ -84,10 +84,42 @@ async def root(request: Request):
 
 @app.get("/dashboard", tags=["Dashboard"])
 async def dashboard():
-    """Direct route to the Module 02 File Hash Analysis Dashboard."""
+    """Direct route to the defensive analysis dashboard."""
     if frontend_index.exists():
         return FileResponse(frontend_index)
     return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
+
+
+@app.get("/admin/dashboard", tags=["Dashboard"])
+async def admin_dashboard():
+    """Dedicated Administrator Control Center Dashboard route."""
+    if frontend_index.exists():
+        return FileResponse(frontend_index)
+    return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
+
+
+@app.get("/analyst/dashboard", tags=["Dashboard"])
+async def analyst_dashboard():
+    """Dedicated SOC / Malware Analyst Triage Dashboard route."""
+    if frontend_index.exists():
+        return FileResponse(frontend_index)
+    return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
+
+
+@app.get("/student/dashboard", tags=["Dashboard"])
+async def student_dashboard():
+    """Dedicated Cybersecurity Student Learning Lab Dashboard route."""
+    if frontend_index.exists():
+        return FileResponse(frontend_index)
+    return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
+
+
+@app.get("/unauthorized", tags=["Dashboard"])
+async def unauthorized_page():
+    """Safe unauthorized access / 403 route."""
+    if frontend_index.exists():
+        return FileResponse(frontend_index)
+    return JSONResponse(status_code=403, content={"detail": "Access forbidden: Unauthorized role or missing credentials."})
 
 
 if __name__ == "__main__":
