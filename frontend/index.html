@@ -12,7 +12,7 @@
 </head>
 <body>
     <!-- Authentication Loading Overlay (State 1: AUTHENTICATION_LOADING) -->
-    <div id="auth-loading-overlay" class="auth-loading-overlay">
+    <div id="auth-loading-overlay" class="auth-loading-overlay" style="display: none;">
         <div class="auth-spinner"></div>
         <div class="auth-loading-text">Authenticating Security Workspace...</div>
     </div>
@@ -20,7 +20,7 @@
     <!-- ======================================================= -->
     <!-- 1. PUBLIC AUTHENTICATION LAYOUT (Unauthenticated)       -->
     <!-- ======================================================= -->
-    <div class="public-layout" id="public-layout" style="display: none;">
+    <div class="public-layout" id="public-layout">
         <!-- Public Top Header -->
         <header class="public-topbar">
             <div class="brand-header" style="border-bottom: none; padding: 0;">
@@ -50,6 +50,9 @@
                 </div>
                 
                 <div class="auth-card-body">
+                    <!-- Global Server Connection Banner -->
+                    <div id="auth-connection-banner" class="auth-error-box" style="display: none;"></div>
+
                     <!-- Login Form -->
                     <form id="auth-login-form" onsubmit="handleLoginForm(event)">
                         <div id="login-error-box" class="auth-error-box" style="display: none;"></div>

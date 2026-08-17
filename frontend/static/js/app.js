@@ -808,7 +808,23 @@ function setAuthLoading(isLoading, text = "Authenticating Security Workspace..."
         overlay.style.opacity = '0';
         setTimeout(() => {
             overlay.style.display = 'none';
-        }, 200);
+        }, 150);
+    }
+}
+
+function showConnectionError(msg) {
+    const banner = document.getElementById('auth-connection-banner');
+    if (banner) {
+        banner.innerHTML = `<span>⚠️ ${escapeHtml(msg)}</span> <button type="button" onclick="initAuth()" style="margin-left: 8px; background: none; border: 1px solid currentColor; color: inherit; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 11px;">🔄 Retry</button>`;
+        banner.style.display = 'block';
+    }
+}
+
+function clearConnectionError() {
+    const banner = document.getElementById('auth-connection-banner');
+    if (banner) {
+        banner.style.display = 'none';
+        banner.innerHTML = '';
     }
 }
 
@@ -926,21 +942,55 @@ function renderNavigationForRole() {
 }
 
 async function initAuth() {
-    state.authStatus = 'AUTHENTICATION_LOADING';
-    setAuthLoading(true);
-
     if (state.token) {
-        await fetchUserProfile();
+        state.authStatus = 'AUTHENTICATION_LOADING';
+        setAuthLoading(true, "Authenticating Security Workspace...");
     } else {
-        state.user = null;
         state.authStatus = 'UNAUTHENTICATED';
+        state.user = null;
     }
 
-    renderLayoutForAuth();
-    renderUserAuthWidget();
-    renderNavigationForRole();
-    setAuthLoading(false);
-    handleUrlRouting();
+    // Watchdog safety timeout (max 4s) to guarantee the spinner never remains stuck
+    const watchdogTimer = setTimeout(() => {
+        if (state.authStatus === 'AUTHENTICATION_LOADING') {
+            console.warn("Auth initialization watchdog timeout reached. Forcing public login.");
+            state.authStatus = 'UNAUTHENTICATED';
+            state.user = null;
+            renderLayoutForAuth();
+            renderUserAuthWidget();
+            renderNavigationForRole();
+            setAuthLoading(false);
+            handleUrlRouting();
+            showConnectionError("Security server response timed out. Click Retry or sign in.");
+        }
+    }, 4000);
+
+    try {
+        if (state.token) {
+            await fetchUserProfile();
+        } else {
+            state.user = null;
+            state.authStatus = 'UNAUTHENTICATED';
+            clearConnectionError();
+        }
+
+        renderLayoutForAuth();
+        renderUserAuthWidget();
+        renderNavigationForRole();
+        handleUrlRouting();
+    } catch (err) {
+        console.warn("Authentication initialization error:", err);
+        state.user = null;
+        state.authStatus = 'UNAUTHENTICATED';
+        renderLayoutForAuth();
+        renderUserAuthWidget();
+        renderNavigationForRole();
+        handleUrlRouting();
+        showConnectionError("Unable to connect to the security server. Please ensure the backend is running.");
+    } finally {
+        clearTimeout(watchdogTimer);
+        setAuthLoading(false);
+    }
 }
 
 function getAuthHeaders(headers = {}) {
@@ -951,14 +1001,28 @@ function getAuthHeaders(headers = {}) {
     return h;
 }
 
-async function fetchWithAuth(url, options = {}) {
+async function fetchWithAuth(url, options = {}, timeoutMs = 3500) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     options.headers = getAuthHeaders(options.headers || {});
-    const res = await fetch(url, options);
-    if (res.status === 401 && state.token) {
-        // Token expired or revoked
-        logoutUser(false);
+    options.signal = controller.signal;
+
+    try {
+        const res = await fetch(url, options);
+        clearTimeout(timeoutId);
+        if (res.status === 401 && state.token) {
+            // Token expired or revoked
+            state.user = null;
+            state.token = null;
+            state.authStatus = 'UNAUTHENTICATED';
+            localStorage.removeItem('ethio_auth_token');
+        }
+        return res;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
     }
-    return res;
 }
 
 function switchAuthTab(tab) {
@@ -987,6 +1051,7 @@ async function handleLoginForm(event) {
     const password = document.getElementById('login-password').value;
 
     if (errBox) errBox.style.display = 'none';
+    clearConnectionError();
 
     try {
         const res = await fetch('/api/auth/login', {
@@ -1029,6 +1094,7 @@ async function handleRegisterForm(event) {
     const role = document.getElementById('reg-role').value;
 
     if (errBox) errBox.style.display = 'none';
+    clearConnectionError();
 
     try {
         const res = await fetch('/api/auth/register', {
@@ -1086,20 +1152,32 @@ async function fetchUserProfile() {
     }
 
     try {
-        const res = await fetchWithAuth('/api/auth/me');
+        const res = await fetchWithAuth('/api/auth/me', {}, 3500);
         if (res && res.ok) {
             state.user = await res.json();
             state.authStatus = 'AUTHENTICATED';
+            clearConnectionError();
+        } else if (res && (res.status === 401 || res.status === 403)) {
+            state.user = null;
+            state.token = null;
+            state.authStatus = 'UNAUTHENTICATED';
+            localStorage.removeItem('ethio_auth_token');
         } else {
             state.user = null;
             state.token = null;
             state.authStatus = 'UNAUTHENTICATED';
             localStorage.removeItem('ethio_auth_token');
+            showConnectionError("Unable to verify security profile with the server.");
         }
     } catch (e) {
         console.warn('Could not fetch user profile:', e);
         state.user = null;
         state.authStatus = 'UNAUTHENTICATED';
+        if (e.name === 'AbortError') {
+            showConnectionError("Connection to security server timed out. Click Retry or sign in.");
+        } else {
+            showConnectionError("Unable to connect to the security server. Please ensure the backend is running.");
+        }
     }
 }
 

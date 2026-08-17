@@ -34,35 +34,35 @@ class TestRoleBasedDashboards(unittest.TestCase):
     def setUpClass(cls):
         init_db()
         cls.client = TestClient(app)
-        cls.db = SessionLocal()
 
         # Seed test users for each role
         cls.uid = uuid.uuid4().hex[:8]
-        cls.admin_user = AuthService.register_user(
-            db=cls.db,
-            username=f"admin_{cls.uid}",
-            email=f"admin_{cls.uid}@defensive.local",
-            password="AdminSecretPassword123!",
-            role="ADMIN"
-        )
-        cls.analyst_user = AuthService.register_user(
-            db=cls.db,
-            username=f"analyst_{cls.uid}",
-            email=f"analyst_{cls.uid}@defensive.local",
-            password="AnalystSecretPassword123!",
-            role="ANALYST"
-        )
-        cls.student_user = AuthService.register_user(
-            db=cls.db,
-            username=f"student_{cls.uid}",
-            email=f"student_{cls.uid}@defensive.local",
-            password="StudentSecretPassword123!",
-            role="STUDENT"
-        )
+        with SessionLocal() as db:
+            cls.admin_user = AuthService.register_user(
+                db=db,
+                username=f"admin_{cls.uid}",
+                email=f"admin_{cls.uid}@defensive.local",
+                password="AdminSecretPassword123!",
+                role="ADMIN"
+            )
+            cls.analyst_user = AuthService.register_user(
+                db=db,
+                username=f"analyst_{cls.uid}",
+                email=f"analyst_{cls.uid}@defensive.local",
+                password="AnalystSecretPassword123!",
+                role="ANALYST"
+            )
+            cls.student_user = AuthService.register_user(
+                db=db,
+                username=f"student_{cls.uid}",
+                email=f"student_{cls.uid}@defensive.local",
+                password="StudentSecretPassword123!",
+                role="STUDENT"
+            )
 
     @classmethod
     def tearDownClass(cls):
-        cls.db.close()
+        pass
 
     def test_01_admin_login_routing(self):
         """1. Admin login returns admin role and /admin/dashboard URL."""
