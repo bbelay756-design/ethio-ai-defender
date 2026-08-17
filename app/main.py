@@ -82,33 +82,56 @@ async def root(request: Request):
     }
 
 
+@app.get("/login", tags=["Public Routes"])
+@app.get("/about", tags=["Public Routes"])
+async def public_pages():
+    """Public portal landing routes."""
+    if frontend_index.exists():
+        return FileResponse(frontend_index)
+    return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
+
+
 @app.get("/dashboard", tags=["Dashboard"])
-async def dashboard():
-    """Direct route to the defensive analysis dashboard."""
+@app.get("/analysis", tags=["Protected Analysis Routes"])
+@app.get("/pe-analysis", tags=["Protected Analysis Routes"])
+@app.get("/imports", tags=["Protected Analysis Routes"])
+@app.get("/strings", tags=["Protected Analysis Routes"])
+@app.get("/indicators", tags=["Protected Analysis Routes"])
+@app.get("/ai-analysis", tags=["Protected Analysis Routes"])
+@app.get("/reports", tags=["Protected Analysis Routes"])
+@app.get("/settings", tags=["Protected Analysis Routes"])
+async def protected_analysis_routes():
+    """Protected static malware analysis and SOC reporting routes."""
     if frontend_index.exists():
         return FileResponse(frontend_index)
     return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
 
 
-@app.get("/admin/dashboard", tags=["Dashboard"])
-async def admin_dashboard():
-    """Dedicated Administrator Control Center Dashboard route."""
+@app.get("/admin/dashboard", tags=["Role Dashboards"])
+@app.get("/admin/users", tags=["Role Dashboards"])
+@app.get("/admin/audit", tags=["Role Dashboards"])
+async def admin_dashboard_routes():
+    """Dedicated Administrator Control Center Dashboard routes."""
     if frontend_index.exists():
         return FileResponse(frontend_index)
     return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
 
 
-@app.get("/analyst/dashboard", tags=["Dashboard"])
-async def analyst_dashboard():
-    """Dedicated SOC / Malware Analyst Triage Dashboard route."""
+@app.get("/analyst/dashboard", tags=["Role Dashboards"])
+@app.get("/analyst/new-analysis", tags=["Role Dashboards"])
+@app.get("/analyst/history", tags=["Role Dashboards"])
+async def analyst_dashboard_routes():
+    """Dedicated SOC / Malware Analyst Triage Dashboard routes."""
     if frontend_index.exists():
         return FileResponse(frontend_index)
     return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
 
 
-@app.get("/student/dashboard", tags=["Dashboard"])
-async def student_dashboard():
-    """Dedicated Cybersecurity Student Learning Lab Dashboard route."""
+@app.get("/student/dashboard", tags=["Role Dashboards"])
+@app.get("/student/learning", tags=["Role Dashboards"])
+@app.get("/student/safe-samples", tags=["Role Dashboards"])
+async def student_dashboard_routes():
+    """Dedicated Cybersecurity Student Learning Lab Dashboard routes."""
     if frontend_index.exists():
         return FileResponse(frontend_index)
     return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})

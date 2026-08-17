@@ -4,11 +4,12 @@
  * sample upload & live rendering across all 8 views.
  */
 
-// Application State
+// Application State (Authentication States: AUTHENTICATED, UNAUTHENTICATED, AUTHENTICATION_LOADING)
 const state = {
+    authStatus: 'AUTHENTICATION_LOADING',
     currentLanguage: 'en',
     currentDifficulty: 'BEGINNER',
-    currentTab: 'home',
+    currentTab: 'public',
     sampleData: null,
     user: null,
     token: localStorage.getItem('ethio_auth_token') || null,
@@ -279,6 +280,18 @@ function initNavigation() {
 }
 
 function switchTab(tabId, updateUrl = true) {
+    // If not authenticated, restrict access to protected tabs
+    if (state.authStatus !== 'AUTHENTICATED' && tabId !== 'public' && tabId !== 'unauthorized') {
+        tabId = 'public';
+        updateUrlPath('/login');
+        openAuthModal('login');
+        const loginErr = document.getElementById('login-error-box');
+        if (loginErr) {
+            loginErr.textContent = "Authentication required. Please sign in to access protected security workspace.";
+            loginErr.style.display = 'block';
+        }
+    }
+
     if (tabId === 'admin') {
         if (!state.user || state.user.role !== 'ADMIN') {
             showUnauthorizedView("Access Denied: Only Administrator accounts can access User Management & Security Audit features.");
@@ -291,7 +304,11 @@ function switchTab(tabId, updateUrl = true) {
         }
     } else if (['home', 'analysis', 'pe', 'imports', 'strings', 'indicators', 'ai-analyst'].includes(tabId)) {
         if (updateUrl && state.user && state.user.role === 'ANALYST') {
-            updateUrlPath('/analyst/dashboard');
+            updateUrlPath(tabId === 'home' ? '/analyst/dashboard' : `/${tabId === 'ai-analyst' ? 'ai-analysis' : tabId}`);
+        }
+    } else if (tabId === 'public') {
+        if (updateUrl && window.location.pathname !== '/login' && window.location.pathname !== '/about') {
+            updateUrlPath('/');
         }
     }
 
@@ -311,6 +328,8 @@ function switchTab(tabId, updateUrl = true) {
     const activeBtn = document.querySelector(`.nav-link[data-tab="${tabId}"] .nav-label`);
     if (activeBtn) {
         document.getElementById('topbar-active-title').textContent = activeBtn.textContent;
+    } else if (tabId === 'public') {
+        document.getElementById('topbar-active-title').textContent = "Public Portal";
     }
 
     if (tabId === 'admin') {
@@ -346,6 +365,9 @@ function setLanguage(lang) {
 
     // Re-render user auth widget and banner in selected language
     renderUserAuthWidget();
+
+    // Re-render role navigation labels in selected language
+    renderNavigationForRole();
 
     // If a sample is loaded, re-render its text if appropriate
     if (state.sampleData) {
@@ -777,12 +799,142 @@ function escapeHtml(str) {
 /**
  * Authentication and Access Control Management (Module 16)
  */
+function setAuthLoading(isLoading, text = "Authenticating Security Workspace...") {
+    const overlay = document.getElementById('auth-loading-overlay');
+    if (!overlay) return;
+    if (isLoading) {
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
+        const textEl = overlay.querySelector('.auth-loading-text');
+        if (textEl) textEl.textContent = text;
+    } else {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 200);
+    }
+}
+
+function renderNavigationForRole() {
+    const navPublic = document.getElementById('nav-item-public');
+    const navLogin = document.getElementById('nav-item-login-btn');
+    const navHome = document.getElementById('nav-item-home');
+    const navAnalysis = document.getElementById('nav-item-analysis');
+    const navPE = document.getElementById('nav-item-pe');
+    const navImports = document.getElementById('nav-item-imports');
+    const navStrings = document.getElementById('nav-item-strings');
+    const navIndicators = document.getElementById('nav-item-indicators');
+    const navAI = document.getElementById('nav-item-ai');
+    const navLearning = document.getElementById('nav-item-learning');
+    const navAdmin = document.getElementById('nav-item-admin');
+
+    // Hide all navigation elements initially
+    [navPublic, navLogin, navHome, navAnalysis, navPE, navImports, navStrings, navIndicators, navAI, navLearning, navAdmin].forEach(el => {
+        if (el) el.style.display = 'none';
+    });
+
+    const isAm = state.currentLanguage === 'am';
+
+    if (!state.user || state.authStatus !== 'AUTHENTICATED') {
+        // UNAUTHENTICATED: Only show public portal and sign-in button
+        if (navPublic) navPublic.style.display = 'block';
+        if (navLogin) navLogin.style.display = 'block';
+        return;
+    }
+
+    const role = (state.user.role || '').toUpperCase();
+
+    if (role === 'ADMIN') {
+        // ADMIN sees: Dashboard, Users, All Analyses, Threat Intelligence, Reports, Audit Logs, Settings
+        if (navAdmin) {
+            navAdmin.style.display = 'block';
+            const label = document.getElementById('nav-label-admin');
+            if (label) label.textContent = isAm ? 'የአስተዳዳሪ ማዕከል' : 'Admin & Users';
+        }
+        if (navAnalysis) {
+            navAnalysis.style.display = 'block';
+            const label = document.getElementById('nav-label-analysis');
+            if (label) label.textContent = isAm ? 'ሁሉም ትንተናዎች' : 'All Analyses';
+        }
+        if (navIndicators) {
+            navIndicators.style.display = 'block';
+            const label = document.getElementById('nav-label-indicators');
+            if (label) label.textContent = isAm ? 'የስጋት መረጃዎች' : 'Threat Intelligence';
+        }
+        if (navAI) {
+            navAI.style.display = 'block';
+            const label = document.getElementById('nav-label-ai');
+            if (label) label.textContent = isAm ? 'የደህንነት ሪፖርቶች' : 'Security Reports';
+        }
+        if (navHome) {
+            navHome.style.display = 'block';
+            const label = document.getElementById('nav-label-home');
+            if (label) label.textContent = isAm ? 'ትንተና ማስጀመሪያ' : 'New Analysis / Intake';
+        }
+    } else if (role === 'ANALYST') {
+        // ANALYST sees: Dashboard, New Analysis, Analysis History, Threat Intelligence, Reports, Learning Center
+        if (navHome) {
+            navHome.style.display = 'block';
+            const label = document.getElementById('nav-label-home');
+            if (label) label.textContent = isAm ? 'አዲስ ትንተና' : 'Dashboard / Intake';
+        }
+        if (navAnalysis) {
+            navAnalysis.style.display = 'block';
+            const label = document.getElementById('nav-label-analysis');
+            if (label) label.textContent = isAm ? 'የትንተና ታሪክ' : 'Analysis History';
+        }
+        if (navPE) navPE.style.display = 'block';
+        if (navImports) navImports.style.display = 'block';
+        if (navStrings) navStrings.style.display = 'block';
+        if (navIndicators) {
+            navIndicators.style.display = 'block';
+            const label = document.getElementById('nav-label-indicators');
+            if (label) label.textContent = isAm ? 'የስጋት መረጃዎች' : 'Threat Intelligence';
+        }
+        if (navAI) {
+            navAI.style.display = 'block';
+            const label = document.getElementById('nav-label-ai');
+            if (label) label.textContent = isAm ? 'የደህንነት ሪፖርቶች' : 'Security Reports';
+        }
+        if (navLearning) {
+            navLearning.style.display = 'block';
+            const label = document.getElementById('nav-label-learning');
+            if (label) label.textContent = isAm ? 'የሳይበር ደህንነት ትምህርት' : 'Learning Center';
+        }
+    } else if (role === 'STUDENT') {
+        // STUDENT sees: Dashboard, Learning Center, Safe Analysis, My Reports
+        if (navLearning) {
+            navLearning.style.display = 'block';
+            const label = document.getElementById('nav-label-learning');
+            if (label) label.textContent = isAm ? 'የተማሪዎች መማሪያ' : 'Learning Center';
+        }
+        if (navHome) {
+            navHome.style.display = 'block';
+            const label = document.getElementById('nav-label-home');
+            if (label) label.textContent = isAm ? 'ደህንነቱ የተጠበቀ ናሙና' : 'Safe Sample Analysis';
+        }
+        if (navAnalysis) {
+            navAnalysis.style.display = 'block';
+            const label = document.getElementById('nav-label-analysis');
+            if (label) label.textContent = isAm ? 'የእኔ ሪፖርቶች' : 'My Reports';
+        }
+    }
+}
+
 async function initAuth() {
+    state.authStatus = 'AUTHENTICATION_LOADING';
+    setAuthLoading(true);
+
     if (state.token) {
         await fetchUserProfile();
     } else {
-        renderUserAuthWidget();
+        state.user = null;
+        state.authStatus = 'UNAUTHENTICATED';
     }
+
+    renderUserAuthWidget();
+    renderNavigationForRole();
+    setAuthLoading(false);
     handleUrlRouting();
 }
 
@@ -804,10 +956,10 @@ async function fetchWithAuth(url, options = {}) {
     return res;
 }
 
-function openAuthModal() {
+function openAuthModal(tab = 'login') {
     const modal = document.getElementById('auth-modal');
     if (modal) modal.style.display = 'flex';
-    switchAuthTab('login');
+    switchAuthTab(tab);
 }
 
 function closeAuthModal() {
@@ -867,7 +1019,9 @@ async function handleLoginForm(event) {
         localStorage.setItem('ethio_auth_token', state.token);
         await fetchUserProfile();
         closeAuthModal();
-        routeUserByRole();
+        renderUserAuthWidget();
+        renderNavigationForRole();
+        routeUserByRole(true);
     } catch (err) {
         if (errBox) {
             errBox.textContent = 'Server connection error: ' + err.message;
@@ -915,7 +1069,9 @@ async function handleRegisterForm(event) {
             localStorage.setItem('ethio_auth_token', state.token);
             await fetchUserProfile();
             closeAuthModal();
-            routeUserByRole();
+            renderUserAuthWidget();
+            renderNavigationForRole();
+            routeUserByRole(true);
         } else {
             switchAuthTab('login');
             const loginErr = document.getElementById('login-error-box');
@@ -935,7 +1091,7 @@ async function handleRegisterForm(event) {
 async function fetchUserProfile() {
     if (!state.token) {
         state.user = null;
-        renderUserAuthWidget();
+        state.authStatus = 'UNAUTHENTICATED';
         return;
     }
 
@@ -943,15 +1099,18 @@ async function fetchUserProfile() {
         const res = await fetchWithAuth('/api/auth/me');
         if (res && res.ok) {
             state.user = await res.json();
+            state.authStatus = 'AUTHENTICATED';
         } else {
             state.user = null;
             state.token = null;
+            state.authStatus = 'UNAUTHENTICATED';
             localStorage.removeItem('ethio_auth_token');
         }
     } catch (e) {
         console.warn('Could not fetch user profile:', e);
+        state.user = null;
+        state.authStatus = 'UNAUTHENTICATED';
     }
-    renderUserAuthWidget();
 }
 
 function updateUrlPath(newPath) {
@@ -977,43 +1136,97 @@ function showUnauthorizedView(message = null) {
 
 function goToMyRoleDashboard() {
     if (!state.user) {
-        openAuthModal();
+        openAuthModal('login');
         return;
     }
     routeUserByRole(true);
 }
 
-function handleUrlRouting() {
-    const path = window.location.pathname.toLowerCase();
+const PUBLIC_ROUTES = ['/', '/login', '/about', '/public'];
 
-    if (path.includes('/admin/dashboard') || path === '/admin') {
-        if (!state.user) {
-            if (!state.token) {
-                showUnauthorizedView("Authentication required. Please sign in as an Administrator.");
-            } else {
+function handleUrlRouting() {
+    const rawPath = window.location.pathname.toLowerCase();
+    const path = rawPath.replace(/\/$/, '') || '/';
+
+    if (state.authStatus === 'AUTHENTICATED' && state.user) {
+        const role = (state.user.role || '').toUpperCase();
+
+        if (path === '/' || path === '/dashboard' || path === '/login' || path === '/about' || path === '/public') {
+            // Redirect authenticated user to canonical role dashboard
+            routeUserByRole(true);
+            return;
+        }
+
+        if (path.startsWith('/admin')) {
+            if (role === 'ADMIN') {
                 switchTab('admin', false);
-            }
-        } else if (state.user.role === 'ADMIN') {
-            switchTab('admin', false);
-        } else {
-            showUnauthorizedView(`Access Denied: Your role (${state.user.role}) is not authorized to access the Administrator Dashboard.`);
-        }
-    } else if (path.includes('/analyst/dashboard') || path === '/analyst') {
-        if (!state.user) {
-            if (!state.token) {
-                showUnauthorizedView("Authentication required. Please sign in as a SOC Analyst.");
+                if (path === '/admin/users') switchAdminSubpanel('users');
+                else if (path === '/admin/audit') switchAdminSubpanel('audit');
+                updateUrlPath(rawPath);
             } else {
-                switchTab(state.sampleData ? 'analysis' : 'home', false);
+                showUnauthorizedView(`Access Denied: Role '${role}' is not authorized to access the Administrator Control Center.`);
             }
-        } else if (state.user.role === 'ADMIN' || state.user.role === 'ANALYST') {
-            switchTab(state.sampleData ? 'analysis' : 'home', false);
-        } else {
-            showUnauthorizedView(`Access Denied: Student accounts cannot access the full SOC Analyst Dashboard.`);
+            return;
         }
-    } else if (path.includes('/student/dashboard') || path === '/student') {
-        switchTab('learning', false);
-    } else if (path.includes('/unauthorized')) {
-        showUnauthorizedView();
+
+        if (path.startsWith('/analyst')) {
+            if (role === 'ADMIN' || role === 'ANALYST') {
+                if (path === '/analyst/history') switchTab('analysis', false);
+                else switchTab(state.sampleData ? 'analysis' : 'home', false);
+                updateUrlPath(rawPath);
+            } else {
+                showUnauthorizedView(`Access Denied: Student accounts cannot access the full SOC Analyst Dashboard.`);
+            }
+            return;
+        }
+
+        if (path.startsWith('/student')) {
+            switchTab('learning', false);
+            updateUrlPath(rawPath);
+            return;
+        }
+
+        // Protected static analysis sub-views
+        const viewMap = {
+            '/analysis': 'analysis',
+            '/pe-analysis': 'pe-analysis',
+            '/imports': 'imports',
+            '/strings': 'strings',
+            '/indicators': 'indicators',
+            '/ai-analysis': 'ai-analyst',
+            '/reports': 'ai-analyst',
+            '/settings': role === 'ADMIN' ? 'admin' : null,
+        };
+
+        if (viewMap[path]) {
+            switchTab(viewMap[path], false);
+            updateUrlPath(rawPath);
+            return;
+        } else if (path === '/settings') {
+            showUnauthorizedView("Access Denied: Platform Security Settings are restricted to Administrators.");
+            return;
+        } else if (path === '/unauthorized') {
+            showUnauthorizedView();
+            return;
+        }
+    } else {
+        // UNAUTHENTICATED: Only public routes allowed
+        if (PUBLIC_ROUTES.includes(path)) {
+            switchTab('public', false);
+            if (path === '/login') {
+                openAuthModal('login');
+            }
+        } else {
+            // Attempt to access protected route while logged out -> redirect to public landing and open login modal
+            switchTab('public', false);
+            updateUrlPath('/login');
+            openAuthModal('login');
+            const loginErr = document.getElementById('login-error-box');
+            if (loginErr) {
+                loginErr.textContent = "Authentication required. Please sign in to access protected security workspace.";
+                loginErr.style.display = 'block';
+            }
+        }
     }
 }
 
@@ -1046,7 +1259,7 @@ function renderUserAuthWidget() {
     const bannerDesc = document.getElementById('role-banner-desc');
     const isAm = state.currentLanguage === 'am';
 
-    if (state.user) {
+    if (state.user && state.authStatus === 'AUTHENTICATED') {
         if (btnSignIn) btnSignIn.style.display = 'none';
         if (profilePill) profilePill.style.display = 'flex';
         if (nameText) nameText.textContent = state.user.username;
@@ -1056,9 +1269,6 @@ function renderUserAuthWidget() {
             if (state.user.role === 'ADMIN') roleBadge.classList.add('role-badge-admin');
             else if (state.user.role === 'ANALYST') roleBadge.classList.add('role-badge-analyst');
             else roleBadge.classList.add('role-badge-student');
-        }
-        if (navAdmin) {
-            navAdmin.style.display = state.user.role === 'ADMIN' ? 'block' : 'none';
         }
         if (roleBanner) {
             roleBanner.style.display = 'flex';
@@ -1101,10 +1311,13 @@ async function logoutUser(callApi = true) {
     }
     state.user = null;
     state.token = null;
+    state.authStatus = 'UNAUTHENTICATED';
     localStorage.removeItem('ethio_auth_token');
     renderUserAuthWidget();
-    updateUrlPath('/');
-    switchTab('home', false);
+    renderNavigationForRole();
+    updateUrlPath('/login');
+    switchTab('public', false);
+    openAuthModal('login');
 }
 
 async function loadUsersList() {

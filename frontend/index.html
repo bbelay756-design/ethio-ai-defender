@@ -11,6 +11,12 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <!-- Authentication Loading Overlay (State 1: AUTHENTICATION_LOADING) -->
+    <div id="auth-loading-overlay" class="auth-loading-overlay">
+        <div class="auth-spinner"></div>
+        <div class="auth-loading-text">Authenticating Security Workspace...</div>
+    </div>
+
     <div class="app-layout">
         
         <!-- Left Sidebar Navigation -->
@@ -23,61 +29,76 @@
                 </div>
             </div>
 
-            <!-- Navigation Links across all 8 Views -->
+            <!-- Navigation Links across all Views -->
             <nav class="nav-container" aria-label="Main Navigation">
-                <ul class="nav-list">
-                    <li>
-                        <button class="nav-link active" data-tab="home" id="nav-home">
-                            <span class="nav-icon">🏠</span>
-                            <span class="nav-label" data-i18n="nav_home">Home</span>
+                <ul class="nav-list" id="sidebar-nav-list">
+                    <!-- Public Navigation (Unauthenticated) -->
+                    <li id="nav-item-public" style="display: none;">
+                        <button class="nav-link active" data-tab="public" id="nav-public">
+                            <span class="nav-icon">🌐</span>
+                            <span class="nav-label">Public Portal</span>
                         </button>
                     </li>
-                    <li>
+                    <li id="nav-item-login-btn" style="display: none;">
+                        <button class="nav-link" onclick="openAuthModal('login')" id="nav-public-login">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-label">Sign In / Register</span>
+                        </button>
+                    </li>
+
+                    <!-- Protected Navigation (Role Filtered) -->
+                    <li id="nav-item-home" style="display: none;">
+                        <button class="nav-link" data-tab="home" id="nav-home">
+                            <span class="nav-icon">🏠</span>
+                            <span class="nav-label" id="nav-label-home" data-i18n="nav_home">Home / Intake</span>
+                        </button>
+                    </li>
+                    <li id="nav-item-analysis" style="display: none;">
                         <button class="nav-link" data-tab="analysis" id="nav-analysis">
                             <span class="nav-icon">📊</span>
-                            <span class="nav-label" data-i18n="nav_analysis">Analysis Overview</span>
+                            <span class="nav-label" id="nav-label-analysis" data-i18n="nav_analysis">Analysis Overview</span>
                         </button>
                     </li>
-                    <li>
+                    <li id="nav-item-pe" style="display: none;">
                         <button class="nav-link" data-tab="pe-analysis" id="nav-pe-analysis">
                             <span class="nav-icon">🧩</span>
                             <span class="nav-label" data-i18n="nav_pe">PE Analysis</span>
                         </button>
                     </li>
-                    <li>
+                    <li id="nav-item-imports" style="display: none;">
                         <button class="nav-link" data-tab="imports" id="nav-imports">
                             <span class="nav-icon">🔌</span>
                             <span class="nav-label" data-i18n="nav_imports">Imports & APIs</span>
                         </button>
                     </li>
-                    <li>
+                    <li id="nav-item-strings" style="display: none;">
                         <button class="nav-link" data-tab="strings" id="nav-strings">
                             <span class="nav-icon">🔤</span>
                             <span class="nav-label" data-i18n="nav_strings">Strings</span>
                         </button>
                     </li>
-                    <li>
+                    <li id="nav-item-indicators" style="display: none;">
                         <button class="nav-link" data-tab="indicators" id="nav-indicators">
                             <span class="nav-icon">⚠️</span>
-                            <span class="nav-label" data-i18n="nav_indicators">Suspicious Indicators</span>
+                            <span class="nav-label" id="nav-label-indicators" data-i18n="nav_indicators">Suspicious Indicators</span>
                         </button>
                     </li>
-                    <li>
+                    <li id="nav-item-ai" style="display: none;">
                         <button class="nav-link" data-tab="ai-analyst" id="nav-ai-analyst">
                             <span class="nav-icon">🤖</span>
-                            <span class="nav-label" data-i18n="nav_ai">AI Security Analyst</span>
+                            <span class="nav-label" id="nav-label-ai" data-i18n="nav_ai">AI Security Analyst</span>
                         </button>
                     </li>
-                    <li>
+                    <li id="nav-item-learning" style="display: none;">
                         <button class="nav-link" data-tab="learning" id="nav-learning">
                             <span class="nav-icon">🎓</span>
-                            <span class="nav-label" data-i18n="nav_learning">Learning Center</span>
+                            <span class="nav-label" id="nav-label-learning" data-i18n="nav_learning">Learning Center</span>
                         </button>
                     </li>
                     <li id="nav-item-admin" style="display: none;">
                         <button class="nav-link" data-tab="admin" id="nav-admin">
                             <span class="nav-icon">🛡️</span>
-                            <span class="nav-label" data-i18n="nav_admin">Admin & Users</span>
+                            <span class="nav-label" id="nav-label-admin" data-i18n="nav_admin">Admin & Users</span>
                         </button>
                     </li>
                 </ul>
@@ -144,9 +165,77 @@
                 </div>
 
                 <!-- ============================================== -->
+                <!-- 0. PUBLIC PORTAL & ABOUT (UNAUTHENTICATED)     -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-public">
+                    <div class="hero-card">
+                        <div class="hero-content">
+                            <h2 class="hero-headline">ETHIO-AI Defender Security Platform</h2>
+                            <p class="hero-description">
+                                National defensive static malware analysis and reverse-engineering framework. Built for cybersecurity researchers, SOC threat hunters, and university computer science laboratories.
+                            </p>
+                            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+                                <button class="btn-primary" onclick="openAuthModal('login')">🔐 Sign In to Security Workspace</button>
+                                <button class="btn-secondary" onclick="openAuthModal('register')">Create Research Account</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Public Platform Capabilities Grid -->
+                    <div class="public-portal-grid">
+                        <div class="public-feature-box">
+                            <div class="public-feature-icon">🧩</div>
+                            <div class="public-feature-title">PE Structural Static Engine</div>
+                            <div class="public-feature-desc">Deep inspection of DOS/NT headers, Section tables, raw-to-virtual memory mapping, and W+X permission validation without binary execution.</div>
+                        </div>
+                        <div class="public-feature-box">
+                            <div class="public-feature-icon">📈</div>
+                            <div class="public-feature-title">Shannon Entropy & Packing Detection</div>
+                            <div class="public-feature-desc">Per-section byte density calculation identifying cryptographic payloads, compressed archives, and polymorphic packer stubs.</div>
+                        </div>
+                        <div class="public-feature-box">
+                            <div class="public-feature-icon">🔌</div>
+                            <div class="public-feature-title">Windows API & Capability Mapping</div>
+                            <div class="public-feature-desc">Automated Import Address Table (IAT) resolution mapping native functions to capability classes (Memory, Network, Persistence, Anti-Analysis).</div>
+                        </div>
+                        <div class="public-feature-box">
+                            <div class="public-feature-icon">🇪🇹</div>
+                            <div class="public-feature-title">Ethiopian Context Triage</div>
+                            <div class="public-feature-desc">Targeted threat scoring and impact evaluation tailored to Ethiopian critical infrastructure, financial institutions, and telecom networks.</div>
+                        </div>
+                        <div class="public-feature-box">
+                            <div class="public-feature-icon">🤖</div>
+                            <div class="public-feature-title">Fact-Grounded AI Security Analyst</div>
+                            <div class="public-feature-desc">Natural language executive summaries and benign explanation hypotheses grounded strictly on verified static binary indicators.</div>
+                        </div>
+                        <div class="public-feature-box">
+                            <div class="public-feature-icon">🎓</div>
+                            <div class="public-feature-title">Cybersecurity Learning Center</div>
+                            <div class="public-feature-desc">5-stage interactive reverse-engineering curriculum available in English and Amharic with safe synthetic learning samples.</div>
+                        </div>
+                    </div>
+
+                    <!-- Perimeter Policy -->
+                    <div class="soc-card" style="margin-top: 24px;">
+                        <div class="card-head">
+                            <span class="card-icon">🔒</span>
+                            <h3 class="card-heading">Defensive Zero-Execution Guarantee</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="warning-box">
+                                <div class="warning-title">⚠️ Strict Non-Execution Isolation Policy</div>
+                                <div class="warning-body">
+                                    ETHIO-AI Defender analyzes untrusted Windows PE binaries purely as static byte arrays in quarantined storage. Uploaded executables are NEVER executed, detoned, or simulated on host operating systems.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
                 <!-- 1. HOME VIEW                                   -->
                 <!-- ============================================== -->
-                <section class="view-panel active" id="view-home">
+                <section class="view-panel" id="view-home">
                     <div class="hero-card">
                         <div class="hero-content">
                             <h2 class="hero-headline" data-i18n="home_title">ETHIO-AI Defender</h2>
@@ -819,6 +908,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=2.2"></script>
+    <script src="/static/js/app.js?v=2.3"></script>
 </body>
 </html>

@@ -204,13 +204,74 @@ class TestRoleBasedDashboards(unittest.TestCase):
             "/student/dashboard",
             "/unauthorized",
             "/dashboard",
-            "/"
+            "/",
+            "/login",
+            "/about",
+            "/analysis",
+            "/pe-analysis",
+            "/imports",
+            "/strings",
+            "/indicators",
+            "/ai-analysis",
+            "/reports",
+            "/settings",
+            "/admin/users",
+            "/admin/audit",
+            "/analyst/new-analysis",
+            "/analyst/history",
+            "/student/learning",
+            "/student/safe-samples",
         ]
         for route in routes:
             res = self.client.get(route, headers={"Accept": "text/html"})
             self.assertEqual(res.status_code, 200, f"Route {route} failed")
             self.assertIn("text/html", res.headers.get("content-type", ""))
             self.assertIn("ETHIO-AI Defender", res.text)
+
+    def test_11_unauthenticated_api_request_rejected(self):
+        """11. Unauthenticated requests to protected endpoints return 401 Unauthorized."""
+        endpoints = [
+            "/api/auth/me",
+            "/api/auth/users",
+            "/api/audit/logs",
+            "/api/audit/stats",
+        ]
+        for ep in endpoints:
+            res = self.client.get(ep)
+            self.assertEqual(res.status_code, 401, f"Expected 401 for unauthenticated {ep}, got {res.status_code}")
+
+    def test_12_token_persistence_refresh_flow(self):
+        """12. Session persistence: /api/auth/me validates stored token on refresh."""
+        login_res = self.client.post("/api/auth/login", json={
+            "username": f"student_{self.uid}",
+            "password": "StudentSecretPassword123!"
+        })
+        self.assertEqual(login_res.status_code, 200)
+        token = login_res.json()["access_token"]
+
+        # Simulate page refresh / initial load with stored token
+        refresh_res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(refresh_res.status_code, 200)
+        user_data = refresh_res.json()
+        self.assertEqual(user_data["username"], f"student_{self.uid}")
+        self.assertEqual(user_data["role"], "STUDENT")
+        self.assertEqual(user_data["dashboard_url"], "/student/dashboard")
+
+    def test_13_client_cannot_escalate_via_tampered_role(self):
+        """13. Zero-trust: Backend authorization always reads DB identity, ignoring any client role spoofing."""
+        login_res = self.client.post("/api/auth/login", json={
+            "username": f"student_{self.uid}",
+            "password": "StudentSecretPassword123!"
+        })
+        token = login_res.json()["access_token"]
+
+        # Student attempts to call admin endpoint with query params or custom headers pretending to be admin
+        res = self.client.get("/api/auth/users?role=ADMIN", headers={
+            "Authorization": f"Bearer {token}",
+            "X-User-Role": "ADMIN",
+            "Role": "ADMIN"
+        })
+        self.assertEqual(res.status_code, 403, "Tampered client role must be ignored by backend RBAC")
 
 
 if __name__ == "__main__":
