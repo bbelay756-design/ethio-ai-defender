@@ -1097,6 +1097,99 @@ body {
     padding: 10px 14px;
     border-radius: var(--radius-sm);
     font-size: 12px;
+    margin-bottom: 16px;
+}
+
+/* ==========================================================================
+   PUBLIC AUTHENTICATION & PORTAL LAYOUT (Unauthenticated)
+   ========================================================================== */
+
+.public-layout {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-app);
+    background-image: radial-gradient(circle at 50% 15%, rgba(56, 189, 248, 0.07) 0%, transparent 60%);
+}
+
+.public-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border-subtle);
+    background-color: rgba(13, 19, 31, 0.85);
+    backdrop-filter: blur(8px);
+}
+
+.public-content-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px;
+}
+
+.auth-page-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+    animation: fadeInCard 0.3s ease;
+}
+
+@keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-card-header {
+    background: var(--bg-card-alt);
+    padding: 16px 20px 0 20px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.auth-card-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.auth-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 18px;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.auth-tab-btn.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+    background: var(--bg-card);
+    border-top-left-radius: var(--radius-sm);
+    border-top-right-radius: var(--radius-sm);
+}
+
+.auth-card-body {
+    padding: 24px;
+}
+
+.auth-card-footer {
+    padding: 12px 20px;
+    background: var(--bg-card-alt);
+    border-top: 1px solid var(--border-subtle);
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
 /* Auth Loading State Overlay */
 .auth-loading-overlay {
     position: fixed;

@@ -280,16 +280,12 @@ function initNavigation() {
 }
 
 function switchTab(tabId, updateUrl = true) {
-    // If not authenticated, restrict access to protected tabs
-    if (state.authStatus !== 'AUTHENTICATED' && tabId !== 'public' && tabId !== 'unauthorized') {
-        tabId = 'public';
+    // If not authenticated, ensure public layout is shown and redirect to /login
+    if (state.authStatus !== 'AUTHENTICATED' && tabId !== 'unauthorized') {
+        renderLayoutForAuth();
         updateUrlPath('/login');
-        openAuthModal('login');
-        const loginErr = document.getElementById('login-error-box');
-        if (loginErr) {
-            loginErr.textContent = "Authentication required. Please sign in to access protected security workspace.";
-            loginErr.style.display = 'block';
-        }
+        switchAuthTab('login');
+        return;
     }
 
     if (tabId === 'admin') {
@@ -305,10 +301,6 @@ function switchTab(tabId, updateUrl = true) {
     } else if (['home', 'analysis', 'pe', 'imports', 'strings', 'indicators', 'ai-analyst'].includes(tabId)) {
         if (updateUrl && state.user && state.user.role === 'ANALYST') {
             updateUrlPath(tabId === 'home' ? '/analyst/dashboard' : `/${tabId === 'ai-analyst' ? 'ai-analysis' : tabId}`);
-        }
-    } else if (tabId === 'public') {
-        if (updateUrl && window.location.pathname !== '/login' && window.location.pathname !== '/about') {
-            updateUrlPath('/');
         }
     }
 
@@ -328,8 +320,6 @@ function switchTab(tabId, updateUrl = true) {
     const activeBtn = document.querySelector(`.nav-link[data-tab="${tabId}"] .nav-label`);
     if (activeBtn) {
         document.getElementById('topbar-active-title').textContent = activeBtn.textContent;
-    } else if (tabId === 'public') {
-        document.getElementById('topbar-active-title').textContent = "Public Portal";
     }
 
     if (tabId === 'admin') {
@@ -347,9 +337,16 @@ function switchTab(tabId, updateUrl = true) {
 function setLanguage(lang) {
     state.currentLanguage = lang;
 
-    // Toggle button UI
-    document.getElementById('lang-btn-en').classList.toggle('active', lang === 'en');
-    document.getElementById('lang-btn-am').classList.toggle('active', lang === 'am');
+    // Toggle button UI in both layouts
+    const btnEn = document.getElementById('lang-btn-en');
+    const btnAm = document.getElementById('lang-btn-am');
+    if (btnEn) btnEn.classList.toggle('active', lang === 'en');
+    if (btnAm) btnAm.classList.toggle('active', lang === 'am');
+
+    const pubBtnEn = document.getElementById('public-lang-btn-en');
+    const pubBtnAm = document.getElementById('public-lang-btn-am');
+    if (pubBtnEn) pubBtnEn.classList.toggle('active', lang === 'en');
+    if (pubBtnAm) pubBtnAm.classList.toggle('active', lang === 'am');
 
     // Translate all elements with data-i18n attribute
     const dictionary = I18N[lang] || I18N.en;
@@ -815,9 +812,20 @@ function setAuthLoading(isLoading, text = "Authenticating Security Workspace..."
     }
 }
 
+function renderLayoutForAuth() {
+    const publicLayout = document.getElementById('public-layout');
+    const appLayout = document.getElementById('app-layout');
+
+    if (state.authStatus === 'AUTHENTICATED' && state.user) {
+        if (publicLayout) publicLayout.style.display = 'none';
+        if (appLayout) appLayout.style.display = 'flex';
+    } else {
+        if (appLayout) appLayout.style.display = 'none';
+        if (publicLayout) publicLayout.style.display = 'flex';
+    }
+}
+
 function renderNavigationForRole() {
-    const navPublic = document.getElementById('nav-item-public');
-    const navLogin = document.getElementById('nav-item-login-btn');
     const navHome = document.getElementById('nav-item-home');
     const navAnalysis = document.getElementById('nav-item-analysis');
     const navPE = document.getElementById('nav-item-pe');
@@ -829,20 +837,16 @@ function renderNavigationForRole() {
     const navAdmin = document.getElementById('nav-item-admin');
 
     // Hide all navigation elements initially
-    [navPublic, navLogin, navHome, navAnalysis, navPE, navImports, navStrings, navIndicators, navAI, navLearning, navAdmin].forEach(el => {
+    [navHome, navAnalysis, navPE, navImports, navStrings, navIndicators, navAI, navLearning, navAdmin].forEach(el => {
         if (el) el.style.display = 'none';
     });
 
-    const isAm = state.currentLanguage === 'am';
-
     if (!state.user || state.authStatus !== 'AUTHENTICATED') {
-        // UNAUTHENTICATED: Only show public portal and sign-in button
-        if (navPublic) navPublic.style.display = 'block';
-        if (navLogin) navLogin.style.display = 'block';
         return;
     }
 
     const role = (state.user.role || '').toUpperCase();
+    const isAm = state.currentLanguage === 'am';
 
     if (role === 'ADMIN') {
         // ADMIN sees: Dashboard, Users, All Analyses, Threat Intelligence, Reports, Audit Logs, Settings
@@ -932,6 +936,7 @@ async function initAuth() {
         state.authStatus = 'UNAUTHENTICATED';
     }
 
+    renderLayoutForAuth();
     renderUserAuthWidget();
     renderNavigationForRole();
     setAuthLoading(false);
@@ -954,21 +959,6 @@ async function fetchWithAuth(url, options = {}) {
         logoutUser(false);
     }
     return res;
-}
-
-function openAuthModal(tab = 'login') {
-    const modal = document.getElementById('auth-modal');
-    if (modal) modal.style.display = 'flex';
-    switchAuthTab(tab);
-}
-
-function closeAuthModal() {
-    const modal = document.getElementById('auth-modal');
-    if (modal) modal.style.display = 'none';
-    const errLogin = document.getElementById('login-error-box');
-    if (errLogin) errLogin.style.display = 'none';
-    const errReg = document.getElementById('register-error-box');
-    if (errReg) errReg.style.display = 'none';
 }
 
 function switchAuthTab(tab) {
@@ -1018,7 +1008,7 @@ async function handleLoginForm(event) {
         state.token = data.access_token;
         localStorage.setItem('ethio_auth_token', state.token);
         await fetchUserProfile();
-        closeAuthModal();
+        renderLayoutForAuth();
         renderUserAuthWidget();
         renderNavigationForRole();
         routeUserByRole(true);
@@ -1068,7 +1058,7 @@ async function handleRegisterForm(event) {
             state.token = loginData.access_token;
             localStorage.setItem('ethio_auth_token', state.token);
             await fetchUserProfile();
-            closeAuthModal();
+            renderLayoutForAuth();
             renderUserAuthWidget();
             renderNavigationForRole();
             routeUserByRole(true);
@@ -1136,22 +1126,21 @@ function showUnauthorizedView(message = null) {
 
 function goToMyRoleDashboard() {
     if (!state.user) {
-        openAuthModal('login');
+        logoutUser(false);
         return;
     }
     routeUserByRole(true);
 }
-
-const PUBLIC_ROUTES = ['/', '/login', '/about', '/public'];
 
 function handleUrlRouting() {
     const rawPath = window.location.pathname.toLowerCase();
     const path = rawPath.replace(/\/$/, '') || '/';
 
     if (state.authStatus === 'AUTHENTICATED' && state.user) {
+        renderLayoutForAuth();
         const role = (state.user.role || '').toUpperCase();
 
-        if (path === '/' || path === '/dashboard' || path === '/login' || path === '/about' || path === '/public') {
+        if (path === '/' || path === '/dashboard' || path === '/login' || path === '/about') {
             // Redirect authenticated user to canonical role dashboard
             routeUserByRole(true);
             return;
@@ -1210,23 +1199,12 @@ function handleUrlRouting() {
             return;
         }
     } else {
-        // UNAUTHENTICATED: Only public routes allowed
-        if (PUBLIC_ROUTES.includes(path)) {
-            switchTab('public', false);
-            if (path === '/login') {
-                openAuthModal('login');
-            }
-        } else {
-            // Attempt to access protected route while logged out -> redirect to public landing and open login modal
-            switchTab('public', false);
+        // UNAUTHENTICATED: Only render the Public Layout / Login Page
+        renderLayoutForAuth();
+        if (path !== '/login') {
             updateUrlPath('/login');
-            openAuthModal('login');
-            const loginErr = document.getElementById('login-error-box');
-            if (loginErr) {
-                loginErr.textContent = "Authentication required. Please sign in to access protected security workspace.";
-                loginErr.style.display = 'block';
-            }
         }
+        switchAuthTab('login');
     }
 }
 
@@ -1248,7 +1226,6 @@ function routeUserByRole(updateUrl = true) {
 }
 
 function renderUserAuthWidget() {
-    const btnSignIn = document.getElementById('btn-header-signin');
     const profilePill = document.getElementById('user-profile-pill');
     const nameText = document.getElementById('user-display-name');
     const roleBadge = document.getElementById('user-role-badge');
@@ -1260,7 +1237,6 @@ function renderUserAuthWidget() {
     const isAm = state.currentLanguage === 'am';
 
     if (state.user && state.authStatus === 'AUTHENTICATED') {
-        if (btnSignIn) btnSignIn.style.display = 'none';
         if (profilePill) profilePill.style.display = 'flex';
         if (nameText) nameText.textContent = state.user.username;
         if (roleBadge) {
@@ -1291,7 +1267,6 @@ function renderUserAuthWidget() {
             }
         }
     } else {
-        if (btnSignIn) btnSignIn.style.display = 'flex';
         if (profilePill) profilePill.style.display = 'none';
         if (navAdmin) navAdmin.style.display = 'none';
         if (roleBanner) roleBanner.style.display = 'none';
@@ -1313,11 +1288,11 @@ async function logoutUser(callApi = true) {
     state.token = null;
     state.authStatus = 'UNAUTHENTICATED';
     localStorage.removeItem('ethio_auth_token');
+    renderLayoutForAuth();
     renderUserAuthWidget();
     renderNavigationForRole();
     updateUrlPath('/login');
-    switchTab('public', false);
-    openAuthModal('login');
+    switchAuthTab('login');
 }
 
 async function loadUsersList() {

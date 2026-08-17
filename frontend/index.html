@@ -17,7 +17,95 @@
         <div class="auth-loading-text">Authenticating Security Workspace...</div>
     </div>
 
-    <div class="app-layout">
+    <!-- ======================================================= -->
+    <!-- 1. PUBLIC AUTHENTICATION LAYOUT (Unauthenticated)       -->
+    <!-- ======================================================= -->
+    <div class="public-layout" id="public-layout" style="display: none;">
+        <!-- Public Top Header -->
+        <header class="public-topbar">
+            <div class="brand-header" style="border-bottom: none; padding: 0;">
+                <div class="brand-icon">🛡️</div>
+                <div class="brand-text">
+                    <h1 class="brand-name">ETHIO-AI Defender</h1>
+                    <span class="brand-tagline">Defensive Static Malware Analysis & Reverse-Engineering Platform</span>
+                </div>
+            </div>
+            <div class="public-topbar-actions">
+                <div class="lang-selector-group">
+                    <button class="lang-btn active" id="public-lang-btn-en" onclick="setLanguage('en')">EN</button>
+                    <span class="lang-divider">|</span>
+                    <button class="lang-btn" id="public-lang-btn-am" onclick="setLanguage('am')">አማርኛ</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Public Content Container: Dedicated Authentication Card -->
+        <main class="public-content-container">
+            <div class="auth-page-card" id="auth-page-card">
+                <div class="auth-card-header">
+                    <div class="auth-card-tabs">
+                        <button class="auth-tab-btn active" id="modal-tab-login" onclick="switchAuthTab('login')" data-i18n="tab_signin">Sign In</button>
+                        <button class="auth-tab-btn" id="modal-tab-register" onclick="switchAuthTab('register')" data-i18n="tab_register">Register</button>
+                    </div>
+                </div>
+                
+                <div class="auth-card-body">
+                    <!-- Login Form -->
+                    <form id="auth-login-form" onsubmit="handleLoginForm(event)">
+                        <div id="login-error-box" class="auth-error-box" style="display: none;"></div>
+                        <div class="form-group">
+                            <label for="login-username" class="form-label" data-i18n="lbl_username">Username / Email</label>
+                            <input type="text" id="login-username" class="form-control" placeholder="e.g. analyst_samuel" required autocomplete="username">
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password" class="form-label" data-i18n="lbl_password">Password</label>
+                            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary btn-block" id="btn-submit-login" data-i18n="btn_login_submit">Sign In</button>
+                        </div>
+                    </form>
+
+                    <!-- Register Form -->
+                    <form id="auth-register-form" onsubmit="handleRegisterForm(event)" style="display: none;">
+                        <div id="register-error-box" class="auth-error-box" style="display: none;"></div>
+                        <div class="form-group">
+                            <label for="reg-username" class="form-label" data-i18n="lbl_username">Username</label>
+                            <input type="text" id="reg-username" class="form-control" placeholder="e.g. ethio_researcher" required minlength="3" autocomplete="username">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-email" class="form-label" data-i18n="lbl_email">Email</label>
+                            <input type="email" id="reg-email" class="form-control" placeholder="researcher@university.edu.et" required autocomplete="email">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-password" class="form-label" data-i18n="lbl_password">Password</label>
+                            <input type="password" id="reg-password" class="form-control" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-role" class="form-label" data-i18n="lbl_desired_role">Role</label>
+                            <select id="reg-role" class="form-control">
+                                <option value="STUDENT">Student / Apprentice (Educational & Reports)</option>
+                                <option value="ANALYST">Analyst (Uploads & Threat Triage)</option>
+                                <option value="ADMIN">Administrator (Full Access & User Management)</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary btn-block" id="btn-submit-register" data-i18n="btn_register_submit">Create Account</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="auth-card-footer">
+                    <span data-i18n="non_exec_guarantee">🛡️ Zero-Execution Static Analysis Guarantee Enforced</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ======================================================= -->
+    <!-- 2. AUTHENTICATED APPLICATION LAYOUT                     -->
+    <!-- ======================================================= -->
+    <div class="app-layout" id="app-layout" style="display: none;">
         
         <!-- Left Sidebar Navigation -->
         <aside class="app-sidebar" id="sidebar">
@@ -32,20 +120,6 @@
             <!-- Navigation Links across all Views -->
             <nav class="nav-container" aria-label="Main Navigation">
                 <ul class="nav-list" id="sidebar-nav-list">
-                    <!-- Public Navigation (Unauthenticated) -->
-                    <li id="nav-item-public" style="display: none;">
-                        <button class="nav-link active" data-tab="public" id="nav-public">
-                            <span class="nav-icon">🌐</span>
-                            <span class="nav-label">Public Portal</span>
-                        </button>
-                    </li>
-                    <li id="nav-item-login-btn" style="display: none;">
-                        <button class="nav-link" onclick="openAuthModal('login')" id="nav-public-login">
-                            <span class="nav-icon">🔐</span>
-                            <span class="nav-label">Sign In / Register</span>
-                        </button>
-                    </li>
-
                     <!-- Protected Navigation (Role Filtered) -->
                     <li id="nav-item-home" style="display: none;">
                         <button class="nav-link" data-tab="home" id="nav-home">
@@ -120,7 +194,7 @@
             <header class="app-topbar">
                 <div class="topbar-left">
                     <button class="menu-toggle-btn" id="mobile-menu-toggle" aria-label="Toggle Sidebar">☰</button>
-                    <div class="active-tab-title" id="topbar-active-title">Home</div>
+                    <div class="active-tab-title" id="topbar-active-title">Dashboard</div>
                 </div>
 
                 <div class="topbar-right">
@@ -129,18 +203,12 @@
                         <span id="current-sample-name">No Sample Loaded</span>
                     </div>
 
-                    <!-- Authentication Header Widget -->
-                    <div class="auth-header-widget" id="auth-header-widget">
-                        <button class="btn-auth-signin" id="btn-header-signin" onclick="openAuthModal()">
-                            <span class="auth-icon">🔐</span>
-                            <span data-i18n="btn_signin">Sign In</span>
-                        </button>
-                        <div class="user-profile-pill" id="user-profile-pill" style="display: none;">
-                            <span class="user-avatar">👤</span>
-                            <span class="user-name-text" id="user-display-name">Guest</span>
-                            <span class="role-badge role-badge-student" id="user-role-badge">STUDENT</span>
-                            <button class="btn-logout-icon" onclick="logoutUser()" title="Logout" aria-label="Logout">🚪</button>
-                        </div>
+                    <!-- User Profile & Role Info (Only visible in Authenticated Topbar) -->
+                    <div class="user-profile-pill" id="user-profile-pill">
+                        <span class="user-avatar">👤</span>
+                        <span class="user-name-text" id="user-display-name">User</span>
+                        <span class="role-badge role-badge-student" id="user-role-badge">STUDENT</span>
+                        <button class="btn-logout-icon" onclick="logoutUser()" title="Logout" aria-label="Logout">🚪</button>
                     </div>
 
                     <!-- Language Switcher -->
@@ -163,74 +231,6 @@
                         <div class="role-banner-desc" id="role-banner-desc">Interactive reverse-engineering lessons, concept breakdowns, and safe sample practice.</div>
                     </div>
                 </div>
-
-                <!-- ============================================== -->
-                <!-- 0. PUBLIC PORTAL & ABOUT (UNAUTHENTICATED)     -->
-                <!-- ============================================== -->
-                <section class="view-panel" id="view-public">
-                    <div class="hero-card">
-                        <div class="hero-content">
-                            <h2 class="hero-headline">ETHIO-AI Defender Security Platform</h2>
-                            <p class="hero-description">
-                                National defensive static malware analysis and reverse-engineering framework. Built for cybersecurity researchers, SOC threat hunters, and university computer science laboratories.
-                            </p>
-                            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
-                                <button class="btn-primary" onclick="openAuthModal('login')">🔐 Sign In to Security Workspace</button>
-                                <button class="btn-secondary" onclick="openAuthModal('register')">Create Research Account</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Public Platform Capabilities Grid -->
-                    <div class="public-portal-grid">
-                        <div class="public-feature-box">
-                            <div class="public-feature-icon">🧩</div>
-                            <div class="public-feature-title">PE Structural Static Engine</div>
-                            <div class="public-feature-desc">Deep inspection of DOS/NT headers, Section tables, raw-to-virtual memory mapping, and W+X permission validation without binary execution.</div>
-                        </div>
-                        <div class="public-feature-box">
-                            <div class="public-feature-icon">📈</div>
-                            <div class="public-feature-title">Shannon Entropy & Packing Detection</div>
-                            <div class="public-feature-desc">Per-section byte density calculation identifying cryptographic payloads, compressed archives, and polymorphic packer stubs.</div>
-                        </div>
-                        <div class="public-feature-box">
-                            <div class="public-feature-icon">🔌</div>
-                            <div class="public-feature-title">Windows API & Capability Mapping</div>
-                            <div class="public-feature-desc">Automated Import Address Table (IAT) resolution mapping native functions to capability classes (Memory, Network, Persistence, Anti-Analysis).</div>
-                        </div>
-                        <div class="public-feature-box">
-                            <div class="public-feature-icon">🇪🇹</div>
-                            <div class="public-feature-title">Ethiopian Context Triage</div>
-                            <div class="public-feature-desc">Targeted threat scoring and impact evaluation tailored to Ethiopian critical infrastructure, financial institutions, and telecom networks.</div>
-                        </div>
-                        <div class="public-feature-box">
-                            <div class="public-feature-icon">🤖</div>
-                            <div class="public-feature-title">Fact-Grounded AI Security Analyst</div>
-                            <div class="public-feature-desc">Natural language executive summaries and benign explanation hypotheses grounded strictly on verified static binary indicators.</div>
-                        </div>
-                        <div class="public-feature-box">
-                            <div class="public-feature-icon">🎓</div>
-                            <div class="public-feature-title">Cybersecurity Learning Center</div>
-                            <div class="public-feature-desc">5-stage interactive reverse-engineering curriculum available in English and Amharic with safe synthetic learning samples.</div>
-                        </div>
-                    </div>
-
-                    <!-- Perimeter Policy -->
-                    <div class="soc-card" style="margin-top: 24px;">
-                        <div class="card-head">
-                            <span class="card-icon">🔒</span>
-                            <h3 class="card-heading">Defensive Zero-Execution Guarantee</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="warning-box">
-                                <div class="warning-title">⚠️ Strict Non-Execution Isolation Policy</div>
-                                <div class="warning-body">
-                                    ETHIO-AI Defender analyzes untrusted Windows PE binaries purely as static byte arrays in quarantined storage. Uploaded executables are NEVER executed, detoned, or simulated on host operating systems.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
 
                 <!-- ============================================== -->
                 <!-- 1. HOME VIEW                                   -->
@@ -839,7 +839,7 @@
                         </p>
                         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                             <button class="btn-primary" onclick="goToMyRoleDashboard()">Go To My Dashboard</button>
-                            <button class="btn-secondary" onclick="openAuthModal()">Switch Account</button>
+                            <button class="btn-secondary" onclick="logoutUser()">Switch Account</button>
                         </div>
                     </div>
                 </section>
@@ -848,66 +848,7 @@
         </div>
     </div>
 
-    <!-- Authentication Modal (Login & Register) -->
-    <div class="modal-backdrop" id="auth-modal" style="display: none;">
-        <div class="modal-card">
-            <div class="modal-header">
-                <div class="modal-tabs">
-                    <button class="modal-tab-btn active" id="modal-tab-login" onclick="switchAuthTab('login')" data-i18n="tab_signin">Sign In</button>
-                    <button class="modal-tab-btn" id="modal-tab-register" onclick="switchAuthTab('register')" data-i18n="tab_register">Register</button>
-                </div>
-                <button class="modal-close-btn" onclick="closeAuthModal()" aria-label="Close Modal">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-                <!-- Login Form -->
-                <form id="auth-login-form" onsubmit="handleLoginForm(event)">
-                    <div id="login-error-box" class="auth-error-box" style="display: none;"></div>
-                    <div class="form-group">
-                        <label for="login-username" class="form-label" data-i18n="lbl_username">Username</label>
-                        <input type="text" id="login-username" class="form-control" placeholder="e.g. analyst_john" required autocomplete="username">
-                    </div>
-                    <div class="form-group">
-                        <label for="login-password" class="form-label" data-i18n="lbl_password">Password</label>
-                        <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary btn-block" id="btn-submit-login" data-i18n="btn_login_submit">Sign In</button>
-                    </div>
-                </form>
-
-                <!-- Register Form -->
-                <form id="auth-register-form" onsubmit="handleRegisterForm(event)" style="display: none;">
-                    <div id="register-error-box" class="auth-error-box" style="display: none;"></div>
-                    <div class="form-group">
-                        <label for="reg-username" class="form-label" data-i18n="lbl_username">Username</label>
-                        <input type="text" id="reg-username" class="form-control" placeholder="e.g. ethio_researcher" required minlength="3" autocomplete="username">
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-email" class="form-label" data-i18n="lbl_email">Email</label>
-                        <input type="email" id="reg-email" class="form-control" placeholder="researcher@university.edu.et" required autocomplete="email">
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-password" class="form-label" data-i18n="lbl_password">Password</label>
-                        <input type="password" id="reg-password" class="form-control" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password">
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-role" class="form-label" data-i18n="lbl_desired_role">Role</label>
-                        <select id="reg-role" class="form-control">
-                            <option value="STUDENT">Student / Apprentice (Educational & Reports)</option>
-                            <option value="ANALYST">Analyst (Uploads & Threat Triage)</option>
-                            <option value="ADMIN">Administrator (Full Access & User Management)</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary btn-block" id="btn-submit-register" data-i18n="btn_register_submit">Create Account</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=2.3"></script>
+    <script src="/static/js/app.js?v=2.4"></script>
 </body>
 </html>
