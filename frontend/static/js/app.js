@@ -842,6 +842,7 @@ async function handleLoginForm(event) {
         localStorage.setItem('ethio_auth_token', state.token);
         await fetchUserProfile();
         closeAuthModal();
+        routeUserByRole();
     } catch (err) {
         if (errBox) {
             errBox.textContent = 'Server connection error: ' + err.message;
@@ -889,6 +890,7 @@ async function handleRegisterForm(event) {
             localStorage.setItem('ethio_auth_token', state.token);
             await fetchUserProfile();
             closeAuthModal();
+            routeUserByRole();
         } else {
             switchAuthTab('login');
             const loginErr = document.getElementById('login-error-box');
@@ -925,6 +927,18 @@ async function fetchUserProfile() {
         console.warn('Could not fetch user profile:', e);
     }
     renderUserAuthWidget();
+}
+
+function routeUserByRole() {
+    if (!state.user) return;
+    if (state.user.role === 'ADMIN') {
+        switchTab('admin');
+    } else if (state.user.role === 'STUDENT') {
+        switchTab('learning');
+    } else {
+        // ANALYST or default SOC operator
+        switchTab(state.sampleData ? 'analysis' : 'home');
+    }
 }
 
 function renderUserAuthWidget() {
