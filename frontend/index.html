@@ -74,6 +74,12 @@
                             <span class="nav-label" data-i18n="nav_learning">Learning Center</span>
                         </button>
                     </li>
+                    <li id="nav-item-admin" style="display: none;">
+                        <button class="nav-link" data-tab="admin" id="nav-admin">
+                            <span class="nav-icon">🛡️</span>
+                            <span class="nav-label" data-i18n="nav_admin">Admin & Users</span>
+                        </button>
+                    </li>
                 </ul>
             </nav>
 
@@ -100,6 +106,20 @@
                     <div class="sample-badge" id="current-sample-badge" style="display: none;">
                         <span class="badge-dot"></span>
                         <span id="current-sample-name">No Sample Loaded</span>
+                    </div>
+
+                    <!-- Authentication Header Widget -->
+                    <div class="auth-header-widget" id="auth-header-widget">
+                        <button class="btn-auth-signin" id="btn-header-signin" onclick="openAuthModal()">
+                            <span class="auth-icon">🔐</span>
+                            <span data-i18n="btn_signin">Sign In</span>
+                        </button>
+                        <div class="user-profile-pill" id="user-profile-pill" style="display: none;">
+                            <span class="user-avatar">👤</span>
+                            <span class="user-name-text" id="user-display-name">Guest</span>
+                            <span class="role-badge role-badge-student" id="user-role-badge">STUDENT</span>
+                            <button class="btn-logout-icon" onclick="logoutUser()" title="Logout" aria-label="Logout">🚪</button>
+                        </div>
                     </div>
 
                     <!-- Language Switcher -->
@@ -570,7 +590,205 @@
                     </div>
                 </section>
 
+                <!-- ============================================== -->
+                <!-- 9. ADMIN & SOC AUDIT MANAGEMENT VIEW          -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-admin">
+                    <div class="view-header">
+                        <div>
+                            <h2 class="view-title" data-i18n="admin_title">Administration & Security Audit Center</h2>
+                            <p class="view-subtitle" data-i18n="admin_subtitle">Administrator control for roles, credentials, and immutable SOC audit logs.</p>
+                        </div>
+                        <div class="admin-subtabs">
+                            <button class="diff-btn active" id="admin-subtab-users" onclick="switchAdminTab('users')">👥 Users</button>
+                            <button class="diff-btn" id="admin-subtab-audit" onclick="switchAdminTab('audit')">🛡️ Security Audit Logs</button>
+                        </div>
+                    </div>
+
+                    <!-- Admin Subpanel 1: Users -->
+                    <div id="admin-panel-users">
+                        <div class="soc-card">
+                            <div class="card-head" style="justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">👥</span>
+                                    <h3 class="card-heading" data-i18n="registered_users_table">Registered Platform Users</h3>
+                                </div>
+                                <button class="btn-primary" onclick="loadUsersList()">🔄 <span data-i18n="btn_refresh_users">Refresh Users</span></button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="soc-table" id="admin-users-table">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Username</th>
+                                                <th>Email</th>
+                                                <th>Role</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-users-tbody">
+                                            <tr>
+                                                <td colspan="6" class="empty-state-cell">Loading users...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Subpanel 2: Security Audit Logs -->
+                    <div id="admin-panel-audit" style="display: none;">
+                        <!-- Audit Stats Cards -->
+                        <div class="metrics-grid" style="margin-bottom: 20px;">
+                            <div class="metric-card">
+                                <div class="metric-label">Total Logged Events</div>
+                                <div class="metric-value" id="audit-stat-total">0</div>
+                                <div class="metric-sub">Structured JSONL records</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Successful Operations</div>
+                                <div class="metric-value" id="audit-stat-success" style="color: var(--sev-low);">0</div>
+                                <div class="metric-sub">Verified & authorized</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Failures & Lockouts</div>
+                                <div class="metric-value" id="audit-stat-failures" style="color: var(--sev-high);">0</div>
+                                <div class="metric-sub">Brute-force & lockouts</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Security Violations</div>
+                                <div class="metric-value" id="audit-stat-denied" style="color: var(--sev-crit);">0</div>
+                                <div class="metric-sub">Auth & object violations</div>
+                            </div>
+                        </div>
+
+                        <!-- Audit Search & Filters -->
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                                    <select id="audit-filter-event" class="dropdown-select" style="width: auto;" onchange="loadAuditLogs()">
+                                        <option value="">All Event Types</option>
+                                        <option value="login">Login</option>
+                                        <option value="logout">Logout</option>
+                                        <option value="upload">Upload</option>
+                                        <option value="analysis start">Analysis Start</option>
+                                        <option value="analysis completion">Analysis Completion</option>
+                                        <option value="analysis failure">Analysis Failure</option>
+                                        <option value="report generation">Report Generation</option>
+                                        <option value="administrative changes">Administrative Changes</option>
+                                        <option value="security alert">Security Alert</option>
+                                    </select>
+                                    <select id="audit-filter-result" class="dropdown-select" style="width: auto;" onchange="loadAuditLogs()">
+                                        <option value="">All Outcomes</option>
+                                        <option value="SUCCESS">SUCCESS</option>
+                                        <option value="FAILURE">FAILURE</option>
+                                        <option value="LOCKED">LOCKED</option>
+                                        <option value="DENIED">DENIED</option>
+                                        <option value="ERROR">ERROR</option>
+                                    </select>
+                                    <input type="text" id="audit-search-input" class="form-control" style="width: 220px;" placeholder="Search audit logs..." onkeyup="handleAuditSearch(event)">
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-secondary" onclick="loadAuditLogs()">🔄 Refresh</button>
+                                    <button class="btn-primary" onclick="exportAuditLogsCsv()" style="display: inline-flex; align-items: center;">📥 Export CSV</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Audit Log Table -->
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">📜</span>
+                                <h3 class="card-heading">Security Audit Trail (Immutable & Sanitized)</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="soc-table" id="audit-logs-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Timestamp (UTC)</th>
+                                                <th>Event</th>
+                                                <th>Result</th>
+                                                <th>User / IP</th>
+                                                <th>Analysis ID</th>
+                                                <th>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="audit-logs-tbody">
+                                            <tr>
+                                                <td colspan="6" class="empty-state-cell">Loading audit logs...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
             </main>
+        </div>
+    </div>
+
+    <!-- Authentication Modal (Login & Register) -->
+    <div class="modal-backdrop" id="auth-modal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-tabs">
+                    <button class="modal-tab-btn active" id="modal-tab-login" onclick="switchAuthTab('login')" data-i18n="tab_signin">Sign In</button>
+                    <button class="modal-tab-btn" id="modal-tab-register" onclick="switchAuthTab('register')" data-i18n="tab_register">Register</button>
+                </div>
+                <button class="modal-close-btn" onclick="closeAuthModal()" aria-label="Close Modal">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Login Form -->
+                <form id="auth-login-form" onsubmit="handleLoginForm(event)">
+                    <div id="login-error-box" class="auth-error-box" style="display: none;"></div>
+                    <div class="form-group">
+                        <label for="login-username" class="form-label" data-i18n="lbl_username">Username</label>
+                        <input type="text" id="login-username" class="form-control" placeholder="e.g. analyst_john" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password" class="form-label" data-i18n="lbl_password">Password</label>
+                        <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary btn-block" id="btn-submit-login" data-i18n="btn_login_submit">Sign In</button>
+                    </div>
+                </form>
+
+                <!-- Register Form -->
+                <form id="auth-register-form" onsubmit="handleRegisterForm(event)" style="display: none;">
+                    <div id="register-error-box" class="auth-error-box" style="display: none;"></div>
+                    <div class="form-group">
+                        <label for="reg-username" class="form-label" data-i18n="lbl_username">Username</label>
+                        <input type="text" id="reg-username" class="form-control" placeholder="e.g. ethio_researcher" required minlength="3" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email" class="form-label" data-i18n="lbl_email">Email</label>
+                        <input type="email" id="reg-email" class="form-control" placeholder="researcher@university.edu.et" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password" class="form-label" data-i18n="lbl_password">Password</label>
+                        <input type="password" id="reg-password" class="form-control" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-role" class="form-label" data-i18n="lbl_desired_role">Role</label>
+                        <select id="reg-role" class="form-control">
+                            <option value="STUDENT">Student / Apprentice (Educational & Reports)</option>
+                            <option value="ANALYST">Analyst (Uploads & Threat Triage)</option>
+                            <option value="ADMIN">Administrator (Full Access & User Management)</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary btn-block" id="btn-submit-register" data-i18n="btn_register_submit">Create Account</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

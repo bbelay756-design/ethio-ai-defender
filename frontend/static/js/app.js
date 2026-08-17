@@ -10,6 +10,8 @@ const state = {
     currentDifficulty: 'BEGINNER',
     currentTab: 'home',
     sampleData: null,
+    user: null,
+    token: localStorage.getItem('ethio_auth_token') || null,
 };
 
 // Bilingual Translation Dictionary (English & Amharic)
@@ -23,6 +25,20 @@ const I18N = {
         nav_indicators: "Suspicious Indicators",
         nav_ai: "AI Security Analyst",
         nav_learning: "Learning Center",
+        nav_admin: "Admin & Users",
+        btn_signin: "Sign In",
+        tab_signin: "Sign In",
+        tab_register: "Register",
+        lbl_username: "Username",
+        lbl_email: "Email",
+        lbl_password: "Password",
+        lbl_desired_role: "Role",
+        btn_login_submit: "Sign In",
+        btn_register_submit: "Create Account",
+        admin_title: "User Management & Access Control",
+        admin_subtitle: "Administrator control for roles, credentials, and platform authorization.",
+        btn_refresh_users: "Refresh Users",
+        registered_users_table: "Registered Platform Users",
         engine_status: "Static Engine: Operational",
         non_exec_guarantee: "Zero-Execution Guarantee Enforced",
         home_title: "ETHIO-AI Defender",
@@ -89,6 +105,20 @@ const I18N = {
         nav_indicators: "የስጋት አመልካቾች",
         nav_ai: "የ AI ደህንነት ተንታኝ",
         nav_learning: "የሳይበር ደህንነት ትምህርት",
+        nav_admin: "የአስተዳዳሪ እና የተጠቃሚዎች ማዕከል",
+        btn_signin: "ግባ (Sign In)",
+        tab_signin: "ግባ",
+        tab_register: "ተመዝገብ",
+        lbl_username: "የተጠቃሚ ስም",
+        lbl_email: "ኢሜይል",
+        lbl_password: "የይለፍ ቃል",
+        lbl_desired_role: "ሚና",
+        btn_login_submit: "ግባ",
+        btn_register_submit: "መለያ ፍጠር",
+        admin_title: "የተጠቃሚዎች አስተዳደር እና የፈቃድ ቁጥጥር",
+        admin_subtitle: "የተጠቃሚዎችን ሚናዎች እና የፍቃድ ደረጃዎች መቆጣጠሪያ።",
+        btn_refresh_users: "ዝርዝሩን አድስ",
+        registered_users_table: "የተመዘገቡ የመድረኩ ተጠቃሚዎች",
         engine_status: "የ Static ሞተር፡ ዝግጁ ነው",
         non_exec_guarantee: "ፋይሉ ሳይሰራ የመመርመር ዋስትና ተረጋግጧል",
         home_title: "ኢትዮ-አይአይ ደህንነት (ETHIO-AI Defender)",
@@ -217,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     initUploadDropzone();
     initLanguage();
+    initAuth();
     renderSelectedConcept();
 });
 
@@ -259,6 +290,10 @@ function switchTab(tabId) {
     const activeBtn = document.querySelector(`.nav-link[data-tab="${tabId}"] .nav-label`);
     if (activeBtn) {
         document.getElementById('topbar-active-title').textContent = activeBtn.textContent;
+    }
+
+    if (tabId === 'admin') {
+        loadUsersList();
     }
 
     // Close sidebar on mobile
@@ -714,3 +749,438 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/**
+ * Authentication and Access Control Management (Module 16)
+ */
+async function initAuth() {
+    if (state.token) {
+        await fetchUserProfile();
+    } else {
+        renderUserAuthWidget();
+    }
+}
+
+function getAuthHeaders(headers = {}) {
+    const h = { ...headers };
+    if (state.token) {
+        h['Authorization'] = `Bearer ${state.token}`;
+    }
+    return h;
+}
+
+async function fetchWithAuth(url, options = {}) {
+    options.headers = getAuthHeaders(options.headers || {});
+    const res = await fetch(url, options);
+    if (res.status === 401 && state.token) {
+        // Token expired or revoked
+        logoutUser(false);
+    }
+    return res;
+}
+
+function openAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    if (modal) modal.style.display = 'flex';
+    switchAuthTab('login');
+}
+
+function closeAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    if (modal) modal.style.display = 'none';
+    const errLogin = document.getElementById('login-error-box');
+    if (errLogin) errLogin.style.display = 'none';
+    const errReg = document.getElementById('register-error-box');
+    if (errReg) errReg.style.display = 'none';
+}
+
+function switchAuthTab(tab) {
+    const tabLogin = document.getElementById('modal-tab-login');
+    const tabReg = document.getElementById('modal-tab-register');
+    const formLogin = document.getElementById('auth-login-form');
+    const formReg = document.getElementById('auth-register-form');
+
+    if (tab === 'login') {
+        if (tabLogin) tabLogin.classList.add('active');
+        if (tabReg) tabReg.classList.remove('active');
+        if (formLogin) formLogin.style.display = 'block';
+        if (formReg) formReg.style.display = 'none';
+    } else {
+        if (tabLogin) tabLogin.classList.remove('active');
+        if (tabReg) tabReg.classList.add('active');
+        if (formLogin) formLogin.style.display = 'none';
+        if (formReg) formReg.style.display = 'block';
+    }
+}
+
+async function handleLoginForm(event) {
+    event.preventDefault();
+    const errBox = document.getElementById('login-error-box');
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    if (errBox) errBox.style.display = 'none';
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            const msg = data.detail || 'Authentication failed.';
+            if (errBox) {
+                errBox.textContent = msg;
+                errBox.style.display = 'block';
+            }
+            return;
+        }
+
+        state.token = data.access_token;
+        localStorage.setItem('ethio_auth_token', state.token);
+        await fetchUserProfile();
+        closeAuthModal();
+    } catch (err) {
+        if (errBox) {
+            errBox.textContent = 'Server connection error: ' + err.message;
+            errBox.style.display = 'block';
+        }
+    }
+}
+
+async function handleRegisterForm(event) {
+    event.preventDefault();
+    const errBox = document.getElementById('register-error-box');
+    const username = document.getElementById('reg-username').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const role = document.getElementById('reg-role').value;
+
+    if (errBox) errBox.style.display = 'none';
+
+    try {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password, role })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            const msg = data.detail || 'Registration failed.';
+            if (errBox) {
+                errBox.textContent = msg;
+                errBox.style.display = 'block';
+            }
+            return;
+        }
+
+        // Auto login after registration
+        const loginRes = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const loginData = await loginRes.json();
+        if (loginRes.ok) {
+            state.token = loginData.access_token;
+            localStorage.setItem('ethio_auth_token', state.token);
+            await fetchUserProfile();
+            closeAuthModal();
+        } else {
+            switchAuthTab('login');
+            const loginErr = document.getElementById('login-error-box');
+            if (loginErr) {
+                loginErr.textContent = 'Account created. Please sign in.';
+                loginErr.style.display = 'block';
+            }
+        }
+    } catch (err) {
+        if (errBox) {
+            errBox.textContent = 'Server connection error: ' + err.message;
+            errBox.style.display = 'block';
+        }
+    }
+}
+
+async function fetchUserProfile() {
+    if (!state.token) {
+        state.user = null;
+        renderUserAuthWidget();
+        return;
+    }
+
+    try {
+        const res = await fetchWithAuth('/api/auth/me');
+        if (res && res.ok) {
+            state.user = await res.json();
+        } else {
+            state.user = null;
+            state.token = null;
+            localStorage.removeItem('ethio_auth_token');
+        }
+    } catch (e) {
+        console.warn('Could not fetch user profile:', e);
+    }
+    renderUserAuthWidget();
+}
+
+function renderUserAuthWidget() {
+    const btnSignIn = document.getElementById('btn-header-signin');
+    const profilePill = document.getElementById('user-profile-pill');
+    const nameText = document.getElementById('user-display-name');
+    const roleBadge = document.getElementById('user-role-badge');
+    const navAdmin = document.getElementById('nav-item-admin');
+
+    if (state.user) {
+        if (btnSignIn) btnSignIn.style.display = 'none';
+        if (profilePill) profilePill.style.display = 'flex';
+        if (nameText) nameText.textContent = state.user.username;
+        if (roleBadge) {
+            roleBadge.textContent = state.user.role;
+            roleBadge.className = 'role-badge';
+            if (state.user.role === 'ADMIN') roleBadge.classList.add('role-badge-admin');
+            else if (state.user.role === 'ANALYST') roleBadge.classList.add('role-badge-analyst');
+            else roleBadge.classList.add('role-badge-student');
+        }
+        if (navAdmin) {
+            navAdmin.style.display = state.user.role === 'ADMIN' ? 'block' : 'none';
+        }
+    } else {
+        if (btnSignIn) btnSignIn.style.display = 'flex';
+        if (profilePill) profilePill.style.display = 'none';
+        if (navAdmin) navAdmin.style.display = 'none';
+    }
+}
+
+async function logoutUser(callApi = true) {
+    if (callApi && state.token) {
+        try {
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${state.token}` }
+            });
+        } catch (e) {
+            console.warn('Logout request failed:', e);
+        }
+    }
+    state.user = null;
+    state.token = null;
+    localStorage.removeItem('ethio_auth_token');
+    renderUserAuthWidget();
+    if (state.currentTab === 'admin') {
+        switchTab('home');
+    }
+}
+
+async function loadUsersList() {
+    if (!state.user || state.user.role !== 'ADMIN') return;
+    const tbody = document.getElementById('admin-users-tbody');
+    if (!tbody) return;
+
+    try {
+        const res = await fetchWithAuth('/api/auth/users');
+        if (!res || !res.ok) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">Access denied or failed to load users.</td></tr>';
+            return;
+        }
+        const users = await res.json();
+        if (!users || users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">No users registered yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td style="font-family: var(--font-mono); font-weight: 600;">#${u.id}</td>
+                <td style="font-weight: 600; color: var(--text-primary);">${escapeHtml(u.username)}</td>
+                <td style="color: var(--text-secondary);">${escapeHtml(u.email)}</td>
+                <td>
+                    <select class="dropdown-select" style="padding: 4px 8px; font-size: 11px; width: auto;" onchange="updateUserRole(${u.id}, this.value)">
+                        <option value="STUDENT" ${u.role === 'STUDENT' ? 'selected' : ''}>STUDENT</option>
+                        <option value="ANALYST" ${u.role === 'ANALYST' ? 'selected' : ''}>ANALYST</option>
+                        <option value="ADMIN" ${u.role === 'ADMIN' ? 'selected' : ''}>ADMIN</option>
+                    </select>
+                </td>
+                <td><span class="badge ${u.is_active ? 'badge-low' : 'badge-crit'}">${u.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
+                <td>
+                    <span style="font-size: 11px; color: var(--text-muted);">${u.permissions ? u.permissions.length : 0} permissions</span>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell">Error: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+async function updateUserRole(userId, newRole) {
+    try {
+        const res = await fetchWithAuth(`/api/auth/users/${userId}/role`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: newRole })
+        });
+        if (!res || !res.ok) {
+            const data = await res.json();
+            alert('Failed to update role: ' + (data.detail || res.statusText));
+            loadUsersList();
+            return;
+        }
+        loadUsersList();
+    } catch (err) {
+        alert('Error updating role: ' + err.message);
+    }
+}
+
+/**
+ * Security Audit Viewer & SOC Log Management (Module 17)
+ */
+function switchAdminTab(subtab) {
+    const btnUsers = document.getElementById('admin-subtab-users');
+    const btnAudit = document.getElementById('admin-subtab-audit');
+    const panelUsers = document.getElementById('admin-panel-users');
+    const panelAudit = document.getElementById('admin-panel-audit');
+
+    if (subtab === 'users') {
+        if (btnUsers) btnUsers.classList.add('active');
+        if (btnAudit) btnAudit.classList.remove('active');
+        if (panelUsers) panelUsers.style.display = 'block';
+        if (panelAudit) panelAudit.style.display = 'none';
+        loadUsersList();
+    } else {
+        if (btnUsers) btnUsers.classList.remove('active');
+        if (btnAudit) btnAudit.classList.add('active');
+        if (panelUsers) panelUsers.style.display = 'none';
+        if (panelAudit) panelAudit.style.display = 'block';
+        loadAuditLogs();
+    }
+}
+
+let auditSearchTimeout = null;
+function handleAuditSearch(event) {
+    clearTimeout(auditSearchTimeout);
+    auditSearchTimeout = setTimeout(() => {
+        loadAuditLogs();
+    }, 350);
+}
+
+async function loadAuditLogs() {
+    if (!state.user || state.user.role !== 'ADMIN') return;
+
+    const tbody = document.getElementById('audit-logs-tbody');
+    const eventFilter = (document.getElementById('audit-filter-event') || {}).value || '';
+    const resultFilter = (document.getElementById('audit-filter-result') || {}).value || '';
+    const searchInput = (document.getElementById('audit-search-input') || {}).value || '';
+
+    // Fetch Stats
+    try {
+        const statsRes = await fetchWithAuth('/api/audit/stats');
+        if (statsRes && statsRes.ok) {
+            const stats = await statsRes.json();
+            const totalEl = document.getElementById('audit-stat-total');
+            const successEl = document.getElementById('audit-stat-success');
+            const failuresEl = document.getElementById('audit-stat-failures');
+            const deniedEl = document.getElementById('audit-stat-denied');
+
+            if (totalEl) totalEl.textContent = stats.total_events || 0;
+            if (successEl) successEl.textContent = stats.success_count || 0;
+            if (failuresEl) failuresEl.textContent = (stats.failure_count || 0) + (stats.lockout_count || 0);
+            if (deniedEl) deniedEl.textContent = stats.denied_count || 0;
+        }
+    } catch (e) {
+        console.warn('Could not load audit stats:', e);
+    }
+
+    // Fetch Logs
+    try {
+        const params = new URLSearchParams();
+        if (eventFilter) params.append('event', eventFilter);
+        if (resultFilter) params.append('result', resultFilter);
+        if (searchInput.trim()) params.append('search', searchInput.trim());
+        params.append('page_size', '50');
+
+        const logsRes = await fetchWithAuth(`/api/audit/logs?${params.toString()}`);
+        if (!logsRes || !logsRes.ok) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">Access denied or failed to load audit logs.</td></tr>';
+            return;
+        }
+
+        const data = await logsRes.json();
+        if (!data.items || data.items.length === 0) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">No matching audit events recorded yet.</td></tr>';
+            return;
+        }
+
+        if (tbody) {
+            tbody.innerHTML = data.items.map(item => {
+                const resClass = getAuditResultBadgeClass(item.result);
+                const detailsStr = item.details ? JSON.stringify(item.details) : '{}';
+                const userDisplay = item.username ? `${escapeHtml(item.username)} (#${item.user_id})` : (item.ip_address || 'System / Anon');
+
+                return `
+                    <tr>
+                        <td style="font-family: var(--font-mono); font-size: 11px; white-space: nowrap;">
+                            ${escapeHtml(item.timestamp ? item.timestamp.replace('T', ' ').substring(0, 19) : '')}
+                        </td>
+                        <td>
+                            <span class="badge badge-low" style="font-size: 10px; font-weight: 700; text-transform: uppercase;">
+                                ${escapeHtml(item.event)}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${resClass}" style="font-size: 10px; font-weight: 700;">
+                                ${escapeHtml(item.result)}
+                            </span>
+                        </td>
+                        <td style="font-size: 12px; color: var(--text-primary);">
+                            ${escapeHtml(userDisplay)}
+                        </td>
+                        <td style="font-family: var(--font-mono); font-size: 11px;">
+                            ${item.analysis_id ? `<span style="color: var(--accent-blue);">${escapeHtml(item.analysis_id)}</span>` : '<span style="color: var(--text-muted);">-</span>'}
+                        </td>
+                        <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(detailsStr)}">
+                            ${escapeHtml(detailsStr)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (err) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell">Error: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+function getAuditResultBadgeClass(result) {
+    const r = (result || '').toUpperCase();
+    if (r === 'SUCCESS') return 'badge-low';
+    if (r === 'FAILURE' || r === 'ERROR') return 'badge-high';
+    if (r === 'LOCKED' || r === 'DENIED') return 'badge-crit';
+    return 'badge-mod';
+}
+
+async function exportAuditLogsCsv() {
+    try {
+        const res = await fetchWithAuth('/api/audit/export/csv');
+        if (!res || !res.ok) {
+            alert('Failed to export audit logs. Please make sure you are logged in as an Administrator.');
+            return;
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `security_audit_export_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (err) {
+        alert('Error exporting CSV: ' + err.message);
+    }
+}
+
+

@@ -48,7 +48,7 @@ class AnalysisStore:
     def __init__(self, records_dir: Optional[Path] = None):
         self.records_dir = records_dir or (settings.STORAGE_BASE_DIR / "records")
         self.records_dir.mkdir(parents=True, exist_ok=True)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._counter = 1
         self._cache: Dict[str, FileRecord] = {}
         self._sha256_index: Dict[str, str] = {}  # Map: sha256.lower() -> analysis_id

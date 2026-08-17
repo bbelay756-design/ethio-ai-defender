@@ -42,6 +42,7 @@ class SampleRepository:
             md5=sample_in.md5,
             sha256=sample_in.sha256,
             status=sample_in.status,
+            user_id=sample_in.user_id,
         )
         db.add(db_sample)
         db.commit()
@@ -131,6 +132,7 @@ class SampleRepository:
                 md5=sample_in.md5,
                 sha256=sample_in.sha256,
                 status=sample_in.status,
+                user_id=sample_in.user_id,
             )
             db.add(db_sample)
             db.flush()  # Populates db_sample.id for foreign key references

@@ -13,6 +13,7 @@ from app.core.logger import logger
 from app.api.files import router as files_router
 from app.api.dashboard import router as dashboard_router
 from app.api.auth import router as auth_router
+from app.api.audit import router as audit_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -31,10 +32,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """
+    Applies standard defensive HTTP security headers to all responses.
+    """
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 # Include API Routers
 app.include_router(files_router)
 app.include_router(dashboard_router)
 app.include_router(auth_router)
+app.include_router(audit_router)
 
 # Mount Static Files (CSS, JS)
 static_dir = BASE_DIR / "frontend" / "static"

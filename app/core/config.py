@@ -32,6 +32,9 @@ class Settings:
     QUARANTINE_DIR: Path = field(default_factory=lambda: BASE_DIR / "storage" / "quarantine")
     LOG_DIR: Path = field(default_factory=lambda: BASE_DIR / "storage" / "logs")
     LOG_FILE: Path = field(default_factory=lambda: BASE_DIR / "storage" / "logs" / "defender.log")
+    AUDIT_LOG_FILE: Path = field(default_factory=lambda: BASE_DIR / "storage" / "logs" / "audit.jsonl")
+    AUDIT_LOG_MAX_BYTES: int = int(os.getenv("AUDIT_LOG_MAX_BYTES", str(10 * 1024 * 1024)))  # 10MB
+    AUDIT_LOG_BACKUP_COUNT: int = int(os.getenv("AUDIT_LOG_BACKUP_COUNT", "10"))
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
     # AI Security Analyst Configuration

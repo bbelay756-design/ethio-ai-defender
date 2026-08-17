@@ -172,3 +172,28 @@ class RevokedTokenModel(Base):
     token_jti = Column(String(64), unique=True, index=True, nullable=False)
     revoked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     expires_at = Column(DateTime, nullable=False)
+
+
+class AuditLogModel(Base):
+    """
+    Structured security audit log table for SOC monitoring and administrator inspection.
+    """
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    event = Column(String(64), nullable=False, index=True)
+    analysis_id = Column(String(64), nullable=True, index=True)
+    result = Column(String(32), nullable=False, index=True)
+    details_json = Column(Text, nullable=True)
+    ip_address = Column(String(64), nullable=True)
+
+    # Relationships
+    user = relationship("UserModel", backref="audit_logs", lazy="joined")
+
+    __table_args__ = (
+        Index("ix_audit_logs_event_timestamp", "event", "timestamp"),
+        Index("ix_audit_logs_user_timestamp", "user_id", "timestamp"),
+    )
+

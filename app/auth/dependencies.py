@@ -85,12 +85,26 @@ def get_current_user(
     return user
 
 
-def require_roles(*allowed_roles: UserRole):
+def _normalize_role_values(*roles) -> List[str]:
+    result = []
+    for r in roles:
+        if isinstance(r, (list, tuple, set)):
+            result.extend(_normalize_role_values(*r))
+        elif hasattr(r, "value"):
+            result.append(str(r.value))
+        else:
+            result.append(str(r))
+    return result
+
+
+def require_roles(*allowed_roles):
     """
     Authorization guard requiring the authenticated user to hold one of the specified roles.
+    Supports both `require_roles(UserRole.ADMIN)` and `require_roles([UserRole.ADMIN])`.
     """
+    allowed_role_values = _normalize_role_values(*allowed_roles)
+
     def role_checker(current_user: UserModel = Depends(get_current_user)) -> UserModel:
-        allowed_role_values = [r.value for r in allowed_roles]
         if current_user.role not in allowed_role_values:
             logger.warning(
                 f"Access Denied: User '{current_user.username}' with role '{current_user.role}' "
@@ -105,21 +119,52 @@ def require_roles(*allowed_roles: UserRole):
     return role_checker
 
 
-def require_permissions(*required_permissions: Permission):
+def require_permissions(*required_permissions):
     """
-    Authorization guard requiring the authenticated user's role to possess the specified permission.
+    Authorization guard requiring the authenticated user's role to possess the specified permissions.
     """
+    flat_perms = []
+    for p in required_permissions:
+        if isinstance(p, (list, tuple, set)):
+            flat_perms.extend(p)
+        else:
+            flat_perms.append(p)
+
     def permission_checker(current_user: UserModel = Depends(get_current_user)) -> UserModel:
-        for perm in required_permissions:
+        for perm in flat_perms:
             if not has_permission(current_user.role, perm):
+                perm_val = perm.value if hasattr(perm, "value") else str(perm)
                 logger.warning(
                     f"Permission Denied: User '{current_user.username}' (Role: {current_user.role}) "
-                    f"lacks permission '{perm.value}'"
+                    f"lacks permission '{perm_val}'"
                 )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Permission denied: Action requires '{perm.value}' permission."
+                    detail=f"Access forbidden: Missing required permission '{perm_val}'."
                 )
         return current_user
 
     return permission_checker
+
+
+def get_optional_current_user(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+) -> Optional[UserModel]:
+    """
+    Extracts and validates current user if Authorization header is present; otherwise returns None.
+    """
+    if not authorization:
+        return None
+    try:
+        parts = authorization.split()
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            return None
+        payload = decode_access_token(parts[1])
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        user = db.query(UserModel).filter(UserModel.id == int(user_id)).first()
+        return user if user and user.is_active else None
+    except Exception:
+        return None

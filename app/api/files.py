@@ -9,6 +9,8 @@ from typing import Dict, Any, Optional
 from app.core.logger import logger
 from app.core.storage import analysis_store
 from app.analyzers.file_intake import secure_intake_service, IntakeStatus
+from app.audit.logger import audit_logger
+from app.audit.events import AuditResult
 
 router = APIRouter(prefix="/api/files", tags=["File Intake"])
 
@@ -41,6 +43,11 @@ async def upload_file(file: UploadFile = File(...)):
         content = await file.read()
     except Exception as e:
         logger.error(f"Failed to read incoming file stream: {e}")
+        audit_logger.log_upload(
+            result=AuditResult.ERROR,
+            filename=raw_filename,
+            details={"error": str(e)},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Could not read uploaded file stream: {str(e)}"
@@ -64,6 +71,11 @@ async def upload_file(file: UploadFile = File(...)):
             status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
 
         logger.warning(f"Upload rejected: {result.message} (Status: {result.status.value})")
+        audit_logger.log_upload(
+            result=AuditResult.FAILURE,
+            filename=raw_filename,
+            details={"status": result.status.value, "reason": result.message},
+        )
         raise HTTPException(
             status_code=status_code,
             detail={
@@ -73,6 +85,16 @@ async def upload_file(file: UploadFile = File(...)):
                 "validation_notes": result.validation_notes
             }
         )
+
+    # Log successful file intake
+    audit_logger.log_upload(
+        result=AuditResult.SUCCESS,
+        filename=result.filename,
+        analysis_id=result.analysis_id,
+        size=result.size,
+        sha256=result.sha256,
+        details={"status": result.status.value},
+    )
 
     return FileUploadResponse(
         analysis_id=result.analysis_id or "",

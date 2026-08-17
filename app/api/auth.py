@@ -23,6 +23,8 @@ from app.auth.dependencies import (
     require_roles,
     require_permissions,
 )
+from app.audit.logger import audit_logger
+from app.audit.events import AuditEventType, AuditResult
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & Access Control"])
 
@@ -81,6 +83,16 @@ def register(
         )
         user_role = UserRole(user.role)
         perms = [p.value for p in ROLE_PERMISSIONS.get(user_role, set())]
+        
+        # Log user registration as admin/user event
+        audit_logger.log_event(
+            event=AuditEventType.ADMINISTRATIVE_CHANGES,
+            result=AuditResult.SUCCESS,
+            user_id=user.id,
+            details={"action": "USER_REGISTRATION", "registered_username": user.username, "assigned_role": user.role},
+            db=db,
+        )
+
         return UserProfileResponse(
             id=user.id,
             username=user.username,
@@ -112,17 +124,49 @@ def login(
             client_ip=client_ip
         )
         token_data = AuthService.create_token_for_user(user)
+
+        # Log successful login (strictly without password or token)
+        audit_logger.log_login(
+            result=AuditResult.SUCCESS,
+            username=user.username,
+            user_id=user.id,
+            ip_address=client_ip,
+            db=db,
+        )
+
         return TokenResponse(**token_data)
     except AccountLockedError as ale:
+        audit_logger.log_login(
+            result=AuditResult.LOCKED,
+            username=req.username,
+            ip_address=client_ip,
+            details={"reason": "Account locked out"},
+            db=db,
+        )
         raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(ale))
     except RateLimitExceededError as rle:
+        audit_logger.log_login(
+            result=AuditResult.DENIED,
+            username=req.username,
+            ip_address=client_ip,
+            details={"reason": "Rate limit exceeded"},
+            db=db,
+        )
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(rle))
     except AuthenticationError as ae:
+        audit_logger.log_login(
+            result=AuditResult.FAILURE,
+            username=req.username,
+            ip_address=client_ip,
+            details={"reason": "Invalid credentials"},
+            db=db,
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(ae))
 
 
 @router.post("/logout", summary="Log out and invalidate access token")
 def logout(
+    request: Request,
     token: str = Depends(get_token_from_header),
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -133,6 +177,14 @@ def logout(
     success = AuthService.revoke_token(db, token)
     if not success:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to revoke token.")
+
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    audit_logger.log_logout(
+        user_id=current_user.id,
+        username=current_user.username,
+        ip_address=client_ip,
+        db=db,
+    )
     return {"message": "Successfully logged out. Token revoked."}
 
 
@@ -180,10 +232,11 @@ def list_all_users(
     return res
 
 
-@router.put("/users/{user_id}/role", response_model=UserProfileResponse, dependencies=[Depends(require_roles(UserRole.ADMIN))])
+@router.put("/users/{user_id}/role", response_model=UserProfileResponse)
 def update_user_role_admin(
     user_id: int,
     req: RoleUpdateRequest,
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
     db: Session = Depends(get_db)
 ):
     """
@@ -193,6 +246,16 @@ def update_user_role_admin(
         user = AuthService.update_user_role(db, user_id=user_id, new_role=req.role)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User ID {user_id} not found.")
+
+        # Log administrative change in audit system
+        audit_logger.log_admin_change(
+            action="UPDATE_USER_ROLE",
+            target_user_id=user.id,
+            target_username=user.username,
+            admin_user_id=admin_user.id,
+            details={"new_role": req.role, "updated_by": admin_user.username},
+            db=db,
+        )
 
         u_role = UserRole(user.role)
         perms = [p.value for p in ROLE_PERMISSIONS.get(u_role, set())]
@@ -235,6 +298,14 @@ def get_user_analysis_object(
                 f"Object-Level Auth Violation: Student '{current_user.username}' (ID: {current_user.id}) "
                 f"attempted to access analysis '{analysis_id}' owned by user ID {sample.user_id}."
             )
+            audit_logger.log_security_alert(
+                alert_type="OBJECT_AUTH_VIOLATION",
+                description=f"Student '{current_user.username}' attempted unauthorized view of analysis '{analysis_id}'",
+                user_id=current_user.id,
+                analysis_id=analysis_id,
+                details={"target_owner_id": sample.user_id},
+                db=db,
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied: You do not own this analysis report."
@@ -273,6 +344,14 @@ def delete_user_analysis_object(
             f"Object-Level Modification Denied: User '{current_user.username}' (ID: {current_user.id}) "
             f"attempted to delete analysis '{analysis_id}' owned by user ID {sample.user_id}."
         )
+        audit_logger.log_security_alert(
+            alert_type="OBJECT_DELETE_VIOLATION",
+            description=f"User '{current_user.username}' attempted unauthorized delete of analysis '{analysis_id}'",
+            user_id=current_user.id,
+            analysis_id=analysis_id,
+            details={"target_owner_id": sample.user_id},
+            db=db,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: You cannot delete another user's analysis."
@@ -281,4 +360,11 @@ def delete_user_analysis_object(
     db.delete(sample)
     db.commit()
     logger.info(f"Analysis '{analysis_id}' successfully deleted by user '{current_user.username}' (Role: {current_user.role})")
+    audit_logger.log_admin_change(
+        action="DELETE_ANALYSIS",
+        target_user_id=sample.user_id,
+        admin_user_id=current_user.id,
+        details={"deleted_analysis_id": analysis_id, "deleted_by_role": current_user.role},
+        db=db,
+    )
     return {"message": f"Analysis '{analysis_id}' deleted successfully."}

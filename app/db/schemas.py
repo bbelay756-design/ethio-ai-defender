@@ -128,6 +128,7 @@ class SampleBase(BaseModel):
     md5: str = Field(..., min_length=32, max_length=32)
     sha256: str = Field(..., min_length=64, max_length=64)
     status: str = Field("ANALYZED", max_length=32)
+    user_id: Optional[int] = None
 
 
 class SampleCreate(SampleBase):
