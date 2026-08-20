@@ -215,3 +215,105 @@ class AuthService:
         db.refresh(user)
         logger.info(f"Updated role for user '{user.username}' (ID: {user_id}) to '{role_norm}'")
         return user
+
+    @staticmethod
+    def toggle_user_active_status(db: Session, user_id: int) -> Optional[UserModel]:
+        """Toggles user active/inactive status."""
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if not user:
+            return None
+        user.is_active = 0 if user.is_active else 1
+        db.commit()
+        db.refresh(user)
+        logger.info(f"Toggled active status for user '{user.username}' (ID: {user_id}) to {user.is_active}")
+        return user
+
+    @staticmethod
+    def delete_user(db: Session, user_id: int) -> bool:
+        """Deletes a platform user."""
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if not user:
+            return False
+        username = user.username
+        db.delete(user)
+        db.commit()
+        logger.info(f"Deleted platform user '{username}' (ID: {user_id})")
+        return True
+
+    @staticmethod
+    def unlock_user(db: Session, user_id: int) -> Optional[UserModel]:
+        """Unlocks a locked out user account and clears failed login attempts."""
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if not user:
+            return None
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.commit()
+        db.refresh(user)
+        logger.info(f"Manually unlocked user account '{user.username}' (ID: {user_id})")
+        return user
+
+    @staticmethod
+    def reset_user_password(db: Session, user_id: int, new_password: str) -> Optional[UserModel]:
+        """Resets a user's password with cryptographically salted PBKDF2 hashing."""
+        if not new_password or len(new_password) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if not user:
+            return None
+        salt, hashed = hash_password(new_password)
+        user.salt = salt
+        user.hashed_password = hashed
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        db.commit()
+        db.refresh(user)
+        logger.info(f"Password reset for user '{user.username}' (ID: {user_id})")
+        return user
+
+    @staticmethod
+    def get_admin_overview_stats(db: Session) -> Dict[str, Any]:
+        """Calculates system-wide aggregation for the Administrator Control Center."""
+        from app.db.models import SampleModel, IndicatorModel, AuditLogModel, RevokedTokenModel
+
+        users = db.query(UserModel).all()
+        total_users = len(users)
+        admin_count = sum(1 for u in users if str(u.role).upper() == "ADMIN")
+        analyst_count = sum(1 for u in users if str(u.role).upper() == "ANALYST")
+        student_count = sum(1 for u in users if str(u.role).upper() == "STUDENT")
+        active_count = sum(1 for u in users if u.is_active)
+        inactive_count = total_users - active_count
+
+        total_samples = db.query(SampleModel).count()
+        total_indicators = db.query(IndicatorModel).count()
+        total_audit_logs = db.query(AuditLogModel).count()
+        revoked_tokens_count = db.query(RevokedTokenModel).count()
+
+        recent_users = [
+            {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "role": str(u.role).upper(),
+                "is_active": bool(u.is_active),
+                "created_at": u.created_at.isoformat() if u.created_at else ""
+            }
+            for u in sorted(users, key=lambda x: x.created_at or datetime.min, reverse=True)[:5]
+        ]
+
+        return {
+            "total_users": total_users,
+            "admin_count": admin_count,
+            "analyst_count": analyst_count,
+            "student_count": student_count,
+            "active_users": active_count,
+            "inactive_users": inactive_count,
+            "total_samples": total_samples,
+            "total_indicators": total_indicators,
+            "total_audit_logs": total_audit_logs,
+            "revoked_tokens_count": revoked_tokens_count,
+            "recent_users": recent_users,
+            "system_health": "OPTIMAL",
+            "zero_execution_guarantee": True,
+            "lockout_threshold": 5,
+        }

@@ -12,8 +12,10 @@ from app.core.config import settings, BASE_DIR
 from app.core.logger import logger
 from app.api.files import router as files_router
 from app.api.dashboard import router as dashboard_router
+from app.api.analyses import router as analyses_router
 from app.api.auth import router as auth_router
 from app.api.audit import router as audit_router
+from app.api.learning import router as learning_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -46,10 +48,12 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 # Include API Routers
+app.include_router(analyses_router)
 app.include_router(files_router)
 app.include_router(dashboard_router)
 app.include_router(auth_router)
 app.include_router(audit_router)
+app.include_router(learning_router)
 
 # Mount Static Files (CSS, JS)
 static_dir = BASE_DIR / "frontend" / "static"
@@ -92,6 +96,7 @@ async def public_pages():
 
 
 @app.get("/dashboard", tags=["Dashboard"])
+@app.get("/history", tags=["Protected Analysis Routes"])
 @app.get("/analysis", tags=["Protected Analysis Routes"])
 @app.get("/pe-analysis", tags=["Protected Analysis Routes"])
 @app.get("/imports", tags=["Protected Analysis Routes"])

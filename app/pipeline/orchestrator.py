@@ -6,6 +6,7 @@ Includes comprehensive stage-by-stage error containment to ensure system resilie
 
 from typing import Dict, List, Optional, Any
 from pathlib import Path
+from datetime import datetime, timezone
 
 from app.core.logger import logger
 from app.analyzers.file_intake import secure_intake_service, IntakeResult, IntakeStatus
@@ -105,6 +106,9 @@ class UnifiedPipelineOrchestrator:
         try:
             pe_res = pe_static_analyzer_service.analyze_bytes(content)
             pe_data = pe_res.to_dict()
+            pe_data["file_type"] = pe_data.get("file_kind", "EXE")
+            pe_data["machine_architecture"] = pe_data.get("architecture", "x64")
+            pe_data["is_dll"] = pe_data.get("file_kind") == "DLL" or "IMAGE_FILE_DLL" in pe_data.get("characteristics", [])
         except Exception as e:
             err_msg = f"PE Static Analyzer Error: {e}"
             errors.append(err_msg)
@@ -116,6 +120,8 @@ class UnifiedPipelineOrchestrator:
                 machine_architecture="UNKNOWN",
             )
             pe_data = pe_res.to_dict()
+            pe_data["file_type"] = "UNKNOWN"
+            pe_data["machine_architecture"] = "UNKNOWN"
 
         # =========================================================================
         # Stage 5: PE Section Analysis (Module 04)
@@ -303,6 +309,108 @@ class UnifiedPipelineOrchestrator:
                 "language": lang,
             }
 
+        # =========================================================================
+        # Stage 11b: YARA Signature Scanning
+        # =========================================================================
+        try:
+            from app.analyzers.yara_analyzer import yara_analyzer_service
+            yara_res = yara_analyzer_service.scan_bytes(content)
+            yara_data = yara_res.to_dict()
+        except Exception as e:
+            logger.warning(f"YARA Analyzer warning: {e}")
+            yara_data = {
+                "available": False,
+                "status": "UNAVAILABLE",
+                "message": f"YARA scan fallback: {e}",
+                "total_matches": 0,
+                "matches": []
+            }
+
+        # =========================================================================
+        # Stage 11c: IOC Extraction & MITRE ATT&CK Mapping
+        # =========================================================================
+        iocs_list = []
+        seen_iocs = set()
+
+        def add_ioc(ioc_type: str, val: str, source: str = "STATIC_ANALYSIS", confidence: float = 1.0):
+            if not val or not isinstance(val, str) or not val.strip():
+                return
+            val_clean = val.strip()
+            key = (ioc_type, val_clean)
+            if key not in seen_iocs:
+                seen_iocs.add(key)
+                iocs_list.append({
+                    "type": ioc_type,
+                    "value": val_clean,
+                    "source": source,
+                    "confidence": confidence
+                })
+
+        # Hashes
+        if hash_data.get("sha256"):
+            add_ioc("HASH", hash_data["sha256"], "HASH_ANALYZER", 1.0)
+        if hash_data.get("sha1"):
+            add_ioc("HASH", hash_data["sha1"], "HASH_ANALYZER", 1.0)
+        if hash_data.get("md5"):
+            add_ioc("HASH", hash_data["md5"], "HASH_ANALYZER", 1.0)
+
+        # Extracted strings
+        for u in str_data.get("urls", []):
+            add_ioc("URL", u, "STRING_EXTRACTION", 0.95)
+        for ip in str_data.get("ip_addresses", []):
+            add_ioc("IP", ip, "STRING_EXTRACTION", 0.95)
+        for dom in str_data.get("domains", []):
+            add_ioc("DOMAIN", dom, "STRING_EXTRACTION", 0.90)
+        for em in str_data.get("emails", []):
+            add_ioc("EMAIL", em, "STRING_EXTRACTION", 0.90)
+        for r in str_data.get("registry_paths", []):
+            add_ioc("REGISTRY_KEY", r, "STRING_EXTRACTION", 0.90)
+        for fp in str_data.get("file_paths", []):
+            add_ioc("FILE_PATH", fp, "STRING_EXTRACTION", 0.90)
+
+        # MITRE ATT&CK Mappings (Configurable heuristic correlation)
+        mitre_mappings = []
+        mitre_seen = set()
+
+        def add_mitre(t_id: str, t_name: str, tactic: str, evidence: str, conf: str = "MEDIUM"):
+            if t_id not in mitre_seen:
+                mitre_seen.add(t_id)
+                mitre_mappings.append({
+                    "technique_id": t_id,
+                    "technique_name": t_name,
+                    "tactic": tactic,
+                    "evidence": evidence,
+                    "confidence": conf,
+                    "relationship": "Potentially associated with"
+                })
+
+        apis_lower = {i.get("api", "").lower() for i in imports_raw_list}
+        if "virtualalloc" in apis_lower or "virtualprotect" in apis_lower or "writeprocessmemory" in apis_lower:
+            add_mitre("T1055", "Process Injection", "Defense Evasion, Privilege Escalation", "VirtualAlloc/VirtualProtect/WriteProcessMemory imported", "HIGH")
+        if "createremotethread" in apis_lower or "queueuserapc" in apis_lower:
+            add_mitre("T1055.002", "Process Injection: Portable Executable Injection", "Defense Evasion", "CreateRemoteThread/QueueUserAPC imported", "HIGH")
+        if "regsetvalueexa" in apis_lower or "regsetvaluew" in apis_lower or str_data.get("registry_paths"):
+            add_mitre("T1547.001", "Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder", "Persistence", "Registry persistence API or Run key extracted", "MEDIUM")
+        if "urldownloadtofilea" in apis_lower or "urldownloadtofilew" in apis_lower or "internetopenurla" in apis_lower:
+            add_mitre("T1105", "Ingress Tool Transfer", "Command and Control", "URLDownloadToFile/InternetOpenUrl API imported", "HIGH")
+        if "isdebuggerpresent" in apis_lower or "checkremotedebuggerpresent" in apis_lower:
+            add_mitre("T1497", "Virtualization/Sandbox Evasion", "Defense Evasion", "Anti-debugging API imported", "MEDIUM")
+        if has_wx or ent_data.get("file_classification") in ("HIGH", "VERY_HIGH"):
+            add_mitre("T1027.002", "Obfuscated Files or Information: Software Packing", "Defense Evasion", "High entropy or W+X section detected", "HIGH")
+        if str_data.get("commands") or str_data.get("powershell_references"):
+            add_mitre("T1059.001", "Command and Scripting Interpreter: PowerShell / Command Shell", "Execution", "PowerShell/cmd.exe string references identified", "HIGH")
+
+        # Risk Factors list
+        risk_factors_list = []
+        for contrib in getattr(score_res, "contributions", []):
+            risk_factors_list.append({
+                "name": contrib.indicator_name,
+                "category": contrib.category,
+                "severity": contrib.severity,
+                "weight": contrib.points,
+                "evidence": contrib.reason
+            })
+
         # Build Observed Static Evidence (Strictly Distinguishes Observed vs Rule vs AI)
         file_info = {
             "filename": safe_filename,
@@ -321,6 +429,10 @@ class UnifiedPipelineOrchestrator:
             "strings": str_data,
             "imports": {"total_imports": total_imp, "imports": list(imports_collection)},
             "indicators": {"total_indicators": total_ind, "indicators": list(indicators_collection)},
+            "iocs": {"total_iocs": len(iocs_list), "items": iocs_list},
+            "yara_matches": yara_data,
+            "mitre_attack": mitre_mappings,
+            "risk_factors": risk_factors_list,
             "threat_score": score_data,
             "ethiopian_context": ethio_data,
         }
@@ -342,8 +454,8 @@ class UnifiedPipelineOrchestrator:
                 "reason": "AI provider unavailable",
                 "assessment": score_data.get("risk_level", "LOW"),
                 "confidence": "LOW",
-                "summary": "AI assessment unavailable (static analysis findings preserved).",
-                "key_findings": [],
+                "summary": "AI analysis unavailable. Static analysis results are available.",
+                "key_findings": [f"Heuristic Threat Score: {score_data.get('score', 0)}/100 [{score_data.get('risk_level', 'LOW')}]."],
                 "evidence": ["Static binary headers analyzed."],
                 "possible_benign_explanations": ["Standard software executable."],
                 "recommended_investigation": ["Review binary signatures."],
@@ -386,6 +498,7 @@ class UnifiedPipelineOrchestrator:
         # =========================================================================
         db = SessionLocal()
         try:
+            from app.db.schemas import IOCCreate, YaraMatchCreate, RiskFactorCreate
             sample_in = SampleCreate(
                 analysis_id=analysis_id,
                 filename=safe_filename,
@@ -393,9 +506,13 @@ class UnifiedPipelineOrchestrator:
                 file_type=pe_data.get("file_type", "EXE"),
                 architecture=pe_data.get("machine_architecture", "x64"),
                 md5=hash_data.get("md5", intake_res.md5),
+                sha1=hash_data.get("sha1", intake_res.sha1),
                 sha256=hash_data.get("sha256", intake_res.sha256),
-                status="ANALYZED",
+                status="COMPLETED",
+                risk_score=score_data.get("score", 0),
+                classification=score_data.get("risk_level", "LOW"),
                 user_id=user_id,
+                completed_at=datetime.now(timezone.utc)
             )
 
             def _parse_int(val, default=0):
@@ -428,14 +545,14 @@ class UnifiedPipelineOrchestrator:
                     category=i.get("category", "GENERAL"),
                     risk_relevance=i.get("risk_relevance", "LOW")
                 )
-                for i in imports_raw_list[:50]
+                for i in imports_raw_list[:100]
             ]
             strings_in = [
-                StringCreate(value=u, type="URL") for u in str_data.get("urls", [])[:10]
+                StringCreate(value=u, type="URL") for u in str_data.get("urls", [])[:20]
             ] + [
-                StringCreate(value=ip, type="IP_ADDRESS") for ip in str_data.get("ip_addresses", [])[:10]
+                StringCreate(value=ip, type="IP_ADDRESS") for ip in str_data.get("ip_addresses", [])[:20]
             ] + [
-                StringCreate(value=r, type="REGISTRY_PATH") for r in str_data.get("registry_paths", [])[:10]
+                StringCreate(value=r, type="REGISTRY_PATH") for r in str_data.get("registry_paths", [])[:20]
             ]
             indicators_in = [
                 IndicatorCreate(
@@ -446,6 +563,34 @@ class UnifiedPipelineOrchestrator:
                     confidence=float(ind.get("confidence", 1.0))
                 )
                 for ind in indicators_raw_list
+            ]
+            iocs_in = [
+                IOCCreate(
+                    type=ioc["type"],
+                    value=ioc["value"],
+                    source=ioc.get("source", "STATIC_ANALYSIS"),
+                    confidence=float(ioc.get("confidence", 1.0))
+                )
+                for ioc in iocs_list[:50]
+            ]
+            yara_matches_in = [
+                YaraMatchCreate(
+                    rule_name=ym.get("rule_name", "YaraRule"),
+                    namespace=ym.get("namespace", "default"),
+                    tags=",".join(ym.get("tags", [])) if isinstance(ym.get("tags"), list) else str(ym.get("tags", "")),
+                    description=ym.get("description", "")
+                )
+                for ym in yara_data.get("matches", [])
+            ]
+            risk_factors_in = [
+                RiskFactorCreate(
+                    name=rf["name"],
+                    category=rf["category"],
+                    severity=rf["severity"],
+                    weight=float(rf["weight"]),
+                    evidence=rf.get("evidence", "")
+                )
+                for rf in risk_factors_list
             ]
             result_in = AnalysisResultCreate(
                 risk_score=score_data.get("score", 0),
@@ -461,10 +606,13 @@ class UnifiedPipelineOrchestrator:
                 imports_in=imports_in,
                 strings_in=strings_in,
                 indicators_in=indicators_in,
+                iocs_in=iocs_in,
+                yara_matches_in=yara_matches_in,
+                risk_factors_in=risk_factors_in,
                 result_in=result_in
             )
         except Exception as db_err:
-            logger.warning(f"Database save warning (sample may already exist): {db_err}")
+            logger.warning(f"Database save warning: {db_err}")
         finally:
             db.close()
 
@@ -495,6 +643,10 @@ class UnifiedPipelineOrchestrator:
             "strings": str_data,
             "imports": imports_collection,
             "indicators": indicators_collection,
+            "iocs": {"total_iocs": len(iocs_list), "items": iocs_list},
+            "yara_matches": yara_data,
+            "mitre_attack": mitre_mappings,
+            "risk_factors": risk_factors_list,
             "risk": score_data,
             "risk_score": score_data,
             "ethiopian_context": ethio_data,

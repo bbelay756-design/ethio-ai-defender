@@ -130,6 +130,12 @@
                             <span class="nav-label" id="nav-label-home" data-i18n="nav_home">Home / Intake</span>
                         </button>
                     </li>
+                    <li id="nav-item-history" style="display: none;">
+                        <button class="nav-link" data-tab="history" id="nav-history">
+                            <span class="nav-icon">📜</span>
+                            <span class="nav-label" id="nav-label-history" data-i18n="nav_history">Analysis History</span>
+                        </button>
+                    </li>
                     <li id="nav-item-analysis" style="display: none;">
                         <button class="nav-link" data-tab="analysis" id="nav-analysis">
                             <span class="nav-icon">📊</span>
@@ -257,6 +263,9 @@
                                 <h3 class="card-heading" data-i18n="upload_heading">Upload Binary for Static Analysis</h3>
                             </div>
                             <div class="card-body">
+                                <div id="upload-error-box" class="auth-error-box" style="display: none; margin-bottom: 14px;"></div>
+
+                                <!-- Default Dropzone -->
                                 <div class="dropzone" id="upload-dropzone">
                                     <div class="dropzone-icon">📁</div>
                                     <div class="dropzone-title" data-i18n="dropzone_title">Drag and drop Windows PE executable here</div>
@@ -265,9 +274,46 @@
                                     <button class="btn-primary" id="btn-browse-file" data-i18n="btn_choose_file">Select .exe / .dll</button>
                                 </div>
 
+                                <!-- File Selected State (Before Analysis) -->
+                                <div id="upload-selected-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-blue); margin-bottom: 12px;">
+                                    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div style="font-size: 24px;">📦</div>
+                                            <div>
+                                                <div style="font-weight: 700; color: var(--text-primary);" id="selected-file-name">sample.exe</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">
+                                                    <span id="selected-file-size">0 KB</span> • <span class="badge badge-low" id="selected-file-ext">.EXE</span> • <span style="color: var(--sev-low);">Zero-Execution Enforced</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button class="btn-secondary" onclick="clearSelectedFile()">✕ Cancel</button>
+                                            <button class="btn-primary" id="btn-start-analysis" onclick="startSelectedFileAnalysis()">🚀 Analyze Binary</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Analysis In-Progress Staged Feedback -->
+                                <div id="upload-progress-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-cyan); margin-bottom: 12px;">
+                                    <div class="card-body">
+                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                            <span class="auth-loading-spinner" style="width: 16px; height: 16px; border-width: 2px;"></span>
+                                            <span style="font-weight: 700; font-size: 13px; color: var(--accent-cyan);" id="upload-progress-current-text">Analyzing Binary...</span>
+                                        </div>
+                                        <div id="upload-progress-stages" style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono);">
+                                            <div id="prog-stage-1">⏳ 1. Uploading payload stream safely...</div>
+                                            <div id="prog-stage-2">⏳ 2. Validating DOS header & PE format...</div>
+                                            <div id="prog-stage-3">⏳ 3. Calculating SHA-256, SHA-1, MD5 hashes...</div>
+                                            <div id="prog-stage-4">⏳ 4. Parsing PE headers & sections...</div>
+                                            <div id="prog-stage-5">⏳ 5. Extracting APIs, strings & threat indicators...</div>
+                                            <div id="prog-stage-6">⏳ 6. Running YARA & synthesizing AI assessment...</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="quick-demo-row">
                                     <span data-i18n="or_try_demo">Or test with safe synthetic sample:</span>
-                                    <button class="btn-secondary" id="btn-load-demo" onclick="loadDemoSample()">🧪 <span data-i18n="btn_load_demo">Load Demo Banking Agent</span></button>
+                                    <button class="btn-secondary" id="btn-load-demo" onclick="loadDemoSample()">🧪 <span data-i18n="btn_load_demo">Load Safe Synthetic Sample</span></button>
                                 </div>
                             </div>
                         </div>
@@ -306,12 +352,86 @@
                 </section>
 
                 <!-- ============================================== -->
+                <!-- 1.5. ANALYSIS HISTORY VIEW                     -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-history">
+                    <div class="view-header">
+                        <div>
+                            <h2>Analysis History & Workspace Archive</h2>
+                            <p>Browse and load previously analyzed binaries, export reports, and inspect threat records.</p>
+                        </div>
+                        <button class="btn-primary" onclick="loadAnalysisHistory()">🔄 Refresh History</button>
+                    </div>
+
+                    <!-- Search & Filter Bar -->
+                    <div class="soc-card" style="margin-bottom: 20px;">
+                        <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                                <input type="text" id="history-search-input" class="form-control" style="width: 240px;" placeholder="Search filename, SHA-256..." onkeyup="filterHistoryTable()">
+                                <select id="history-filter-risk" class="dropdown-select" style="width: auto;" onchange="filterHistoryTable()">
+                                    <option value="">All Risk Levels</option>
+                                    <option value="CRITICAL">CRITICAL (75-100)</option>
+                                    <option value="HIGH">HIGH (50-74)</option>
+                                    <option value="SUSPICIOUS">SUSPICIOUS (41-60)</option>
+                                    <option value="MODERATE">MODERATE (21-40)</option>
+                                    <option value="LOW">LOW (0-20)</option>
+                                </select>
+                                <select id="history-filter-status" class="dropdown-select" style="width: auto;" onchange="filterHistoryTable()">
+                                    <option value="">All Statuses</option>
+                                    <option value="COMPLETED">COMPLETED</option>
+                                    <option value="ANALYZED">ANALYZED</option>
+                                    <option value="FAILED">FAILED</option>
+                                </select>
+                            </div>
+                            <span id="history-count-badge" style="font-size: 11px; color: var(--text-muted);">0 analyses</span>
+                        </div>
+                    </div>
+
+                    <!-- History Table -->
+                    <div class="soc-card">
+                        <div class="card-head">
+                            <span class="card-icon">📜</span>
+                            <h3 class="card-heading">Analyzed Binaries History</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="soc-table" id="history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Analysis ID</th>
+                                            <th>Binary Filename</th>
+                                            <th>Format / Arch</th>
+                                            <th>SHA-256 Hash</th>
+                                            <th>Risk Posture</th>
+                                            <th>Analyzed (UTC)</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-tbody">
+                                        <tr>
+                                            <td colspan="7" class="empty-state-cell">Loading analysis history...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
                 <!-- 2. ANALYSIS VIEW                               -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-analysis">
                     <div class="view-header">
-                        <h2 data-i18n="analysis_overview_title">Analysis Overview & Threat Posture</h2>
-                        <p data-i18n="analysis_overview_subtitle">Cryptographic identity, architectural classification, and heuristic threat score.</p>
+                        <div>
+                            <h2 data-i18n="analysis_overview_title">Analysis Overview & Threat Posture</h2>
+                            <p data-i18n="analysis_overview_subtitle">Cryptographic identity, architectural classification, and heuristic threat score.</p>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn-secondary" onclick="exportCurrentReport('json')" title="Download JSON Data">📥 JSON</button>
+                            <button class="btn-primary" onclick="exportCurrentReport('html')" title="Download Standalone HTML Report">📄 HTML Report</button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('text')" title="Download Text Report">📝 Text</button>
+                        </div>
                     </div>
 
                     <!-- Metric Cards -->
@@ -384,6 +504,32 @@
                                     <span class="context-label" data-i18n="lbl_context_reason">Evaluation Context:</span>
                                     <p class="context-desc" id="ov-ethio-reason">No domestic specific targeting detected.</p>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Factors & Evidence Breakdown (Why this score was generated) -->
+                    <div class="soc-card" style="margin-top: 20px;" id="ov-risk-factors-card">
+                        <div class="card-head">
+                            <span class="card-icon">⚖️</span>
+                            <h3 class="card-heading">Heuristic Score Factors & Evidence Rationale</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="soc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Contributing Factor</th>
+                                            <th>Category</th>
+                                            <th>Severity</th>
+                                            <th>Score Weight</th>
+                                            <th>Evidence / Technical Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ov-risk-factors-tbody">
+                                        <tr><td colspan="5" class="empty-state-cell">No risk factors identified.</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -551,14 +697,70 @@
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-indicators">
                     <div class="view-header">
-                        <h2 data-i18n="indicators_title">Correlated Suspicious Indicators</h2>
-                        <p data-i18n="indicators_subtitle">Multi-feature heuristic correlations evaluated across headers, sections, and APIs.</p>
+                        <div>
+                            <h2 data-i18n="indicators_title">Correlated Suspicious Indicators & IOCs</h2>
+                            <p data-i18n="indicators_subtitle">Multi-feature heuristic correlations evaluated across headers, sections, YARA rules, and APIs.</p>
+                        </div>
                     </div>
 
-                    <div id="indicators-container" class="indicators-grid">
+                    <!-- Suspicious Indicators Cards -->
+                    <div id="indicators-container" class="indicators-grid" style="margin-bottom: 24px;">
                         <div class="soc-card">
                             <div class="card-body empty-table-msg" data-i18n="msg_no_indicators">
                                 No suspicious indicators detected for the current sample.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Extracted IOCs Table -->
+                    <div class="soc-card" style="margin-bottom: 24px;">
+                        <div class="card-head">
+                            <span class="card-icon">🎯</span>
+                            <h3 class="card-heading">Extracted Indicators of Compromise (IOCs)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="soc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>IOC Type</th>
+                                            <th>Extracted Value / Artifact</th>
+                                            <th>Extraction Source</th>
+                                            <th>Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="iocs-tbody">
+                                        <tr><td colspan="4" class="empty-state-cell">No IOCs extracted yet.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- YARA Rule Detection Signatures -->
+                    <div class="soc-card">
+                        <div class="card-head" style="justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">🛡️</span>
+                                <h3 class="card-heading">YARA Rule Matches</h3>
+                            </div>
+                            <span id="yara-status-badge" class="badge badge-low">YARA Engine: Initializing</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="soc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rule Name</th>
+                                            <th>Namespace</th>
+                                            <th>Tags</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="yara-matches-tbody">
+                                        <tr><td colspan="4" class="empty-state-cell">No YARA signatures matched.</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -569,11 +771,13 @@
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-ai-analyst">
                     <div class="view-header">
-                        <h2 data-i18n="ai_analyst_title">AI Security Analyst Assessment</h2>
-                        <p data-i18n="ai_analyst_subtitle">Grounded interpretation of deterministic static findings with privacy boundary protections.</p>
+                        <div>
+                            <h2 data-i18n="ai_analyst_title">AI Security Analyst Assessment & MITRE ATT&CK</h2>
+                            <p data-i18n="ai_analyst_subtitle">Grounded interpretation of deterministic static findings with MITRE technique alignment.</p>
+                        </div>
                     </div>
 
-                    <div class="soc-card ai-report-card">
+                    <div class="soc-card ai-report-card" style="margin-bottom: 24px;">
                         <div class="card-head">
                             <div class="flex-between" style="width: 100%;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -606,115 +810,566 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- MITRE ATT&CK Technique Mapping -->
+                    <div class="soc-card">
+                        <div class="card-head">
+                            <span class="card-icon">🗺️</span>
+                            <h3 class="card-heading">MITRE ATT&CK Technique Alignment (Heuristic)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="soc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Technique ID</th>
+                                            <th>Technique Name</th>
+                                            <th>Tactical Category</th>
+                                            <th>Correlated Technical Evidence</th>
+                                            <th>Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mitre-attack-tbody">
+                                        <tr><td colspan="5" class="empty-state-cell">No MITRE ATT&CK alignments identified.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- ============================================== -->
-                <!-- 8. LEARNING VIEW                               -->
+                <!-- 8. CYBERSECURITY STUDENT LEARNING LAB          -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-learning">
                     <div class="view-header">
-                        <div class="flex-between">
-                            <div>
-                                <h2 data-i18n="learning_title">Cybersecurity Reverse-Engineering Learning Center</h2>
-                                <p data-i18n="learning_subtitle">Interactive reverse-engineering lessons for cybersecurity students and apprentices.</p>
-                            </div>
-                            <div class="difficulty-toggle-group">
-                                <button class="diff-btn active" id="diff-beginner" onclick="setLearningDifficulty('BEGINNER')">Beginner</button>
-                                <button class="diff-btn" id="diff-advanced" onclick="setLearningDifficulty('ADVANCED')">Advanced</button>
-                            </div>
+                        <div>
+                            <h2 data-i18n="learning_title">Cybersecurity Reverse-Engineering Learning Lab</h2>
+                            <p data-i18n="learning_subtitle">Interactive educational reverse-engineering lessons, concept breakdowns, safe sample practice, and knowledge check quizzes.</p>
+                        </div>
+                        <div class="admin-subtabs">
+                            <button class="diff-btn active" id="student-subtab-concepts" onclick="switchStudentTab('concepts')">📖 Concept Academy</button>
+                            <button class="diff-btn" id="student-subtab-labs" onclick="switchStudentTab('labs')">🧪 Safe Practice Labs</button>
+                            <button class="diff-btn" id="student-subtab-quizzes" onclick="switchStudentTab('quizzes')">🧩 Knowledge Quizzes</button>
+                            <button class="diff-btn" id="student-subtab-anatomy" onclick="switchStudentTab('anatomy')">📐 Visual PE Architecture</button>
                         </div>
                     </div>
 
-                    <div class="grid-2col" style="margin-bottom: 20px;">
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">📚</span>
-                                <h3 class="card-heading" data-i18n="select_concept">Explore a Concept</h3>
-                            </div>
-                            <div class="card-body">
-                                <select id="learning-topic-select" class="dropdown-select" onchange="renderSelectedConcept()">
-                                    <option value="WINDOWS_APIS">Windows APIs & VirtualProtect</option>
-                                    <option value="PE_FORMAT">Portable Executable (PE) Format</option>
-                                    <option value="DOS_HEADER">DOS Header & MZ Stub</option>
-                                    <option value="PE_HEADER">PE NT & Optional Headers</option>
-                                    <option value="SECTIONS">PE Memory Sections & W+X Permissions</option>
-                                    <option value="ENTRY_POINT">Address of Entry Point (EP)</option>
-                                    <option value="IMPORTS">Import Address Table (IAT)</option>
-                                    <option value="STRINGS">Static String Extraction</option>
-                                    <option value="ENTROPY">Shannon Entropy & Randomness</option>
-                                    <option value="PACKING">Software Packing & Unpacking</option>
-                                    <option value="OBFUSCATION">Code & String Obfuscation</option>
-                                    <option value="STATIC_ANALYSIS">Deterministic Static Analysis</option>
-                                    <option value="REVERSE_ENGINEERING">Defensive Reverse Engineering</option>
-                                    <option value="THREAT_INDICATORS">Correlated Threat Indicators</option>
-                                </select>
-                            </div>
+                    <!-- Student Workspace Role Banner -->
+                    <div class="role-workspace-banner banner-student" style="margin-bottom: 20px;">
+                        <div class="role-banner-icon">🎓</div>
+                        <div style="flex: 1;">
+                            <div class="role-banner-title">Cybersecurity Student Learning Lab Active</div>
+                            <div class="role-banner-desc">Interactive educational reverse-engineering lessons, concept breakdowns, and safe synthetic sample practice. Zero live malware execution guarantee.</div>
+                        </div>
+                        <div class="difficulty-toggle-group">
+                            <button class="diff-btn active" id="diff-beginner" onclick="setLearningDifficulty('BEGINNER')">Beginner</button>
+                            <button class="diff-btn" id="diff-advanced" onclick="setLearningDifficulty('ADVANCED')">Advanced</button>
                         </div>
                     </div>
 
-                    <!-- Lesson Container -->
-                    <div class="soc-card" id="lesson-card">
-                        <div class="card-head">
-                            <span class="card-icon">💡</span>
-                            <h3 class="card-heading" id="lesson-title">Concept Breakdown</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="lesson-section">
-                                <h4 class="lesson-subhead" data-i18n="learn_what_is_it">1. What is it?</h4>
-                                <p class="lesson-text" id="lesson-what-is-it">Loading concept definition...</p>
-                            </div>
-
-                            <div class="lesson-section">
-                                <h4 class="lesson-subhead" data-i18n="learn_why_it_matters">2. Why does it matter?</h4>
-                                <p class="lesson-text" id="lesson-why-matters">Loading operational relevance...</p>
-                            </div>
-
-                            <div class="lesson-section">
-                                <h4 class="lesson-subhead" data-i18n="learn_explanation">3. Explanation (<span id="lesson-level-badge">Beginner</span>)</h4>
-                                <p class="lesson-text lesson-explanation-box" id="lesson-explanation-body">Loading explanation...</p>
-                            </div>
-
-                            <div class="lesson-section">
-                                <h4 class="lesson-subhead" data-i18n="learn_does_it_prove_malware">4. Does it prove malicious behavior?</h4>
-                                <div class="disclaimer-callout" id="lesson-proves-malicious">
-                                    No. This feature alone does not prove malicious behavior.
+                    <!-- ============================================== -->
+                    <!-- SUBTAB 1: CONCEPT ACADEMY                      -->
+                    <!-- ============================================== -->
+                    <div id="student-panel-concepts" class="student-subpanel" style="display: block;">
+                        <div class="grid-2col" style="margin-bottom: 20px;">
+                            <div class="soc-card">
+                                <div class="card-head">
+                                    <span class="card-icon">📚</span>
+                                    <h3 class="card-heading" data-i18n="select_concept">Select Reverse-Engineering Concept</h3>
+                                </div>
+                                <div class="card-body">
+                                    <select id="learning-topic-select" class="dropdown-select" onchange="renderSelectedConcept()">
+                                        <option value="PE_FORMAT">1. Portable Executable (PE) Format & RVA</option>
+                                        <option value="DOS_HEADER">2. DOS Header & e_lfanew Stub Pointer</option>
+                                        <option value="PE_HEADER">3. PE NT Headers & Optional Header (ASLR/DEP)</option>
+                                        <option value="SECTIONS">4. PE Memory Sections & W+X Permissions</option>
+                                        <option value="ENTRY_POINT">5. Address of Entry Point (EP) & OEP</option>
+                                        <option value="IMPORTS">6. Import Address Table (IAT) & Dynamic Linking</option>
+                                        <option value="WINDOWS_APIS">7. Windows APIs & VirtualProtect Risk Analysis</option>
+                                        <option value="STRINGS">8. Static String Extraction (ASCII & Unicode)</option>
+                                        <option value="ENTROPY">9. Shannon Entropy & Randomness Density</option>
+                                        <option value="PACKING">10. Software Packing & Dynamic Unpacking</option>
+                                        <option value="OBFUSCATION">11. Code & String Obfuscation Techniques</option>
+                                        <option value="STATIC_ANALYSIS">12. Deterministic Static Analysis Principles</option>
+                                        <option value="REVERSE_ENGINEERING">13. Defensive Reverse Engineering Methodology</option>
+                                        <option value="THREAT_INDICATORS">14. Correlated Threat Indicators & TTPs</option>
+                                    </select>
                                 </div>
                             </div>
 
-                            <div class="lesson-section">
-                                <h4 class="lesson-subhead" data-i18n="learn_what_next">5. What should I learn next?</h4>
-                                <ul class="clean-bullet-list" id="lesson-next-steps">
-                                    <li>Explore related assembly disassembly.</li>
-                                </ul>
+                            <div class="soc-card" style="background: rgba(16, 185, 129, 0.04); border-color: rgba(16, 185, 129, 0.2);">
+                                <div class="card-head">
+                                    <span class="card-icon">💡</span>
+                                    <h3 class="card-heading" style="color: #10b981;">Defensive Static Invariant</h3>
+                                </div>
+                                <div class="card-body" style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                                    <strong>Golden Rule of Static Reverse Engineering:</strong> Individual static indicators (such as imported API names, high entropy, or unusual section names) represent <em>technical capabilities</em>, not proof of malicious intent. Rigorous correlation and evidence grounding are always required.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Lesson Breakdown Card -->
+                        <div class="soc-card" id="lesson-card">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">💡</span>
+                                    <h3 class="card-heading" id="lesson-title">Concept Breakdown</h3>
+                                </div>
+                                <span class="badge badge-low" id="lesson-level-badge">Beginner Level</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="lesson-section">
+                                    <h4 class="lesson-subhead" data-i18n="learn_what_is_it">1. What is it?</h4>
+                                    <p class="lesson-text" id="lesson-what-is-it">Loading concept definition...</p>
+                                </div>
+
+                                <div class="lesson-section">
+                                    <h4 class="lesson-subhead" data-i18n="learn_why_it_matters">2. Why does it matter in Defensive Analysis?</h4>
+                                    <p class="lesson-text" id="lesson-why-matters">Loading operational relevance...</p>
+                                </div>
+
+                                <div class="lesson-section">
+                                    <h4 class="lesson-subhead" data-i18n="learn_explanation">3. In-Depth Technical Explanation</h4>
+                                    <p class="lesson-text lesson-explanation-box" id="lesson-explanation-body">Loading explanation...</p>
+                                </div>
+
+                                <!-- Visual Header Anatomy Box -->
+                                <div class="lesson-section" id="lesson-anatomy-section" style="display: none;">
+                                    <h4 class="lesson-subhead">🔬 Structural Byte Anatomy & Layout</h4>
+                                    <div style="background: var(--bg-darkest, #0b1120); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; overflow-x: auto;">
+                                        <div id="lesson-anatomy-summary" style="font-size: 12px; font-weight: 600; color: var(--accent-blue); margin-bottom: 8px;"></div>
+                                        <table class="soc-table" style="font-size: 11px;">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 70px;">Offset</th>
+                                                    <th style="width: 110px;">Size</th>
+                                                    <th style="width: 140px;">Field Name</th>
+                                                    <th>Description</th>
+                                                    <th style="width: 140px;">Sample Byte Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="lesson-anatomy-tbody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="lesson-section">
+                                    <h4 class="lesson-subhead" data-i18n="learn_does_it_prove_malware">4. Does it prove malicious behavior?</h4>
+                                    <div class="disclaimer-callout" id="lesson-proves-malicious">
+                                        No. This feature alone does not prove malicious behavior.
+                                    </div>
+                                </div>
+
+                                <div class="lesson-section">
+                                    <h4 class="lesson-subhead" data-i18n="learn_what_next">5. What should you learn next?</h4>
+                                    <ul class="clean-bullet-list" id="lesson-next-steps">
+                                        <li>Explore related assembly disassembly and section layout.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- SUBTAB 2: SAFE PRACTICE LABS                   -->
+                    <!-- ============================================== -->
+                    <div id="student-panel-labs" class="student-subpanel" style="display: none;">
+                        <div class="soc-card" style="margin-bottom: 20px; background: rgba(14, 165, 233, 0.05); border-color: rgba(14, 165, 233, 0.25);">
+                            <div class="card-head">
+                                <span class="card-icon">🧪</span>
+                                <h3 class="card-heading" style="color: var(--accent-blue);">Hands-On Safe Practice Lab Suite</h3>
+                            </div>
+                            <div class="card-body" style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                                Practice inspecting real Windows PE structures, Entropy anomalies, Dynamic Link Libraries, and Correlated Indicators. All samples are generated dynamically as <strong>harmless synthetic binaries in memory</strong> with zero execution risk.
+                            </div>
+                        </div>
+
+                        <!-- Practice Samples Grid -->
+                        <div id="student-practice-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                            <!-- Dynamically populated by JS -->
+                        </div>
+
+                        <!-- Active Practice Lab Results Container -->
+                        <div id="student-active-lab-result" style="display: none;" class="soc-card">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🔬</span>
+                                    <h3 class="card-heading" id="lab-active-title">Practice Lab Inspection</h3>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-secondary" onclick="viewLabInFullAnalysis()" style="font-size: 11px; padding: 4px 10px;">📊 Open in Full SOC View</button>
+                                    <button class="btn-secondary" onclick="closeActivePracticeLab()" style="font-size: 11px; padding: 4px 10px;">✖ Close Lab</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="lab-analysis-summary-box" style="margin-bottom: 16px;"></div>
+                                <div id="lab-analysis-metrics-grid" class="grid-4col" style="margin-bottom: 20px;"></div>
+
+                                <!-- Key Findings Tabs -->
+                                <div class="admin-subtabs" style="margin-bottom: 14px;">
+                                    <button class="diff-btn active" id="lab-view-headers" onclick="switchLabResultTab('headers')">PE Headers</button>
+                                    <button class="diff-btn" id="lab-view-sections" onclick="switchLabResultTab('sections')">Sections & Entropy</button>
+                                    <button class="diff-btn" id="lab-view-imports" onclick="switchLabResultTab('imports')">Imports & APIs</button>
+                                    <button class="diff-btn" id="lab-view-strings" onclick="switchLabResultTab('strings')">Extracted Strings</button>
+                                </div>
+
+                                <div id="lab-panel-headers" class="lab-result-subpanel" style="display: block;">
+                                    <table class="soc-table" style="font-size: 12px;">
+                                        <tbody id="lab-headers-tbody"></tbody>
+                                    </table>
+                                </div>
+
+                                <div id="lab-panel-sections" class="lab-result-subpanel" style="display: none;">
+                                    <table class="soc-table" style="font-size: 12px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Section</th>
+                                                <th>Virtual Size</th>
+                                                <th>Raw Size</th>
+                                                <th>Entropy</th>
+                                                <th>Permissions</th>
+                                                <th>Assessment</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lab-sections-tbody"></tbody>
+                                    </table>
+                                </div>
+
+                                <div id="lab-panel-imports" class="lab-result-subpanel" style="display: none;">
+                                    <div id="lab-imports-container"></div>
+                                </div>
+
+                                <div id="lab-panel-strings" class="lab-result-subpanel" style="display: none;">
+                                    <div id="lab-strings-container"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- SUBTAB 3: KNOWLEDGE QUIZZES                    -->
+                    <!-- ============================================== -->
+                    <div id="student-panel-quizzes" class="student-subpanel" style="display: none;">
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🧩</span>
+                                    <h3 class="card-heading">Reverse Engineering Mastery Check</h3>
+                                </div>
+                                <span class="badge badge-low" id="quiz-status-badge">Ready</span>
+                            </div>
+                            <div class="card-body">
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+                                    Test your understanding of PE structures, entropy calculations, Windows API risks, and defensive triage invariants. Answer all questions and submit for instant scoring and technical explanations.
+                                </p>
+
+                                <form id="student-quiz-form" onsubmit="handleQuizSubmit(event)">
+                                    <div id="quiz-questions-container" style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px;">
+                                        <!-- Populated dynamically -->
+                                    </div>
+
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <button type="submit" class="btn-primary" style="padding: 8px 24px; font-weight: 600;">
+                                            📝 Submit Answers & Grade Quiz
+                                        </button>
+                                        <button type="button" class="btn-secondary" onclick="loadQuizQuestions(true)" style="padding: 8px 16px;">
+                                            🔄 Reset Quiz
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Quiz Results Box -->
+                                <div id="quiz-result-score-card" style="display: none; margin-top: 24px; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg);">
+                                    <div class="flex-between" style="margin-bottom: 12px;">
+                                        <h4 style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="quiz-result-heading">Quiz Score</h4>
+                                        <span id="quiz-result-percentage" style="font-size: 20px; font-weight: 800;"></span>
+                                    </div>
+                                    <p id="quiz-result-message" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- SUBTAB 4: VISUAL PE ARCHITECTURE MAP           -->
+                    <!-- ============================================== -->
+                    <div id="student-panel-anatomy" class="student-subpanel" style="display: none;">
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-head">
+                                <span class="card-icon">📐</span>
+                                <h3 class="card-heading">Windows Portable Executable (PE) Structural Map</h3>
+                            </div>
+                            <div class="card-body">
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">
+                                    Understand how a 32-bit/64-bit Windows binary is organized on disk and how the Windows OS PE loader maps relative virtual addresses (RVA) into process memory.
+                                </p>
+
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    <!-- Layer 1: DOS Header -->
+                                    <div style="border: 1px solid #3b82f6; background: rgba(59, 130, 246, 0.08); border-radius: 6px; padding: 14px;">
+                                        <div class="flex-between" style="margin-bottom: 6px;">
+                                            <strong style="color: #60a5fa; font-size: 13px;">1. IMAGE_DOS_HEADER (64 Bytes)</strong>
+                                            <code style="font-size: 11px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">Offset 0x0000</code>
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
+                                            Begins with magic signature <code>'MZ'</code> (0x5A4D). Offset <code>0x3C (e_lfanew)</code> points to the start of the PE NT Headers.
+                                        </div>
+                                    </div>
+
+                                    <!-- Layer 2: DOS Stub -->
+                                    <div style="border: 1px dashed var(--border-color); background: rgba(255, 255, 255, 0.02); border-radius: 6px; padding: 12px;">
+                                        <div class="flex-between" style="margin-bottom: 6px;">
+                                            <strong style="color: var(--text-secondary); font-size: 13px;">2. MS-DOS 2.0 Stub Program</strong>
+                                            <code style="font-size: 11px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">Variable Size (~64 Bytes)</code>
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-muted);">
+                                            Legacy 16-bit real-mode program printing <em>"This program cannot be run in DOS mode."</em>
+                                        </div>
+                                    </div>
+
+                                    <!-- Layer 3: PE NT Headers -->
+                                    <div style="border: 1px solid #10b981; background: rgba(16, 185, 129, 0.08); border-radius: 6px; padding: 14px;">
+                                        <div class="flex-between" style="margin-bottom: 6px;">
+                                            <strong style="color: #34d399; font-size: 13px;">3. IMAGE_NT_HEADERS (Signature + COFF Header + Optional Header)</strong>
+                                            <code style="font-size: 11px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">Offset = e_lfanew</code>
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+                                            Contains <code>'PE\0\0'</code> signature, CPU architecture (x86/x64), number of sections, compile timestamp, <code>AddressOfEntryPoint</code>, <code>ImageBase</code>, and <code>DataDirectory</code> (Imports, Exports, Resources, Relocations).
+                                        </div>
+                                    </div>
+
+                                    <!-- Layer 4: Section Headers Table -->
+                                    <div style="border: 1px solid #8b5cf6; background: rgba(139, 92, 246, 0.08); border-radius: 6px; padding: 14px;">
+                                        <div class="flex-between" style="margin-bottom: 6px;">
+                                            <strong style="color: #a78bfa; font-size: 13px;">4. IMAGE_SECTION_HEADER Table (40 Bytes per Section)</strong>
+                                            <code style="font-size: 11px; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">Directly follows Optional Header</code>
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">
+                                            Array of 40-byte descriptors defining memory section names, VirtualAddress (RVA), VirtualSize, SizeOfRawData, and Memory Access Characteristics (Read, Write, Execute).
+                                        </div>
+                                    </div>
+
+                                    <!-- Layer 5: Mapped Memory Sections -->
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 4px;">
+                                        <div style="border: 1px solid #06b6d4; background: rgba(6, 182, 212, 0.08); border-radius: 6px; padding: 10px;">
+                                            <strong style="color: #22d3ee; font-size: 12px;">.text Section</strong>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Executable CPU machine code (Execute + Read).</div>
+                                        </div>
+                                        <div style="border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.08); border-radius: 6px; padding: 10px;">
+                                            <strong style="color: #fbbf24; font-size: 12px;">.rdata / .idata</strong>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Read-only constants, string literals, and IAT descriptors.</div>
+                                        </div>
+                                        <div style="border: 1px solid #ec4899; background: rgba(236, 72, 153, 0.08); border-radius: 6px; padding: 10px;">
+                                            <strong style="color: #f472b6; font-size: 12px;">.data Section</strong>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Read/Write global variables and memory buffers.</div>
+                                        </div>
+                                        <div style="border: 1px solid #6366f1; background: rgba(99, 102, 241, 0.08); border-radius: 6px; padding: 10px;">
+                                            <strong style="color: #818cf8; font-size: 12px;">.rsrc Section</strong>
+                                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">Application icons, dialog templates, version manifests.</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 <!-- ============================================== -->
-                <!-- 9. ADMIN & SOC AUDIT MANAGEMENT VIEW          -->
+                <!-- 9. ADMIN & SOC CONTROL CENTER VIEW             -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-admin">
                     <div class="view-header">
                         <div>
-                            <h2 class="view-title" data-i18n="admin_title">Administration & Security Audit Center</h2>
-                            <p class="view-subtitle" data-i18n="admin_subtitle">Administrator control for roles, credentials, and immutable SOC audit logs.</p>
+                            <h2 class="view-title" data-i18n="admin_title">Administrator Control Center & Security Operations</h2>
+                            <p class="view-subtitle" data-i18n="admin_subtitle">SOC platform oversight, user role provisioning, RBAC permissions matrix, system health, and immutable audit logs.</p>
                         </div>
                         <div class="admin-subtabs">
-                            <button class="diff-btn active" id="admin-subtab-users" onclick="switchAdminTab('users')">👥 Users</button>
-                            <button class="diff-btn" id="admin-subtab-audit" onclick="switchAdminTab('audit')">🛡️ Security Audit Logs</button>
+                            <button class="diff-btn active" id="admin-subtab-overview" onclick="switchAdminTab('overview')">📊 SOC Overview</button>
+                            <button class="diff-btn" id="admin-subtab-users" onclick="switchAdminTab('users')">👥 User Management</button>
+                            <button class="diff-btn" id="admin-subtab-rbac" onclick="switchAdminTab('rbac')">🛡️ RBAC & Permissions</button>
+                            <button class="diff-btn" id="admin-subtab-audit" onclick="switchAdminTab('audit')">📜 Audit Trail & SIEM</button>
+                            <button class="diff-btn" id="admin-subtab-system" onclick="switchAdminTab('system')">⚙️ System & Quarantine</button>
                         </div>
                     </div>
 
-                    <!-- Admin Subpanel 1: Users -->
-                    <div id="admin-panel-users">
+                    <!-- Role Workspace Notice Banner -->
+                    <div class="role-workspace-banner banner-admin">
+                        <div class="role-banner-icon">🛡️</div>
+                        <div style="flex: 1;">
+                            <div class="role-banner-title">Administrator Control Center Active</div>
+                            <div class="role-banner-desc">Full platform administrative authority: manage credentials, configure RBAC permissions, audit SOC events, and monitor sandbox quarantine health.</div>
+                        </div>
+                        <button class="btn-secondary" onclick="loadAdminOverview()" style="font-size: 11px; padding: 4px 10px;">🔄 Sync Status</button>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- Subpanel 1: SOC Overview                   -->
+                    <!-- ========================================== -->
+                    <div id="admin-panel-overview">
+                        <!-- Hero Metrics Grid -->
+                        <div class="metrics-grid" style="margin-bottom: 20px;">
+                            <div class="metric-card">
+                                <div class="metric-label">Total Platform Users</div>
+                                <div class="metric-value" id="admin-overview-users-total">0</div>
+                                <div class="metric-sub" id="admin-overview-users-breakdown">0 Admins • 0 Analysts • 0 Students</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Analyzed Samples & Threats</div>
+                                <div class="metric-value" id="admin-overview-samples-total" style="color: var(--accent-blue);">0</div>
+                                <div class="metric-sub" id="admin-overview-indicators-total">0 Correlated Indicators</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Security Audit Records</div>
+                                <div class="metric-value" id="admin-overview-logs-total" style="color: var(--sev-low);">0</div>
+                                <div class="metric-sub" id="admin-overview-alerts-total">0 Lockouts & Violations</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">Platform Security Health</div>
+                                <div class="metric-value" id="admin-overview-health" style="color: var(--sev-low); font-size: 20px;">OPTIMAL</div>
+                                <div class="metric-sub">Zero-Execution Sandbox Enforced</div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions & Recent Platform Activity Grid -->
+                        <div class="dashboard-grid" style="grid-template-columns: 1fr 1.5fr; gap: 20px; margin-bottom: 20px;">
+                            <!-- Quick Admin Actions -->
+                            <div class="soc-card">
+                                <div class="card-head">
+                                    <span class="card-icon">⚡</span>
+                                    <h3 class="card-heading">Administrative Operations</h3>
+                                </div>
+                                <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <button class="btn-primary" onclick="switchAdminTab('users'); toggleNewUserForm(true);" style="justify-content: flex-start; gap: 8px;">
+                                        <span>➕</span> Provision New User Account
+                                    </button>
+                                    <button class="btn-secondary" onclick="switchAdminTab('rbac')" style="justify-content: flex-start; gap: 8px;">
+                                        <span>🛡️</span> Inspect RBAC Permissions Matrix
+                                    </button>
+                                    <button class="btn-secondary" onclick="switchAdminTab('audit')" style="justify-content: flex-start; gap: 8px;">
+                                        <span>📜</span> Stream Real-Time SOC Audit Logs
+                                    </button>
+                                    <button class="btn-secondary" onclick="exportAuditLogsCsv()" style="justify-content: flex-start; gap: 8px;">
+                                        <span>📥</span> Export Audit Trail (CSV)
+                                    </button>
+                                    <button class="btn-secondary" onclick="exportAuditLogsJson()" style="justify-content: flex-start; gap: 8px;">
+                                        <span>📦</span> Export Audit Trail (SIEM JSON)
+                                    </button>
+                                    <button class="btn-secondary" onclick="switchAdminTab('system')" style="justify-content: flex-start; gap: 8px;">
+                                        <span>⚙️</span> Engine Health & Quarantine Storage
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Recent Users Overview -->
+                            <div class="soc-card">
+                                <div class="card-head" style="justify-content: space-between;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">👥</span>
+                                        <h3 class="card-heading">Recently Provisioned Users</h3>
+                                    </div>
+                                    <button class="btn-secondary" onclick="switchAdminTab('users')" style="font-size: 11px; padding: 3px 8px;">Manage All Users →</button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="soc-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Username</th>
+                                                    <th>Role</th>
+                                                    <th>Status</th>
+                                                    <th>Joined</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="admin-recent-users-tbody">
+                                                <tr><td colspan="4" class="empty-state-cell">Loading recent users...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- Subpanel 2: User Management & Provisioning -->
+                    <!-- ========================================== -->
+                    <div id="admin-panel-users" style="display: none;">
+                        <!-- User Provisioning Form (Toggleable) -->
+                        <div class="soc-card" id="admin-create-user-card" style="display: none; margin-bottom: 20px; border-color: var(--accent-blue);">
+                            <div class="card-head" style="justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">➕</span>
+                                    <h3 class="card-heading">Provision New User Account</h3>
+                                </div>
+                                <button class="btn-secondary" onclick="toggleNewUserForm(false)" style="font-size: 11px; padding: 2px 8px;">✕ Cancel</button>
+                            </div>
+                            <div class="card-body">
+                                <form id="admin-create-user-form" onsubmit="handleAdminCreateUser(event)">
+                                    <div id="admin-create-user-err" class="auth-error-box" style="display: none; margin-bottom: 12px;"></div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                                        <div class="form-group">
+                                            <label class="form-label" for="admin-new-username">Username</label>
+                                            <input type="text" id="admin-new-username" class="form-control" placeholder="e.g. analyst_hanna" required minlength="3">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="admin-new-email">Email Address</label>
+                                            <input type="email" id="admin-new-email" class="form-control" placeholder="hanna@defensive.et" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="admin-new-password">Initial Password</label>
+                                            <input type="password" id="admin-new-password" class="form-control" placeholder="Minimum 8 characters" required minlength="8">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="admin-new-role">Assigned Role</label>
+                                            <select id="admin-new-role" class="form-control">
+                                                <option value="STUDENT">STUDENT (Apprentice Lab & Safe Samples)</option>
+                                                <option value="ANALYST" selected>ANALYST (SOC Binary Analysis & Intake)</option>
+                                                <option value="ADMIN">ADMIN (Full Control Center & User Admin)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                        <button type="button" class="btn-secondary" onclick="toggleNewUserForm(false)">Cancel</button>
+                                        <button type="submit" class="btn-primary">Provision User Account</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Users Filter & Search Bar -->
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                                    <input type="text" id="admin-users-search" class="form-control" style="width: 220px;" placeholder="Search username / email..." onkeyup="filterUsersTable()">
+                                    <select id="admin-users-filter-role" class="dropdown-select" style="width: auto;" onchange="filterUsersTable()">
+                                        <option value="">All Roles</option>
+                                        <option value="ADMIN">Administrators</option>
+                                        <option value="ANALYST">Analysts</option>
+                                        <option value="STUDENT">Students</option>
+                                    </select>
+                                    <select id="admin-users-filter-status" class="dropdown-select" style="width: auto;" onchange="filterUsersTable()">
+                                        <option value="">All Statuses</option>
+                                        <option value="ACTIVE">Active Accounts</option>
+                                        <option value="INACTIVE">Deactivated Accounts</option>
+                                        <option value="LOCKED">Locked Out Accounts</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-secondary" onclick="loadUsersList()">🔄 Refresh</button>
+                                    <button class="btn-primary" onclick="toggleNewUserForm(true)">➕ Provision User</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Users Table -->
                         <div class="soc-card">
                             <div class="card-head" style="justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="card-icon">👥</span>
-                                    <h3 class="card-heading" data-i18n="registered_users_table">Registered Platform Users</h3>
+                                    <h3 class="card-heading">Platform Identity & Access List</h3>
                                 </div>
-                                <button class="btn-primary" onclick="loadUsersList()">🔄 <span data-i18n="btn_refresh_users">Refresh Users</span></button>
+                                <span id="admin-users-count-badge" style="font-size: 11px; color: var(--text-muted);">0 users</span>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -722,16 +1377,17 @@
                                         <thead>
                                             <tr>
                                                 <th>ID</th>
-                                                <th>Username</th>
+                                                <th>User Identity</th>
                                                 <th>Email</th>
-                                                <th>Role</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
+                                                <th>Assigned Role</th>
+                                                <th>Account Status</th>
+                                                <th>Capabilities</th>
+                                                <th style="text-align: right;">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody id="admin-users-tbody">
                                             <tr>
-                                                <td colspan="6" class="empty-state-cell">Loading users...</td>
+                                                <td colspan="7" class="empty-state-cell">Loading users...</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -740,19 +1396,84 @@
                         </div>
                     </div>
 
-                    <!-- Admin Subpanel 2: Security Audit Logs -->
+                    <!-- ========================================== -->
+                    <!-- Subpanel 3: RBAC & Permissions Matrix      -->
+                    <!-- ========================================== -->
+                    <div id="admin-panel-rbac" style="display: none;">
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-head">
+                                <span class="card-icon">🛡️</span>
+                                <h3 class="card-heading">Role-Based Access Control (RBAC) Architecture</h3>
+                            </div>
+                            <div class="card-body">
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6;">
+                                    ETHIO-AI Defender enforces strict principle-of-least-privilege role separation across three primary operational profiles. Every API request and frontend feature is verified against cryptographically signed tokens and granular capability flags.
+                                </p>
+                                
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                                    <div style="background: var(--bg-card-alt); border-left: 3px solid #f59e0b; padding: 14px; border-radius: var(--radius-sm);">
+                                        <div style="font-weight: 700; color: #f59e0b; margin-bottom: 4px;">👑 Security Administrator (ADMIN)</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Full authority over platform configuration, user account provisioning, role modifications, immutable SOC audit logs, SIEM export, and sandbox engine parameters.</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border-left: 3px solid #06b6d4; padding: 14px; border-radius: var(--radius-sm);">
+                                        <div style="font-weight: 700; color: #06b6d4; margin-bottom: 4px;">🔬 Forensic Analyst (ANALYST)</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Binary intake submission, static PE reverse-engineering, Shannon entropy analysis, Win32 API extraction, YARA matching, threat scoring, and report generation.</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border-left: 3px solid #10b981; padding: 14px; border-radius: var(--radius-sm);">
+                                        <div style="font-weight: 700; color: #10b981; margin-bottom: 4px;">🎓 Cybersecurity Apprentice (STUDENT)</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Access to the Reverse-Engineering Learning Center, safe synthetic demo binaries, educational concept breakdowns, and self-generated report review.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Interactive RBAC Matrix Table -->
+                        <div class="soc-card">
+                            <div class="card-head" style="justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🗺️</span>
+                                    <h3 class="card-heading">Granular Capabilities & Permissions Matrix</h3>
+                                </div>
+                                <button class="btn-secondary" onclick="loadRbacMatrix()" style="font-size: 11px; padding: 2px 8px;">🔄 Reload Matrix</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="soc-table" id="admin-rbac-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Permission Capability</th>
+                                                <th>Operational Description</th>
+                                                <th style="text-align: center; color: #f59e0b;">ADMIN</th>
+                                                <th style="text-align: center; color: #06b6d4;">ANALYST</th>
+                                                <th style="text-align: center; color: #10b981;">STUDENT</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-rbac-tbody">
+                                            <tr>
+                                                <td colspan="5" class="empty-state-cell">Loading RBAC Matrix...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================== -->
+                    <!-- Subpanel 4: Security Audit Logs & SIEM     -->
+                    <!-- ========================================== -->
                     <div id="admin-panel-audit" style="display: none;">
                         <!-- Audit Stats Cards -->
                         <div class="metrics-grid" style="margin-bottom: 20px;">
                             <div class="metric-card">
                                 <div class="metric-label">Total Logged Events</div>
                                 <div class="metric-value" id="audit-stat-total">0</div>
-                                <div class="metric-sub">Structured JSONL records</div>
+                                <div class="metric-sub">Structured immutable records</div>
                             </div>
                             <div class="metric-card">
                                 <div class="metric-label">Successful Operations</div>
                                 <div class="metric-value" id="audit-stat-success" style="color: var(--sev-low);">0</div>
-                                <div class="metric-sub">Verified & authorized</div>
+                                <div class="metric-sub">Authorized operations</div>
                             </div>
                             <div class="metric-card">
                                 <div class="metric-label">Failures & Lockouts</div>
@@ -762,7 +1483,7 @@
                             <div class="metric-card">
                                 <div class="metric-label">Security Violations</div>
                                 <div class="metric-value" id="audit-stat-denied" style="color: var(--sev-crit);">0</div>
-                                <div class="metric-sub">Auth & object violations</div>
+                                <div class="metric-sub">RBAC & object violations</div>
                             </div>
                         </div>
 
@@ -772,15 +1493,15 @@
                                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                                     <select id="audit-filter-event" class="dropdown-select" style="width: auto;" onchange="loadAuditLogs()">
                                         <option value="">All Event Types</option>
-                                        <option value="login">Login</option>
-                                        <option value="logout">Logout</option>
-                                        <option value="upload">Upload</option>
+                                        <option value="login">Login Events</option>
+                                        <option value="logout">Logout Events</option>
+                                        <option value="upload">Binary Uploads</option>
                                         <option value="analysis start">Analysis Start</option>
                                         <option value="analysis completion">Analysis Completion</option>
                                         <option value="analysis failure">Analysis Failure</option>
                                         <option value="report generation">Report Generation</option>
-                                        <option value="administrative changes">Administrative Changes</option>
-                                        <option value="security alert">Security Alert</option>
+                                        <option value="administrative changes">Admin Modifications</option>
+                                        <option value="security alert">Security Alerts & Lockouts</option>
                                     </select>
                                     <select id="audit-filter-result" class="dropdown-select" style="width: auto;" onchange="loadAuditLogs()">
                                         <option value="">All Outcomes</option>
@@ -790,20 +1511,24 @@
                                         <option value="DENIED">DENIED</option>
                                         <option value="ERROR">ERROR</option>
                                     </select>
-                                    <input type="text" id="audit-search-input" class="form-control" style="width: 220px;" placeholder="Search audit logs..." onkeyup="handleAuditSearch(event)">
+                                    <input type="text" id="audit-search-input" class="form-control" style="width: 220px;" placeholder="Search user, IP, action..." onkeyup="handleAuditSearch(event)">
                                 </div>
                                 <div style="display: flex; gap: 8px;">
                                     <button class="btn-secondary" onclick="loadAuditLogs()">🔄 Refresh</button>
-                                    <button class="btn-primary" onclick="exportAuditLogsCsv()" style="display: inline-flex; align-items: center;">📥 Export CSV</button>
+                                    <button class="btn-secondary" onclick="exportAuditLogsJson()">📦 Export JSON</button>
+                                    <button class="btn-primary" onclick="exportAuditLogsCsv()">📥 Export CSV</button>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Audit Log Table -->
                         <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">📜</span>
-                                <h3 class="card-heading">Security Audit Trail (Immutable & Sanitized)</h3>
+                            <div class="card-head" style="justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">📜</span>
+                                    <h3 class="card-heading">Immutable Security Audit Trail</h3>
+                                </div>
+                                <span style="font-size: 11px; color: var(--text-muted);">SOC 2 / ISO 27001 Compliant</span>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -811,16 +1536,17 @@
                                         <thead>
                                             <tr>
                                                 <th>Timestamp (UTC)</th>
-                                                <th>Event</th>
-                                                <th>Result</th>
-                                                <th>User / IP</th>
+                                                <th>Event Type</th>
+                                                <th>Outcome</th>
+                                                <th>Actor / IP</th>
                                                 <th>Analysis ID</th>
                                                 <th>Details</th>
+                                                <th style="text-align: right;">Forensics</th>
                                             </tr>
                                         </thead>
                                         <tbody id="audit-logs-tbody">
                                             <tr>
-                                                <td colspan="6" class="empty-state-cell">Loading audit logs...</td>
+                                                <td colspan="7" class="empty-state-cell">Loading audit trail...</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -828,7 +1554,197 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- ========================================== -->
+                    <!-- Subpanel 5: System Health & Quarantine     -->
+                    <!-- ========================================== -->
+                    <div id="admin-panel-system" style="display: none;">
+                        <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                            <!-- Defensive Engines Status -->
+                            <div class="soc-card">
+                                <div class="card-head">
+                                    <span class="card-icon">🛡️</span>
+                                    <h3 class="card-heading">Static Analysis Engine Pipeline</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">Static PE Header Parser</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">COFF headers, sections, exports & machine architecture</div>
+                                            </div>
+                                            <span class="badge badge-low">ACTIVE</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">Shannon Entropy Calculator</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">Byte-level packing, obfuscation & encryption detection</div>
+                                            </div>
+                                            <span class="badge badge-low">ACTIVE</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">Win32 API Risk Correlator</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">Import categorizer and suspicious capability matcher</div>
+                                            </div>
+                                            <span class="badge badge-low">ACTIVE</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">YARA Pattern Scanner</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">Defensive signatures for packed sections & droppers</div>
+                                            </div>
+                                            <span class="badge badge-low">ACTIVE</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">Grounded AI Security Analyst</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">Dual-language threat synthesis & MITRE ATT&CK alignment</div>
+                                            </div>
+                                            <span class="badge badge-low">ACTIVE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Storage & Quarantine Health -->
+                            <div class="soc-card">
+                                <div class="card-head" style="justify-content: space-between;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">🗄️</span>
+                                        <h3 class="card-heading">Sandbox Quarantine & Storage Health</h3>
+                                    </div>
+                                    <button class="btn-secondary" onclick="loadSystemStatus()" style="font-size: 11px; padding: 2px 8px;">🔄 Refresh</button>
+                                </div>
+                                <div class="card-body">
+                                    <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">Zero-Execution Quarantine Sandbox</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">Strict static isolation storage</div>
+                                            </div>
+                                            <span class="badge badge-low" id="sys-status-sandbox">ENFORCED</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">Quarantined Binaries on Disk</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);" id="sys-status-quarantine-sub">0 files</div>
+                                            </div>
+                                            <span style="font-weight: 700; color: var(--accent-blue);" id="sys-status-quarantine-bytes">0 KB</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">Relational Database Size</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);" id="sys-status-db-sub">SQLite storage/defender.db</div>
+                                            </div>
+                                            <span style="font-weight: 700; color: var(--sev-low);" id="sys-status-db-bytes">0 KB</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-card-alt); border-radius: var(--radius-sm);">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 13px;">Cryptographic Credential Digest</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">PBKDF2-HMAC-SHA256 (100k rounds, 16-byte salt)</div>
+                                            </div>
+                                            <span class="badge badge-low">ENFORCED</span>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                        <button class="btn-secondary" onclick="purgeQuarantineCache()" style="font-size: 12px;">
+                                            🧹 Purge Temp Quarantine Cache
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </section>
+
+                <!-- ============================================== -->
+                <!-- ADMIN MODALS                                   -->
+                <!-- ============================================== -->
+
+                <!-- Modal 1: User Role Modifier Modal -->
+                <div id="admin-role-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeAdminRoleModal();">
+                    <div class="soc-card" style="max-width: 480px; width: 90%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+                        <div class="card-head" style="justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">🎭</span>
+                                <h3 class="card-heading">Modify User Role & Privileges</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closeAdminRoleModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body">
+                            <form id="admin-role-form" onsubmit="handleAdminUpdateRoleSubmit(event)">
+                                <input type="hidden" id="admin-role-user-id">
+                                <div style="margin-bottom: 14px;">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Modifying privileges for:</div>
+                                    <div style="font-size: 16px; font-weight: 700; color: var(--accent-blue);" id="admin-role-username-display">user</div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 16px;">
+                                    <label class="form-label" for="admin-role-select">Select New Role</label>
+                                    <select id="admin-role-select" class="form-control">
+                                        <option value="STUDENT">STUDENT (Apprentice Lab & Safe Samples)</option>
+                                        <option value="ANALYST">ANALYST (Forensic PE Analysis & Reporting)</option>
+                                        <option value="ADMIN">ADMIN (Full Security Control Center)</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                    <button type="button" class="btn-secondary" onclick="closeAdminRoleModal()">Cancel</button>
+                                    <button type="submit" class="btn-primary">Apply Role Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal 2: Reset Password Modal -->
+                <div id="admin-reset-pass-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeAdminResetPassModal();">
+                    <div class="soc-card" style="max-width: 480px; width: 90%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+                        <div class="card-head" style="justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">🔑</span>
+                                <h3 class="card-heading">Admin Password Reset</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closeAdminResetPassModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body">
+                            <form id="admin-reset-pass-form" onsubmit="handleAdminResetPassSubmit(event)">
+                                <input type="hidden" id="admin-reset-user-id">
+                                <div style="margin-bottom: 14px;">
+                                    <div style="font-size: 12px; color: var(--text-muted);">Resetting password for:</div>
+                                    <div style="font-size: 16px; font-weight: 700; color: var(--accent-blue);" id="admin-reset-username-display">user</div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 16px;">
+                                    <label class="form-label" for="admin-reset-new-pass">New Secure Password</label>
+                                    <input type="password" id="admin-reset-new-pass" class="form-control" placeholder="Minimum 8 characters" required minlength="8">
+                                </div>
+                                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                    <button type="button" class="btn-secondary" onclick="closeAdminResetPassModal()">Cancel</button>
+                                    <button type="submit" class="btn-primary">Update Password</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal 3: Detailed Audit Record Inspection Modal -->
+                <div id="admin-audit-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeAuditDetailModal();">
+                    <div class="soc-card" style="max-width: 650px; width: 90%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+                        <div class="card-head" style="justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">🔍</span>
+                                <h3 class="card-heading">SOC Audit Event Forensic Details</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closeAuditDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body">
+                            <pre id="admin-audit-modal-content" style="background: var(--bg-app); padding: 16px; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 12px; color: var(--accent-blue); overflow-x: auto; max-height: 400px;"></pre>
+                        </div>
+                        <div style="padding: 12px 18px; display: flex; justify-content: flex-end; border-top: 1px solid var(--border-subtle);">
+                            <button class="btn-secondary" onclick="closeAuditDetailModal()">Close</button>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- ============================================== -->
                 <!-- 9. UNAUTHORIZED / 403 VIEW                     -->

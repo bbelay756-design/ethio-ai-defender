@@ -988,6 +988,20 @@ body {
     font-size: 12px;
 }
 
+/* Admin Subtabs & Navigation */
+.admin-subtabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.admin-subtabs .diff-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 /* Modal Backdrop & Card */
 .modal-backdrop {
     position: fixed;

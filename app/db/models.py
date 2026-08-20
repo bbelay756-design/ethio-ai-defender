@@ -39,16 +39,23 @@ class SampleModel(Base):
     file_type = Column(String(32), nullable=False, default="EXE")
     architecture = Column(String(32), nullable=False, default="x64")
     md5 = Column(String(32), nullable=False)
+    sha1 = Column(String(40), nullable=True)
     sha256 = Column(String(64), index=True, nullable=False)
-    status = Column(String(32), nullable=False, default="ANALYZED")
+    status = Column(String(32), nullable=False, default="COMPLETED")
+    risk_score = Column(Integer, nullable=True, default=0)
+    classification = Column(String(32), nullable=True, default="LOW")
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    completed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=True)
 
     # Relationships with cascading deletes
     sections = relationship("SectionModel", back_populates="sample", cascade="all, delete-orphan")
     imports = relationship("ImportModel", back_populates="sample", cascade="all, delete-orphan")
     strings = relationship("StringModel", back_populates="sample", cascade="all, delete-orphan")
     indicators = relationship("IndicatorModel", back_populates="sample", cascade="all, delete-orphan")
+    iocs = relationship("IOCModel", back_populates="sample", cascade="all, delete-orphan")
+    yara_matches = relationship("YaraMatchModel", back_populates="sample", cascade="all, delete-orphan")
+    risk_factors = relationship("RiskFactorModel", back_populates="sample", cascade="all, delete-orphan")
     analysis_results = relationship("AnalysisResultModel", back_populates="sample", uselist=False, cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -123,6 +130,60 @@ class IndicatorModel(Base):
 
     # Relationship
     sample = relationship("SampleModel", back_populates="indicators")
+
+
+class IOCModel(Base):
+    """
+    Indicators of Compromise (IOCs) extracted from the sample (hashes, IPs, domains, URLs, etc.).
+    """
+    __tablename__ = "iocs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
+    type = Column(String(32), nullable=False, index=True)  # HASH, IP, DOMAIN, URL, EMAIL, FILE_PATH, REGISTRY_KEY
+    value = Column(Text, nullable=False)
+    source = Column(String(64), nullable=False, default="STATIC_ANALYSIS")
+    confidence = Column(Float, nullable=False, default=1.0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationship
+    sample = relationship("SampleModel", back_populates="iocs")
+
+
+class YaraMatchModel(Base):
+    """
+    YARA rule detection matches recorded for the sample.
+    """
+    __tablename__ = "yara_matches"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
+    rule_name = Column(String(128), nullable=False, index=True)
+    namespace = Column(String(64), nullable=False, default="default")
+    tags = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationship
+    sample = relationship("SampleModel", back_populates="yara_matches")
+
+
+class RiskFactorModel(Base):
+    """
+    Individual evidence-backed scoring factors explaining why the heuristic risk score was generated.
+    """
+    __tablename__ = "risk_factors"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    category = Column(String(64), nullable=False)
+    severity = Column(String(32), nullable=False)
+    weight = Column(Float, nullable=False)
+    evidence = Column(Text, nullable=True)
+
+    # Relationship
+    sample = relationship("SampleModel", back_populates="risk_factors")
 
 
 class AnalysisResultModel(Base):

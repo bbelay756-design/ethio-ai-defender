@@ -5,7 +5,9 @@ Encapsulates CRUD operations, atomic multi-table transactions, and query optimiz
 """
 
 from typing import List, Optional
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
 from app.core.logger import logger
 from app.db.models import (
     SampleModel,
@@ -13,6 +15,9 @@ from app.db.models import (
     ImportModel,
     StringModel,
     IndicatorModel,
+    IOCModel,
+    YaraMatchModel,
+    RiskFactorModel,
     AnalysisResultModel,
 )
 from app.db.schemas import (
@@ -21,6 +26,9 @@ from app.db.schemas import (
     ImportCreate,
     StringCreate,
     IndicatorCreate,
+    IOCCreate,
+    YaraMatchCreate,
+    RiskFactorCreate,
     AnalysisResultCreate,
 )
 
@@ -40,9 +48,13 @@ class SampleRepository:
             file_type=sample_in.file_type,
             architecture=sample_in.architecture,
             md5=sample_in.md5,
+            sha1=sample_in.sha1,
             sha256=sample_in.sha256,
             status=sample_in.status,
+            risk_score=sample_in.risk_score or 0,
+            classification=sample_in.classification or "LOW",
             user_id=sample_in.user_id,
+            completed_at=sample_in.completed_at or datetime.now(timezone.utc),
         )
         db.add(db_sample)
         db.commit()
@@ -59,6 +71,9 @@ class SampleRepository:
                 joinedload(SampleModel.imports),
                 joinedload(SampleModel.strings),
                 joinedload(SampleModel.indicators),
+                joinedload(SampleModel.iocs),
+                joinedload(SampleModel.yara_matches),
+                joinedload(SampleModel.risk_factors),
                 joinedload(SampleModel.analysis_results),
             )
             .filter(SampleModel.id == sample_id)
@@ -75,6 +90,9 @@ class SampleRepository:
                 joinedload(SampleModel.imports),
                 joinedload(SampleModel.strings),
                 joinedload(SampleModel.indicators),
+                joinedload(SampleModel.iocs),
+                joinedload(SampleModel.yara_matches),
+                joinedload(SampleModel.risk_factors),
                 joinedload(SampleModel.analysis_results),
             )
             .filter(SampleModel.analysis_id == analysis_id)
@@ -92,15 +110,71 @@ class SampleRepository:
         )
 
     @staticmethod
-    def list_samples(db: Session, skip: int = 0, limit: int = 50) -> List[SampleModel]:
-        """Lists samples ordered by creation date descending."""
+    def list_samples(
+        db: Session,
+        skip: int = 0,
+        limit: int = 50,
+        search: Optional[str] = None,
+        status_filter: Optional[str] = None,
+        risk_filter: Optional[str] = None,
+        user_id: Optional[int] = None,
+    ) -> List[SampleModel]:
+        """Lists samples ordered by creation date descending with optional filtering."""
+        query = db.query(SampleModel)
+
+        if user_id is not None:
+            query = query.filter(SampleModel.user_id == user_id)
+
+        if search:
+            search_term = f"%{search.strip()}%"
+            query = query.filter(
+                or_(
+                    SampleModel.filename.ilike(search_term),
+                    SampleModel.sha256.ilike(search_term),
+                    SampleModel.analysis_id.ilike(search_term),
+                    SampleModel.md5.ilike(search_term),
+                )
+            )
+
+        if status_filter:
+            query = query.filter(SampleModel.status == status_filter.upper())
+
+        if risk_filter:
+            query = query.filter(SampleModel.classification == risk_filter.upper())
+
         return (
-            db.query(SampleModel)
-            .order_by(SampleModel.created_at.desc())
+            query.order_by(SampleModel.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
+
+    @staticmethod
+    def count_samples(
+        db: Session,
+        search: Optional[str] = None,
+        status_filter: Optional[str] = None,
+        risk_filter: Optional[str] = None,
+        user_id: Optional[int] = None,
+    ) -> int:
+        """Counts total samples matching filter."""
+        query = db.query(SampleModel)
+        if user_id is not None:
+            query = query.filter(SampleModel.user_id == user_id)
+        if search:
+            search_term = f"%{search.strip()}%"
+            query = query.filter(
+                or_(
+                    SampleModel.filename.ilike(search_term),
+                    SampleModel.sha256.ilike(search_term),
+                    SampleModel.analysis_id.ilike(search_term),
+                )
+            )
+        if status_filter:
+            query = query.filter(SampleModel.status == status_filter.upper())
+        if risk_filter:
+            query = query.filter(SampleModel.classification == risk_filter.upper())
+        return query.count()
 
     @staticmethod
     def save_full_analysis_transaction(
@@ -110,6 +184,9 @@ class SampleRepository:
         imports_in: List[ImportCreate] = None,
         strings_in: List[StringCreate] = None,
         indicators_in: List[IndicatorCreate] = None,
+        iocs_in: List[IOCCreate] = None,
+        yara_matches_in: List[YaraMatchCreate] = None,
+        risk_factors_in: List[RiskFactorCreate] = None,
         result_in: Optional[AnalysisResultCreate] = None,
     ) -> SampleModel:
         """
@@ -120,6 +197,9 @@ class SampleRepository:
         imports_in = imports_in or []
         strings_in = strings_in or []
         indicators_in = indicators_in or []
+        iocs_in = iocs_in or []
+        yara_matches_in = yara_matches_in or []
+        risk_factors_in = risk_factors_in or []
 
         try:
             # 1. Create parent Sample
@@ -130,9 +210,13 @@ class SampleRepository:
                 file_type=sample_in.file_type,
                 architecture=sample_in.architecture,
                 md5=sample_in.md5,
+                sha1=sample_in.sha1,
                 sha256=sample_in.sha256,
                 status=sample_in.status,
+                risk_score=sample_in.risk_score or 0,
+                classification=sample_in.classification or "LOW",
                 user_id=sample_in.user_id,
+                completed_at=sample_in.completed_at or datetime.now(timezone.utc),
             )
             db.add(db_sample)
             db.flush()  # Populates db_sample.id for foreign key references
@@ -182,7 +266,41 @@ class SampleRepository:
                 )
                 db.add(db_ind)
 
-            # 6. Add Analysis Result
+            # 6. Add IOCs
+            for ioc in iocs_in:
+                db_ioc = IOCModel(
+                    sample_id=db_sample.id,
+                    type=ioc.type,
+                    value=ioc.value,
+                    source=ioc.source,
+                    confidence=ioc.confidence,
+                )
+                db.add(db_ioc)
+
+            # 7. Add YARA matches
+            for ym in yara_matches_in:
+                db_ym = YaraMatchModel(
+                    sample_id=db_sample.id,
+                    rule_name=ym.rule_name,
+                    namespace=ym.namespace,
+                    tags=ym.tags,
+                    description=ym.description,
+                )
+                db.add(db_ym)
+
+            # 8. Add Risk Factors
+            for rf in risk_factors_in:
+                db_rf = RiskFactorModel(
+                    sample_id=db_sample.id,
+                    name=rf.name,
+                    category=rf.category,
+                    severity=rf.severity,
+                    weight=rf.weight,
+                    evidence=rf.evidence,
+                )
+                db.add(db_rf)
+
+            # 9. Add Analysis Result
             if result_in:
                 db_res = AnalysisResultModel(
                     sample_id=db_sample.id,

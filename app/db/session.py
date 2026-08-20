@@ -69,12 +69,20 @@ def init_db() -> None:
     # Lightweight migration check for newly added columns in SQLite
     if settings.DATABASE_URL.startswith("sqlite"):
         with engine.connect() as conn:
-            # Check if user_id column exists on samples table
             cursor = conn.connection.cursor()
             cursor.execute("PRAGMA table_info(samples)")
             cols = [row[1] for row in cursor.fetchall()]
-            if cols and "user_id" not in cols:
-                cursor.execute("ALTER TABLE samples ADD COLUMN user_id INTEGER REFERENCES users(id)")
+            if cols:
+                if "user_id" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN user_id INTEGER REFERENCES users(id)")
+                if "sha1" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN sha1 VARCHAR(40)")
+                if "risk_score" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN risk_score INTEGER DEFAULT 0")
+                if "classification" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN classification VARCHAR(32) DEFAULT 'LOW'")
+                if "completed_at" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN completed_at DATETIME")
                 conn.connection.commit()
             cursor.close()
 
