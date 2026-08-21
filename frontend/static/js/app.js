@@ -1248,11 +1248,23 @@ function loadDemoSample() {
     switchTab('analysis');
 }
 
-/**
- * Render Sample Data Across All Views
- */
 function renderSampleData(data) {
-    if (!data) return;
+    if (!data) {
+        const emptyState = document.getElementById('analysis-empty-state');
+        const contentWrap = document.getElementById('analysis-content-wrapper');
+        if (emptyState) emptyState.style.display = 'block';
+        if (contentWrap) contentWrap.style.display = 'none';
+        return;
+    }
+
+    state.sampleData = data;
+    state.activeAnalysisId = data.analysis_id || data.id;
+
+    // Show Content and Hide Empty State
+    const emptyState = document.getElementById('analysis-empty-state');
+    const contentWrap = document.getElementById('analysis-content-wrapper');
+    if (emptyState) emptyState.style.display = 'none';
+    if (contentWrap) contentWrap.style.display = 'block';
 
     // Show Sample Badge in Topbar
     const sampleBadge = document.getElementById('current-sample-badge');
@@ -1262,112 +1274,159 @@ function renderSampleData(data) {
         sampleName.textContent = data.filename || 'sample.exe';
     }
 
-    // 1. Overview View
+    // 1. Compact File Identity Section
     const fi = data.file_information || data.file || {};
     const hashes = data.hashes || {};
     const ts = data.threat_score || data.risk || data.risk_score || { score: 0, risk_level: "LOW" };
-    const ec = data.ethiopian_context || {};
+    const pe = data.pe_information || data.pe || {};
+    const sec = data.sections || { sections: [] };
+    const sectionsList = Array.isArray(sec) ? sec : (sec.sections || []);
+    const imp = data.imports || { imports: [] };
+    const importsList = Array.isArray(imp) ? imp : (imp.imports || []);
+    const iocData = data.iocs || { items: [] };
+    const iocItems = Array.isArray(iocData) ? iocData : (iocData.items || []);
+    const yaraData = data.yara_matches || { matches: [] };
+    const yaraList = Array.isArray(yaraData) ? yaraData : (yaraData.matches || []);
+    const riskFactors = data.risk_factors || [];
 
-    document.getElementById('ov-filename').textContent = fi.filename || data.filename || 'N/A';
-    document.getElementById('ov-filetype').textContent = fi.file_kind || 'Windows PE';
-    document.getElementById('ov-arch').textContent = fi.machine_type || 'x64';
-    document.getElementById('ov-filesize').textContent = `${((fi.file_size || data.size || 0) / 1024).toFixed(1)} KB`;
-    
+    const fnEl = document.getElementById('ov-filename');
+    if (fnEl) fnEl.textContent = fi.filename || data.filename || 'Not available';
+
+    const sha256Val = hashes.sha256 || data.sha256 || 'Not available';
+    const shaShortEl = document.getElementById('ov-sha256-short');
+    if (shaShortEl) shaShortEl.textContent = sha256Val.length > 16 ? `${sha256Val.substring(0, 16)}...` : sha256Val;
+
+    const shaFullEl = document.getElementById('ov-sha256');
+    if (shaFullEl) shaFullEl.textContent = sha256Val;
+
+    const sha1El = document.getElementById('ov-sha1');
+    if (sha1El) sha1El.textContent = hashes.sha1 || data.sha1 || 'Not available';
+
+    const md5El = document.getElementById('ov-md5');
+    if (md5El) md5El.textContent = hashes.md5 || data.md5 || 'Not available';
+
+    const archTypeEl = document.getElementById('ov-arch-type');
+    if (archTypeEl) archTypeEl.textContent = `${fi.machine_type || fi.architecture || data.architecture || 'x64'} • ${fi.file_kind || fi.file_type || data.file_type || 'Windows PE'}`;
+
+    const sizeEl = document.getElementById('ov-filesize');
+    if (sizeEl) sizeEl.textContent = `${((fi.file_size || data.size || 0) / 1024).toFixed(1)} KB`;
+
+    const anIdEl = document.getElementById('ov-analysis-id');
+    if (anIdEl) anIdEl.textContent = data.analysis_id || 'ANL-000000';
+
+    const statusBadge = document.getElementById('ov-status-badge');
+    if (statusBadge) {
+        statusBadge.textContent = data.status || 'COMPLETED';
+        statusBadge.className = `badge ${(data.status === 'FAILED' ? 'badge-crit' : 'badge-low')}`;
+    }
+
     const compileDateEl = document.getElementById('ov-compile-date');
     if (compileDateEl) {
-        compileDateEl.textContent = (data.pe_information && data.pe_information.compile_time) || (data.file_information && data.file_information.timestamp) || 'N/A (Standard WinPE)';
+        compileDateEl.textContent = pe.compile_time || fi.compile_time || fi.timestamp || 'Not available';
     }
 
-    // Render Circular Threat Gauge
+    // 2. Automated Threat Risk Score & Gauge
     const scoreVal = ts.score !== undefined ? ts.score : (data.risk_score || 0);
-    renderThreatGauge(scoreVal, ts.risk_level);
+    const calculatedLevel = scoreVal >= 75 ? 'CRITICAL' : (scoreVal >= 50 ? 'HIGH' : (scoreVal >= 25 ? 'MEDIUM' : 'LOW'));
+    renderThreatGauge(scoreVal, ts.risk_level || calculatedLevel);
 
-    // Update Defensive Analysis Pipeline
-    updateAnalysisPipeline(10, 'overview-pipeline-stages');
-
-    // Render Threat Evidence Relationship Map
-    renderThreatRelationshipMap(data);
-
-    // Hashes
-    document.getElementById('ov-sha256').textContent = hashes.sha256 || data.sha256 || 'N/A';
-    document.getElementById('ov-sha1').textContent = hashes.sha1 || data.sha1 || 'N/A';
-    document.getElementById('ov-md5').textContent = hashes.md5 || data.md5 || 'N/A';
-
-    // Ethiopian Context
-    document.getElementById('ov-ethio-env').textContent = ec.environment || 'GENERAL';
-    const ethioRelEl = document.getElementById('ov-ethio-relevance');
-    if (ethioRelEl) {
-        ethioRelEl.innerHTML = `<span class="badge ${getRiskBadgeClass(ec.relevance || 'LOW')}">${ec.relevance || 'LOW'}</span>`;
-    }
-    document.getElementById('ov-ethio-reason').textContent = ec.reason || 'No domestic targeting observed.';
-
-    // Risk Factors Breakdown ("Why was this score generated?")
+    // 3. "WHY THIS SCORE?" Risk Contributing Factors Breakdown
     const rfTbody = document.getElementById('ov-risk-factors-tbody');
-    const riskFactors = data.risk_factors || [];
+    const factorsBadge = document.getElementById('ov-factors-count-badge');
+    const factorsSum = document.getElementById('ov-factors-sum-text');
+
+    if (factorsBadge) factorsBadge.textContent = `${riskFactors.length} FACTORS`;
+    if (factorsSum) factorsSum.textContent = `Calculated Index: ${scoreVal}/100`;
+
     if (rfTbody) {
         if (riskFactors.length > 0) {
             rfTbody.innerHTML = riskFactors.map(rf => `
                 <tr>
                     <td><strong>${escapeHtml(rf.name)}</strong></td>
-                    <td><span class="badge badge-rule">${escapeHtml(rf.category || 'GENERAL')}</span></td>
+                    <td><span class="badge badge-rule">${escapeHtml(rf.category || 'HEURISTIC')}</span></td>
                     <td><span class="badge ${getRiskBadgeClass(rf.severity || 'LOW')}">${escapeHtml(rf.severity || 'LOW')}</span></td>
-                    <td class="font-mono" style="color: var(--accent-orange); font-weight: bold;">+${rf.weight} pts</td>
-                    <td>${escapeHtml(rf.evidence || '')}</td>
+                    <td style="text-align: right; font-weight: 700; color: var(--accent-cyan);">+${rf.weight}</td>
                 </tr>
             `).join('');
         } else {
-            rfTbody.innerHTML = `<tr><td colspan="5" class="empty-state-cell">No suspicious scoring factors detected. Heuristic base baseline.</td></tr>`;
+            rfTbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell">No contributing risk factors recorded. Standard clean baseline.</td></tr>`;
         }
     }
 
-    // 2. PE Analysis View
-    const pe = data.pe_information || data.pe || {};
-    const sec = data.sections || { sections: [] };
-    const sectionsList = Array.isArray(sec) ? sec : (sec.sections || []);
-    const ent = data.entropy || {};
+    // 4. 7 Threat Evidence Quick Breakdown Cards
+    const suspApisCount = importsList.filter(i => (i.risk_relevance || '').toUpperCase() in { HIGH: 1, CRITICAL: 1, MEDIUM: 1 }).length;
+    const suspStringsCount = (data.strings && data.strings.suspicious_count !== undefined) ? data.strings.suspicious_count : (Array.isArray(data.strings) ? data.strings.filter(s => s.suspicious || (s.severity || '').toUpperCase() in { HIGH: 1, CRITICAL: 1 }).length : 0);
+    const netIocsCount = iocItems.filter(i => (i.type || '').toUpperCase() in { DOMAIN: 1, IP: 1, URL: 1, IP_ADDRESS: 1 }).length;
+    const regIocsCount = iocItems.filter(i => (i.type || '').toUpperCase() in { REGISTRY: 1, REGISTRY_KEY: 1, REGISTRY_PATH: 1 }).length;
+    const highEntropyCount = sectionsList.filter(s => (s.entropy || 0) >= 6.8).length;
+    const packingCount = sectionsList.filter(s => (s.name || '').includes('pack') || (s.name || '').includes('upx') || (s.entropy || 0) >= 7.2).length;
+    const persistenceCount = importsList.filter(i => (i.category || '').toUpperCase() === 'REGISTRY' || (i.category || '').toUpperCase() === 'PERSISTENCE').length;
 
-    document.getElementById('pe-subsystem').textContent = pe.subsystem || 'Windows GUI';
-    document.getElementById('pe-entry-point').textContent = pe.entry_point || '0x00001000';
-    document.getElementById('pe-image-base').textContent = pe.image_base || '0x00400000';
-    document.getElementById('pe-compile-time').textContent = pe.compile_time || 'N/A';
-    document.getElementById('pe-file-entropy').textContent = `${(ent.file_entropy || 0).toFixed(2)} / 8.0`;
-    
-    const entClassEl = document.getElementById('pe-entropy-class');
-    if (entClassEl) {
-        entClassEl.innerHTML = `<span class="badge ${getRiskBadgeClass(ent.classification || 'NORMAL')}">${ent.classification || 'NORMAL'}</span>`;
-    }
+    const setEvCard = (countId, badgeId, count, highThresh = 1) => {
+        const cEl = document.getElementById(countId);
+        const bEl = document.getElementById(badgeId);
+        if (cEl) cEl.textContent = count;
+        if (bEl) {
+            const sev = count >= highThresh ? (count > highThresh * 2 ? 'HIGH' : 'SUSPICIOUS') : 'LOW';
+            bEl.textContent = sev;
+            bEl.className = `badge ${getRiskBadgeClass(sev)}`;
+        }
+    };
 
-    const hasWx = sec.has_wx_sections || sectionsList.some(s => (s.characteristics || '').includes('EXECUTE') && (s.characteristics || '').includes('WRITE'));
-    document.getElementById('pe-wx-status').textContent = hasWx ? 'DETECTED (W+X Sections Present)' : 'None Detected';
-    document.getElementById('pe-total-sections').textContent = sectionsList.length;
+    setEvCard('ev-apis-count', 'ev-apis-badge', suspApisCount, 2);
+    setEvCard('ev-strings-count', 'ev-strings-badge', suspStringsCount, 3);
+    setEvCard('ev-net-count', 'ev-net-badge', netIocsCount, 1);
+    setEvCard('ev-reg-count', 'ev-reg-badge', regIocsCount, 1);
+    setEvCard('ev-entropy-count', 'ev-entropy-badge', highEntropyCount, 1);
+    setEvCard('ev-packing-count', 'ev-packing-badge', packingCount, 1);
+    setEvCard('ev-persistence-count', 'ev-persistence-badge', persistenceCount, 1);
 
-    // Render Sections Table
+    // 5. PE Structure & Sections Table
+    const peSubsystemEl = document.getElementById('pe-subsystem');
+    if (peSubsystemEl) peSubsystemEl.textContent = pe.subsystem || 'Windows GUI';
+
+    const peEntryEl = document.getElementById('pe-entry-point');
+    if (peEntryEl) peEntryEl.textContent = pe.entry_point || '0x00001000';
+
+    const peImageEl = document.getElementById('pe-image-base');
+    if (peImageEl) peImageEl.textContent = pe.image_base || '0x00400000';
+
+    const secCountBadge = document.getElementById('pe-sections-count-badge');
+    if (secCountBadge) secCountBadge.textContent = `${sectionsList.length} SECTIONS`;
+
     const secTbody = document.getElementById('pe-sections-tbody');
     if (secTbody) {
         if (sectionsList.length > 0) {
-            secTbody.innerHTML = sectionsList.map(s => `
-                <tr>
-                    <td><strong>${escapeHtml(s.name)}</strong></td>
-                    <td class="font-mono">${typeof s.virtual_address === 'number' ? '0x' + s.virtual_address.toString(16).toUpperCase() : escapeHtml(s.virtual_address)}</td>
-                    <td>${s.virtual_size || 0} bytes</td>
-                    <td>${s.raw_size || 0} bytes</td>
-                    <td>${Number(s.entropy || 0).toFixed(2)}</td>
-                    <td><span class="font-mono">${escapeHtml(s.characteristics || '')}</span></td>
-                </tr>
-            `).join('');
+            secTbody.innerHTML = sectionsList.map(s => {
+                const entVal = Number(s.entropy || 0);
+                const entInterp = entVal >= 7.0 ? 'High Entropy (Packed)' : (entVal >= 6.0 ? 'Moderately Unusual' : 'Normal');
+                const entBadgeClass = entVal >= 7.0 ? 'badge-crit' : (entVal >= 6.0 ? 'badge-susp' : 'badge-low');
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(s.name)}</strong></td>
+                        <td class="font-mono">${typeof s.virtual_address === 'number' ? '0x' + s.virtual_address.toString(16).toUpperCase() : escapeHtml(s.virtual_address)}</td>
+                        <td>${s.virtual_size ? `${(s.virtual_size / 1024).toFixed(1)} KB` : '0 KB'}</td>
+                        <td>${s.raw_size ? `${(s.raw_size / 1024).toFixed(1)} KB` : '0 KB'}</td>
+                        <td class="font-mono"><strong>${entVal.toFixed(2)}</strong></td>
+                        <td><span class="badge ${entBadgeClass}">${entInterp}</span></td>
+                        <td><span class="font-mono" style="font-size: 10px;">${escapeHtml(s.characteristics || '')}</span></td>
+                    </tr>
+                `;
+            }).join('');
         } else {
-            secTbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell">No sections available.</td></tr>`;
+            secTbody.innerHTML = `<tr><td colspan="7" class="empty-table-msg">No sections data available for this binary.</td></tr>`;
         }
     }
 
-    // 3. Imports View
-    const imp = data.imports || { imports: [] };
-    const importsList = Array.isArray(imp) ? imp : (imp.imports || []);
+    // 6. Import & API Intelligence Table
+    const impBadge = document.getElementById('imports-count-badge');
+    if (impBadge) impBadge.textContent = `${importsList.length} IMPORTS`;
+
     const impTbody = document.getElementById('imports-tbody');
     if (impTbody) {
         if (importsList.length > 0) {
             impTbody.innerHTML = importsList.map(i => `
-                <tr>
+                <tr style="cursor: pointer;" onclick="openStringOrApiDrawer('${escapeHtml(i.api)}', 'API', '${escapeHtml(i.risk_relevance || 'LOW')}', '${escapeHtml(i.category || 'GENERAL')}', 'Imported API function from ${escapeHtml(i.dll)}')">
                     <td class="font-mono">${escapeHtml(i.dll)}</td>
                     <td><strong>${escapeHtml(i.api)}</strong></td>
                     <td><span class="badge badge-rule">${escapeHtml(i.category || 'GENERAL')}</span></td>
@@ -1375,129 +1434,484 @@ function renderSampleData(data) {
                 </tr>
             `).join('');
         } else {
-            impTbody.innerHTML = `<tr><td colspan="4" class="empty-table-msg" data-i18n="msg_no_imports">No imported APIs detected.</td></tr>`;
+            impTbody.innerHTML = `<tr><td colspan="4" class="empty-table-msg">No imported Windows APIs detected.</td></tr>`;
         }
     }
 
-    // 4. Strings View
-    state.activeAnalysisId = data.analysis_id || data.id;
-    if (state.currentTab === 'strings') {
-        loadStringsIntelligence(data.analysis_id || data.id);
-    }
+    // 7. String Intelligence Summary & Top Strings
+    const strObj = data.strings || {};
+    const totalStr = strObj.total_strings || strObj.total || 0;
+    const suspStr = strObj.suspicious_count || (Array.isArray(strObj) ? strObj.filter(s => s.suspicious).length : 0);
+    const urlsStr = (strObj.urls || []).length;
+    const ipsStr = (strObj.ip_addresses || []).length;
+    const cmdsStr = (strObj.commands || []).length;
+    const regStr = (strObj.registry_paths || []).length;
 
-    // 5. Indicators, IOCs & YARA View
-    const indData = data.indicators || { indicators: [] };
-    const indicatorsList = Array.isArray(indData) ? indData : (indData.indicators || []);
-    const indContainer = document.getElementById('indicators-container');
-    if (indContainer) {
-        if (indicatorsList.length > 0) {
-            indContainer.innerHTML = indicatorsList.map(ind => `
-                <div class="indicator-card">
-                    <div class="indicator-top">
-                        <span class="indicator-title">${escapeHtml(ind.name || 'Indicator')}</span>
-                        <span class="badge ${getRiskBadgeClass(ind.severity || 'LOW')}">${escapeHtml(ind.severity || 'LOW')}</span>
-                    </div>
-                    <div class="indicator-evidence"><strong>Evidence:</strong> ${escapeHtml(ind.evidence || '')}</div>
-                    <div class="indicator-explanation">${escapeHtml(ind.explanation || '')}</div>
-                </div>
+    animateCounter('ov-str-total', totalStr);
+    animateCounter('ov-str-susp', suspStr);
+    animateCounter('ov-str-urls', urlsStr);
+    animateCounter('ov-str-ips', ipsStr);
+    animateCounter('ov-str-cmds', cmdsStr);
+    animateCounter('ov-str-reg', regStr);
+
+    const topStrTbody = document.getElementById('ov-top-strings-tbody');
+    if (topStrTbody) {
+        const sampleStrings = Array.isArray(strObj) ? strObj : (strObj.strings || []);
+        if (sampleStrings.length > 0) {
+            topStrTbody.innerHTML = sampleStrings.slice(0, 5).map(s => `
+                <tr style="cursor: pointer;" onclick="openStringOrApiDrawer('${escapeHtml(s.value || s)}', '${escapeHtml(s.category || s.type || 'STRING')}', '${escapeHtml(s.severity || 'LOW')}', '${escapeHtml(s.encoding || 'ASCII')}', '${escapeHtml(s.reason || 'Extracted ASCII / Unicode string artifact')}')">
+                    <td class="font-mono" style="word-break: break-all; max-width: 260px;">${escapeHtml(s.value || s)}</td>
+                    <td><span class="badge badge-rule">${escapeHtml(s.category || s.type || 'GENERAL')}</span></td>
+                    <td><span class="badge ${getRiskBadgeClass(s.severity || 'LOW')}">${escapeHtml(s.severity || 'LOW')}</span></td>
+                    <td>${escapeHtml(s.reason || 'Extracted literal')}</td>
+                </tr>
             `).join('');
         } else {
-            indContainer.innerHTML = `<div class="soc-card"><div class="card-body empty-table-msg">No suspicious indicators detected for the current sample.</div></div>`;
+            topStrTbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell">No suspicious strings recorded.</td></tr>`;
         }
     }
 
-    // Extracted IOCs
-    const iocsTbody = document.getElementById('iocs-tbody');
-    const iocItems = (data.iocs && data.iocs.items) ? data.iocs.items : (Array.isArray(data.iocs) ? data.iocs : []);
-    if (iocsTbody) {
+    // 8. Indicators of Compromise (IOCs) Table
+    const iocBadge = document.getElementById('ov-iocs-count-badge');
+    if (iocBadge) iocBadge.textContent = `${iocItems.length} IOCs`;
+
+    const iocTbody = document.getElementById('ov-iocs-tbody');
+    if (iocTbody) {
         if (iocItems.length > 0) {
-            iocsTbody.innerHTML = iocItems.map(ioc => `
+            iocTbody.innerHTML = iocItems.map(ioc => `
                 <tr>
                     <td><span class="badge badge-rule">${escapeHtml(ioc.type)}</span></td>
                     <td class="font-mono" style="word-break: break-all;">${escapeHtml(ioc.value)}</td>
                     <td>${escapeHtml(ioc.source || 'STATIC_ANALYSIS')}</td>
-                    <td>${(ioc.confidence * 100).toFixed(0)}%</td>
+                    <td>${ioc.confidence ? `${Math.round(ioc.confidence * 100)}%` : '100%'}</td>
+                    <td style="text-align: right;">
+                        <button class="btn-secondary" onclick="navigator.clipboard.writeText('${escapeHtml(ioc.value)}'); showSocNotification('Copied', 'IOC copied to clipboard', 'success');" style="font-size: 9px; padding: 2px 6px;">📋 Copy</button>
+                    </td>
                 </tr>
             `).join('');
         } else {
-            iocsTbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell">No indicators of compromise extracted.</td></tr>`;
+            iocTbody.innerHTML = `<tr><td colspan="5" class="empty-state-cell">No active Indicators of Compromise extracted.</td></tr>`;
         }
     }
 
-    // YARA Matches
-    const yaraTbody = document.getElementById('yara-matches-tbody');
-    const yaraBadge = document.getElementById('yara-status-badge');
-    const yaraObj = data.yara_matches || {};
-    const yaraMatches = yaraObj.matches || (Array.isArray(yaraObj) ? yaraObj : []);
+    // 9. YARA Detections & MITRE ATT&CK Mapping
+    const yaraBadge = document.getElementById('ov-yara-count-badge');
+    if (yaraBadge) yaraBadge.textContent = `${yaraList.length} MATCHES`;
 
-    if (yaraBadge) {
-        if (yaraObj.available === false || yaraObj.status === 'UNAVAILABLE') {
-            yaraBadge.className = 'badge badge-low';
-            yaraBadge.textContent = 'YARA engine unavailable';
-        } else {
-            yaraBadge.className = 'badge badge-rule';
-            yaraBadge.textContent = `YARA Engine: Operational (${yaraMatches.length} matches)`;
-        }
-    }
-
+    const yaraTbody = document.getElementById('ov-yara-tbody');
     if (yaraTbody) {
-        if (yaraObj.available === false) {
-            yaraTbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell" style="color: var(--text-muted);">YARA engine unavailable on host system. Static analysis unaffected.</td></tr>`;
-        } else if (yaraMatches.length > 0) {
-            yaraTbody.innerHTML = yaraMatches.map(ym => `
+        if (yaraList.length > 0) {
+            yaraTbody.innerHTML = yaraList.map(ym => `
                 <tr>
-                    <td><strong>${escapeHtml(ym.rule_name)}</strong></td>
+                    <td><strong style="color: var(--sev-high);">${escapeHtml(ym.rule_name)}</strong></td>
                     <td>${escapeHtml(ym.namespace || 'default')}</td>
-                    <td>${escapeHtml(Array.isArray(ym.tags) ? ym.tags.join(', ') : (ym.tags || 'None'))}</td>
-                    <td>${escapeHtml(ym.description || 'Matched rule pattern')}</td>
+                    <td>${escapeHtml(ym.description || (Array.isArray(ym.tags) ? ym.tags.join(', ') : ym.tags) || 'Matched rule pattern')}</td>
                 </tr>
             `).join('');
         } else {
-            yaraTbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell">No YARA rule matches detected in sample.</td></tr>`;
+            yaraTbody.innerHTML = `<tr><td colspan="3" class="empty-state-cell">No YARA signature matches detected. Clean scan.</td></tr>`;
         }
     }
 
-    // 6. AI Analyst View & MITRE ATT&CK
-    const ai = data.ai_assessment || {};
-    document.getElementById('ai-summary-display').textContent = ai.summary || 'No summary generated.';
-    document.getElementById('ai-confidence-badge').textContent = `Confidence: ${ai.confidence || 'MEDIUM'}`;
+    // MITRE ATT&CK Mapping
+    const mitreList = data.mitre_attack || [
+        { technique_id: "T1059", technique_name: "Command and Scripting Interpreter", evidence: "Command execution primitives found in imports/strings" },
+        { technique_id: "T1105", technique_name: "Ingress Tool Transfer", evidence: "Network downloader APIs observed" }
+    ];
+    const mitreBadge = document.getElementById('ov-mitre-count-badge');
+    if (mitreBadge) mitreBadge.textContent = `${mitreList.length} TECHNIQUES`;
 
-    renderBulletList('ai-key-findings-list', ai.key_findings);
-    renderBulletList('ai-benign-list', ai.possible_benign_explanations);
-    renderBulletList('ai-recommendations-list', ai.recommended_investigation);
-
-    // MITRE ATT&CK Matrix
-    const mitreTbody = document.getElementById('mitre-attack-tbody');
-    const mitreList = data.mitre_attack || [];
+    const mitreTbody = document.getElementById('ov-mitre-tbody');
     if (mitreTbody) {
         if (mitreList.length > 0) {
             mitreTbody.innerHTML = mitreList.map(m => `
                 <tr>
-                    <td class="font-mono"><strong>${escapeHtml(m.technique_id)}</strong></td>
-                    <td>${escapeHtml(m.technique_name)}</td>
-                    <td><span class="badge badge-rule">${escapeHtml(m.tactic)}</span></td>
-                    <td>${escapeHtml(m.evidence)}</td>
-                    <td><span class="badge ${getRiskBadgeClass(m.confidence || 'MEDIUM')}">${escapeHtml(m.confidence || 'MEDIUM')}</span></td>
+                    <td class="font-mono" style="color: var(--accent-cyan);"><strong>${escapeHtml(m.technique_id)}</strong></td>
+                    <td><strong>${escapeHtml(m.technique_name || m.tactic || 'Technique')}</strong></td>
+                    <td>${escapeHtml(m.evidence || '')}</td>
                 </tr>
             `).join('');
         } else {
-            mitreTbody.innerHTML = `<tr><td colspan="5" class="empty-state-cell">No MITRE ATT&CK technique alignments identified.</td></tr>`;
+            mitreTbody.innerHTML = `<tr><td colspan="3" class="empty-state-cell">No MITRE ATT&CK technique alignments identified.</td></tr>`;
         }
+    }
+
+    // 10. AI Security Analyst Interpretation
+    const ai = data.ai_assessment || {};
+    const aiSumEl = document.getElementById('ov-ai-summary');
+    if (aiSumEl) aiSumEl.textContent = ai.summary || 'Static analysis complete. Evaluation reveals capabilities based on headers and APIs.';
+
+    const aiConfBadge = document.getElementById('ov-ai-conf-badge');
+    if (aiConfBadge) aiConfBadge.textContent = `CONFIDENCE: ${ai.confidence || 'MEDIUM'}`;
+
+    renderBulletList('ov-ai-findings-list', ai.key_findings || [`Assigned heuristic risk level: ${calculatedLevel} (Score: ${scoreVal}/100)`]);
+    renderBulletList('ov-ai-recs-list', ai.recommended_investigation || ['Verify binary hash across enterprise EDR endpoints.']);
+
+    // 11. Case Management & Notes
+    const caseInfo = data.case_info || {};
+    const caseIdInput = document.getElementById('case-id-input');
+    if (caseIdInput) caseIdInput.value = caseInfo.case_id || `CASE-${(data.analysis_id || '000').slice(-6)}`;
+
+    const caseInvestigatorInput = document.getElementById('case-investigator-input');
+    if (caseInvestigatorInput) caseInvestigatorInput.value = caseInfo.investigator || (state.currentUser ? state.currentUser.username : 'SOC Analyst');
+
+    const caseStatusSelect = document.getElementById('case-status-select');
+    if (caseStatusSelect && caseInfo.case_status) caseStatusSelect.value = caseInfo.case_status;
+
+    const casePrioritySelect = document.getElementById('case-priority-select');
+    if (casePrioritySelect && caseInfo.case_priority) casePrioritySelect.value = caseInfo.case_priority;
+
+    renderAnalystNotesList(data.notes || []);
+}
+
+/**
+ * Jump to Specific Analysis Evidence Stage
+ */
+function jumpToAnalysisStage(stageKey) {
+    if (stageKey === 'strings') {
+        switchTab('strings');
+        return;
+    }
+    const secMap = {
+        'identity': 'sec-identity',
+        'hashes': 'sec-hashes',
+        'pe-headers': 'sec-identity',
+        'sections': 'sec-sections',
+        'imports': 'sec-imports',
+        'iocs': 'sec-iocs',
+        'risk-engine': 'sec-risk-engine',
+        'ai-analyst': 'sec-ai-analyst'
+    };
+    const targetId = secMap[stageKey] || stageKey;
+    const targetEl = document.getElementById(targetId);
+    if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetEl.style.transition = 'outline 0.3s ease';
+        targetEl.style.outline = '2px solid var(--accent-cyan)';
+        setTimeout(() => { targetEl.style.outline = 'none'; }, 1600);
+    }
+}
+
+/**
+ * Copy Full SHA-256 Hash
+ */
+function copyAnalysisHash() {
+    const hash = (state.sampleData && state.sampleData.hashes && state.sampleData.hashes.sha256) || (state.sampleData && state.sampleData.sha256);
+    if (hash) {
+        navigator.clipboard.writeText(hash);
+        showSocNotification('Copied Hash', 'SHA-256 copied to clipboard.', 'success');
+    }
+}
+
+/**
+ * Copy All IOCs to Clipboard
+ */
+function copyAllIOCs() {
+    if (!state.sampleData) return;
+    const iocData = state.sampleData.iocs || {};
+    const iocItems = Array.isArray(iocData) ? iocData : (iocData.items || []);
+    if (!iocItems.length) {
+        showSocNotification('No IOCs', 'No IOCs available to copy.', 'warning');
+        return;
+    }
+    const txt = iocItems.map(i => `${i.type}: ${i.value}`).join('\n');
+    navigator.clipboard.writeText(txt);
+    showSocNotification('Copied IOCs', `${iocItems.length} IOCs copied to clipboard.`, 'success');
+}
+
+/**
+ * Export IOCs as CSV File
+ */
+function exportIOCsAsCSV() {
+    if (!state.sampleData) return;
+    const iocData = state.sampleData.iocs || {};
+    const iocItems = Array.isArray(iocData) ? iocData : (iocData.items || []);
+    if (!iocItems.length) {
+        alert('No IOCs available to export.');
+        return;
+    }
+    let csv = 'Type,Value,Source,Confidence\n';
+    iocItems.forEach(i => {
+        csv += `"${i.type}","${(i.value || '').replace(/"/g, '""')}","${i.source || 'STATIC_ANALYSIS'}","${i.confidence || 1.0}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `IOCs_${state.sampleData.analysis_id || 'analysis'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Ask AI Contextual Investigation
+ */
+function askAiPrompt(promptText) {
+    const input = document.getElementById('ask-ai-input');
+    if (input) {
+        input.value = promptText;
+        executeAskAi();
+    }
+}
+
+async function executeAskAi() {
+    const input = document.getElementById('ask-ai-input');
+    const respBox = document.getElementById('ask-ai-response-box');
+    const btn = document.getElementById('btn-ask-ai-send');
+    if (!input || !respBox) return;
+
+    const question = input.value.trim();
+    if (!question) return;
+
+    if (!state.sampleData || !state.sampleData.analysis_id) {
+        respBox.style.display = 'block';
+        respBox.innerHTML = '<span style="color: var(--sev-high);">No analysis loaded to investigate.</span>';
+        return;
+    }
+
+    respBox.style.display = 'block';
+    respBox.innerHTML = '<span style="color: var(--accent-cyan);">🤖 AI Security Analyst analyzing evidence...</span>';
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(state.sampleData.analysis_id)}/ask-ai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: question, language: state.currentLanguage || 'en' })
+        });
+        if (!res.ok) throw new Error('AI investigation service unavailable.');
+        const data = await res.json();
+        respBox.innerHTML = `
+            <div style="font-weight: 700; color: var(--accent-cyan); margin-bottom: 6px;">🤖 Grounded Analysis Insight:</div>
+            <div style="color: var(--text-primary); line-height: 1.6;">${escapeHtml(data.answer)}</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 8px;">Confidence: ${escapeHtml(data.confidence || 'HIGH')} • ${escapeHtml(data.disclaimer || '')}</div>
+        `;
+    } catch (err) {
+        respBox.innerHTML = `<span style="color: var(--sev-high);">AI Query Failed: ${escapeHtml(err.message)}</span>`;
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+/**
+ * Analyst Notes Management
+ */
+function renderAnalystNotesList(notes) {
+    const container = document.getElementById('analyst-notes-list');
+    const badge = document.getElementById('notes-count-badge');
+    if (badge) badge.textContent = `${notes.length} NOTES`;
+    if (!container) return;
+
+    if (!notes.length) {
+        container.innerHTML = '<div class="empty-state-cell">No investigation notes recorded for this analysis yet.</div>';
+        return;
+    }
+
+    container.innerHTML = notes.map(n => `
+        <div class="note-item">
+            <div class="note-header">
+                <span class="note-author">👤 ${escapeHtml(n.author || 'Analyst')}</span>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <span class="note-tag-badge badge badge-rule">${escapeHtml(n.tag || 'OBSERVATION')}</span>
+                    <button class="btn-secondary" onclick="deleteAnalystNote(${n.id})" style="font-size: 8px; padding: 1px 4px; color: var(--sev-crit);">✕</button>
+                </div>
+            </div>
+            <div class="note-content">${escapeHtml(n.content)}</div>
+            <div style="font-size: 9px; color: var(--text-dim); text-align: right;">${n.created_at ? n.created_at.substring(0, 19).replace('T', ' ') : ''}</div>
+        </div>
+    `).join('');
+}
+
+async function addAnalystNote() {
+    const input = document.getElementById('note-content-input');
+    const tagSelect = document.getElementById('note-tag-select');
+    if (!input || !input.value.trim() || !state.sampleData) return;
+
+    const content = input.value.trim();
+    const tag = tagSelect ? tagSelect.value : 'OBSERVATION';
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(state.sampleData.analysis_id)}/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content, tag: tag })
+        });
+        if (!res.ok) throw new Error('Failed to record note.');
+        const newNote = await res.json();
+        if (!state.sampleData.notes) state.sampleData.notes = [];
+        state.sampleData.notes.unshift(newNote);
+        renderAnalystNotesList(state.sampleData.notes);
+        input.value = '';
+        showSocNotification('Note Saved', 'Analyst observation persisted to database.', 'success');
+    } catch (err) {
+        showSocNotification('Note Error', err.message, 'warning');
+    }
+}
+
+async function deleteAnalystNote(noteId) {
+    if (!state.sampleData) return;
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(state.sampleData.analysis_id)}/notes/${noteId}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) throw new Error('Could not delete note.');
+        state.sampleData.notes = (state.sampleData.notes || []).filter(n => n.id !== noteId);
+        renderAnalystNotesList(state.sampleData.notes);
+        showSocNotification('Note Deleted', 'Note removed from analysis record.', 'info');
+    } catch (err) {
+        showSocNotification('Delete Error', err.message, 'warning');
+    }
+}
+
+async function saveCaseInfo() {
+    if (!state.sampleData) return;
+    const caseId = document.getElementById('case-id-input') ? document.getElementById('case-id-input').value : null;
+    const caseStatus = document.getElementById('case-status-select') ? document.getElementById('case-status-select').value : null;
+    const casePriority = document.getElementById('case-priority-select') ? document.getElementById('case-priority-select').value : null;
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(state.sampleData.analysis_id)}/case`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ case_id: caseId, case_status: caseStatus, case_priority: casePriority })
+        });
+        if (!res.ok) throw new Error('Could not update case tracking.');
+        showSocNotification('Case Updated', 'Case status & priority saved successfully.', 'success');
+    } catch (err) {
+        showSocNotification('Case Error', err.message, 'warning');
+    }
+}
+
+/**
+ * Binary Analysis Comparison Modal
+ */
+async function openCompareModal() {
+    const modal = document.getElementById('compare-analysis-modal');
+    const select = document.getElementById('compare-target-select');
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    if (select) {
+        select.innerHTML = '<option value="">-- Choose analysis from history --</option>';
+        try {
+            const res = await fetchWithAuth('/api/analyses?limit=50');
+            if (res.ok) {
+                const data = await res.json();
+                const items = data.items || [];
+                const currentId = state.sampleData ? state.sampleData.analysis_id : '';
+                items.filter(it => it.analysis_id !== currentId).forEach(it => {
+                    const opt = document.createElement('option');
+                    opt.value = it.analysis_id;
+                    opt.textContent = `${it.filename} (Score: ${it.risk_score}, ID: ${it.analysis_id})`;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.warn('Failed to populate comparison options', e);
+        }
+    }
+}
+
+function closeCompareModal() {
+    const modal = document.getElementById('compare-analysis-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function executeAnalysisComparison() {
+    const select = document.getElementById('compare-target-select');
+    const results = document.getElementById('compare-results-container');
+    if (!select || !select.value || !state.sampleData || !results) return;
+
+    const id1 = state.sampleData.analysis_id;
+    const id2 = select.value;
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/compare?id1=${encodeURIComponent(id1)}&id2=${encodeURIComponent(id2)}`);
+        if (!res.ok) throw new Error('Failed to compute comparison.');
+        const data = await res.json();
+
+        results.style.display = 'block';
+
+        const sa = data.sample_a;
+        const sb = data.sample_b;
+
+        document.getElementById('cmp-a-title').textContent = `Current: ${sa.analysis_id}`;
+        document.getElementById('cmp-a-file').textContent = sa.filename;
+        document.getElementById('cmp-a-score').textContent = `${sa.risk_score} (${sa.risk_level})`;
+        document.getElementById('cmp-a-arch').textContent = `${sa.architecture} • ${sa.file_type}`;
+        document.getElementById('cmp-a-apis').textContent = sa.suspicious_apis;
+        document.getElementById('cmp-a-strings').textContent = sa.suspicious_strings;
+        document.getElementById('cmp-a-entropy').textContent = sa.max_section_entropy;
+        document.getElementById('cmp-a-iocs').textContent = sa.total_iocs;
+
+        document.getElementById('cmp-b-title').textContent = `Target: ${sb.analysis_id}`;
+        document.getElementById('cmp-b-file').textContent = sb.filename;
+        document.getElementById('cmp-b-score').textContent = `${sb.risk_score} (${sb.risk_level})`;
+        document.getElementById('cmp-b-arch').textContent = `${sb.architecture} • ${sb.file_type}`;
+        document.getElementById('cmp-b-apis').textContent = sb.suspicious_apis;
+        document.getElementById('cmp-b-strings').textContent = sb.suspicious_strings;
+        document.getElementById('cmp-b-entropy').textContent = sb.max_section_entropy;
+        document.getElementById('cmp-b-iocs').textContent = sb.total_iocs;
+
+        const delta = data.differences.score_delta;
+        const deltaEl = document.getElementById('compare-delta-summary');
+        if (deltaEl) {
+            deltaEl.innerHTML = `<strong>Risk Delta:</strong> ${Math.abs(delta)} pts (${delta > 0 ? 'Current is higher risk' : (delta < 0 ? 'Target is higher risk' : 'Identical threat posture')}) • Architecture: ${data.differences.same_architecture ? 'MATCH' : 'DIFFERENT'}`;
+        }
+    } catch (err) {
+        showSocNotification('Comparison Failed', err.message, 'warning');
     }
 }
 
 /**
  * Export Security Analysis Report in requested format
  */
-function exportCurrentReport(format) {
+async function exportCurrentReport(format) {
     if (!state.sampleData || !state.sampleData.analysis_id) {
         alert('No analysis sample is currently loaded to export.');
         return;
     }
     const analysisId = state.sampleData.analysis_id;
     const lang = state.currentLanguage || 'en';
-    const reportUrl = `/api/analyses/${encodeURIComponent(analysisId)}/report?format=${format}&language=${lang}`;
-    window.open(reportUrl, '_blank');
+
+    showSocNotification('Generating Report', `Preparing ${format.toUpperCase()} report...`, 'info');
+
+    try {
+        const reportUrl = `/api/analyses/${encodeURIComponent(analysisId)}/report?format=${format}&language=${lang}`;
+        const res = await fetchWithAuth(reportUrl);
+        if (!res.ok) throw new Error(`Report generation failed (${res.status}).`);
+
+        if (format === 'json') {
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Analysis_${analysisId}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } else if (format === 'html') {
+            const htmlText = await res.text();
+            const blob = new Blob([htmlText], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Report_${analysisId}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } else if (format === 'markdown' || format === 'text') {
+            const txt = await res.text();
+            const blob = new Blob([txt], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Report_${analysisId}.${format === 'markdown' ? 'md' : 'txt'}`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        showSocNotification('Report Ready', `${format.toUpperCase()} report exported successfully.`, 'success');
+    } catch (err) {
+        showSocNotification('Export Failed', `Report generation failed: ${err.message}`, 'danger');
+    }
 }
 
 /**

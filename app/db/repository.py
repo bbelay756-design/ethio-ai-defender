@@ -19,6 +19,7 @@ from app.db.models import (
     YaraMatchModel,
     RiskFactorModel,
     AnalysisResultModel,
+    AnalystNoteModel,
 )
 from app.db.schemas import (
     SampleCreate,
@@ -488,3 +489,67 @@ class SampleRepository:
         db.commit()
         logger.info(f"Deleted sample ID {sample_id} and all cascading children.")
         return True
+
+    @staticmethod
+    def add_note_to_sample(
+        db: Session,
+        sample_id: int,
+        user_id: Optional[int],
+        author_username: str,
+        content: str,
+        tag: str = "OBSERVATION"
+    ) -> AnalystNoteModel:
+        """Adds an analyst observation or investigation note to the sample record."""
+        note = AnalystNoteModel(
+            sample_id=sample_id,
+            user_id=user_id,
+            author_username=author_username,
+            content=content,
+            tag=tag,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(note)
+        db.commit()
+        db.refresh(note)
+        return note
+
+    @staticmethod
+    def get_notes_for_sample(db: Session, sample_id: int) -> List[AnalystNoteModel]:
+        """Fetches all notes recorded for a sample ordered by creation time."""
+        return db.query(AnalystNoteModel).filter(
+            AnalystNoteModel.sample_id == sample_id
+        ).order_by(AnalystNoteModel.created_at.desc()).all()
+
+    @staticmethod
+    def delete_note(db: Session, note_id: int) -> bool:
+        """Deletes a specific analyst note."""
+        note = db.query(AnalystNoteModel).filter(AnalystNoteModel.id == note_id).first()
+        if not note:
+            return False
+        db.delete(note)
+        db.commit()
+        return True
+
+    @staticmethod
+    def update_case_info(
+        db: Session,
+        sample_id: int,
+        case_id: Optional[str] = None,
+        case_status: Optional[str] = None,
+        case_priority: Optional[str] = None
+    ) -> Optional[SampleModel]:
+        """Updates case management metadata for a sample."""
+        sample = db.query(SampleModel).filter(SampleModel.id == sample_id).first()
+        if not sample:
+            return None
+        if case_id is not None:
+            sample.case_id = case_id
+        if case_status is not None:
+            sample.case_status = case_status
+        if case_priority is not None:
+            sample.case_priority = case_priority
+        db.commit()
+        db.refresh(sample)
+        return sample
+

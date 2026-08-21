@@ -45,6 +45,9 @@ class SampleModel(Base):
     status = Column(String(32), nullable=False, default="COMPLETED")
     risk_score = Column(Integer, nullable=True, default=0)
     classification = Column(String(32), nullable=True, default="LOW")
+    case_id = Column(String(64), nullable=True)
+    case_status = Column(String(32), nullable=True, default="OPEN")  # OPEN, INVESTIGATING, CONTAINED, RESOLVED
+    case_priority = Column(String(32), nullable=True, default="MEDIUM")  # LOW, MEDIUM, HIGH, CRITICAL
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     completed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=True)
@@ -58,6 +61,7 @@ class SampleModel(Base):
     yara_matches = relationship("YaraMatchModel", back_populates="sample", cascade="all, delete-orphan")
     risk_factors = relationship("RiskFactorModel", back_populates="sample", cascade="all, delete-orphan")
     analysis_results = relationship("AnalysisResultModel", back_populates="sample", uselist=False, cascade="all, delete-orphan")
+    notes = relationship("AnalystNoteModel", back_populates="sample", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_samples_sha256_created", "sha256", "created_at"),
@@ -267,4 +271,25 @@ class AuditLogModel(Base):
         Index("ix_audit_logs_event_timestamp", "event", "timestamp"),
         Index("ix_audit_logs_user_timestamp", "user_id", "timestamp"),
     )
+
+
+class AnalystNoteModel(Base):
+    """
+    Analyst investigation notes, observations, case tags, and findings.
+    """
+    __tablename__ = "analyst_notes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    author_username = Column(String(64), nullable=False)
+    content = Column(Text, nullable=False)
+    tag = Column(String(32), nullable=False, default="OBSERVATION")  # OBSERVATION, IOC_CONFIRMED, MITIGATION_APPLIED, ESCALATION
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationships
+    sample = relationship("SampleModel", back_populates="notes")
+    user = relationship("UserModel")
+
 

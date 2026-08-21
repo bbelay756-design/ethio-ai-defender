@@ -274,6 +274,92 @@ def get_analysis_overview_stats(
         db.close()
 
 
+class NoteCreateRequest(BaseModel):
+    content: str
+    tag: str = "OBSERVATION"
+
+
+class CaseUpdateRequest(BaseModel):
+    case_id: Optional[str] = None
+    case_status: Optional[str] = None
+    case_priority: Optional[str] = None
+
+
+class AskAIRequest(BaseModel):
+    question: str
+    language: str = "en"
+
+
+@router.get(
+    "/compare",
+    summary="Compare two binary analysis records",
+    description="Compares two static analyses across risk scores, architectures, imported APIs, strings, entropy, and IOCs."
+)
+def compare_analyses(
+    id1: str = Query(..., description="First analysis ID"),
+    id2: str = Query(..., description="Second analysis ID"),
+    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+):
+    """Compares two analysis records side-by-side."""
+    db = SessionLocal()
+    try:
+        s1 = SampleRepository.get_by_analysis_id(db, id1)
+        s2 = SampleRepository.get_by_analysis_id(db, id2)
+        if not s1 or not s2:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or both analyses not found for comparison.")
+
+        # Compute summary metrics for sample 1
+        s1_susp_apis = sum(1 for imp in s1.imports if (imp.risk_relevance or "").upper() in ("HIGH", "CRITICAL"))
+        s1_susp_strings = sum(1 for st in s1.strings if st.suspicious or (st.severity or "").upper() in ("HIGH", "CRITICAL"))
+        s1_max_entropy = max([sec.entropy for sec in s1.sections], default=0.0)
+
+        # Compute summary metrics for sample 2
+        s2_susp_apis = sum(1 for imp in s2.imports if (imp.risk_relevance or "").upper() in ("HIGH", "CRITICAL"))
+        s2_susp_strings = sum(1 for st in s2.strings if st.suspicious or (st.severity or "").upper() in ("HIGH", "CRITICAL"))
+        s2_max_entropy = max([sec.entropy for sec in s2.sections], default=0.0)
+
+        return {
+            "sample_a": {
+                "analysis_id": s1.analysis_id,
+                "filename": s1.filename,
+                "sha256": s1.sha256,
+                "file_type": s1.file_type,
+                "architecture": s1.architecture,
+                "size_kb": round(s1.size / 1024, 1),
+                "risk_score": s1.risk_score or 0,
+                "risk_level": s1.classification or "LOW",
+                "suspicious_apis": s1_susp_apis,
+                "suspicious_strings": s1_susp_strings,
+                "total_iocs": len(s1.iocs),
+                "max_section_entropy": round(s1_max_entropy, 2),
+                "yara_matches": len(s1.yara_matches),
+            },
+            "sample_b": {
+                "analysis_id": s2.analysis_id,
+                "filename": s2.filename,
+                "sha256": s2.sha256,
+                "file_type": s2.file_type,
+                "architecture": s2.architecture,
+                "size_kb": round(s2.size / 1024, 1),
+                "risk_score": s2.risk_score or 0,
+                "risk_level": s2.classification or "LOW",
+                "suspicious_apis": s2_susp_apis,
+                "suspicious_strings": s2_susp_strings,
+                "total_iocs": len(s2.iocs),
+                "max_section_entropy": round(s2_max_entropy, 2),
+                "yara_matches": len(s2.yara_matches),
+            },
+            "differences": {
+                "score_delta": (s1.risk_score or 0) - (s2.risk_score or 0),
+                "same_architecture": s1.architecture == s2.architecture,
+                "same_file_type": s1.file_type == s2.file_type,
+                "more_risky": "sample_a" if (s1.risk_score or 0) > (s2.risk_score or 0) else ("sample_b" if (s2.risk_score or 0) > (s1.risk_score or 0) else "EQUAL"),
+            }
+        }
+    finally:
+        db.close()
+
+
 @router.get(
     "/{analysis_id}",
     summary="Get full analysis results by ID",
@@ -444,7 +530,201 @@ def get_analysis_by_id(
                 "possible_benign_explanations": ["Standard software build or compiler optimization."],
                 "recommended_investigation": ["Observe runtime behavior in an isolated sandbox."],
                 "limitations": ["Static analysis evaluates capabilities without live execution."],
+            },
+            "case_info": {
+                "case_id": sample.case_id or f"CASE-{sample.analysis_id[-6:]}",
+                "case_status": sample.case_status or "OPEN",
+                "case_priority": sample.case_priority or ("CRITICAL" if (sample.risk_score or 0) >= 85 else ("HIGH" if (sample.risk_score or 0) >= 70 else "MEDIUM")),
+                "investigator": current_user.username if current_user else "analyst_soc",
+                "total_notes": len(sample.notes) if sample.notes else 0,
+            },
+            "notes": [
+                {
+                    "id": n.id,
+                    "author": n.author_username,
+                    "content": n.content,
+                    "tag": n.tag,
+                    "created_at": n.created_at.isoformat() if n.created_at else None,
+                }
+                for n in (sample.notes or [])
+            ],
+        }
+    finally:
+        db.close()
+
+
+@router.post(
+    "/{analysis_id}/ask-ai",
+    summary="Ask contextual question about specific analysis evidence",
+    description="Answers analyst questions strictly grounded on the specific binary's static findings."
+)
+def ask_ai_about_analysis(
+    analysis_id: str,
+    payload: AskAIRequest,
+    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+):
+    """Answers analyst questions strictly grounded on the specific binary's static findings."""
+    db = SessionLocal()
+    try:
+        sample = SampleRepository.get_by_analysis_id(db, analysis_id)
+        if not sample:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+
+        # Build grounded evidence context
+        susp_apis = [f"{i.dll}!{i.api}" for i in sample.imports if (i.risk_relevance or "").upper() in ("HIGH", "CRITICAL")]
+        susp_strings = [s.value for s in sample.strings if s.suspicious or (s.severity or "").upper() in ("HIGH", "CRITICAL")][:10]
+        iocs = [f"{ioc.type}: {ioc.value}" for ioc in sample.iocs][:8]
+        risk_factors = [f"{rf.name} ({rf.severity}, weight {rf.weight})" for rf in sample.risk_factors]
+
+        q = (payload.question or "").lower()
+
+        # Deterministic grounded responses tailored to the specific question and evidence
+        if "why" in q or "risk" in q or "score" in q:
+            answer = f"The heuristic threat score of {sample.risk_score or 0}/100 ({sample.classification or 'LOW'}) was calculated from {len(sample.risk_factors)} distinct contributing factors: " + (", ".join(risk_factors) if risk_factors else "minimal static risk observed.") + ". Key drivers include " + (f"{len(susp_apis)} suspicious APIs" if susp_apis else "no high-risk APIs") + f" and {len(susp_strings)} flagged strings."
+        elif "api" in q or "import" in q:
+            answer = f"Found {len(susp_apis)} high-risk Windows APIs out of {len(sample.imports)} total imports: " + (", ".join(susp_apis[:8]) if susp_apis else "None observed") + ". These APIs are commonly evaluated for memory injection, process execution, or network communication."
+        elif "indicator" in q or "ioc" in q or "string" in q:
+            answer = f"Identified {len(sample.iocs)} Indicators of Compromise and {len(susp_strings)} high-severity strings. Sample IOCs: " + (", ".join(iocs) if iocs else "No active network or registry IOCs detected.")
+        elif "next" in q or "recommend" in q or "action" in q or "investigate" in q:
+            if (sample.risk_score or 0) >= 70:
+                answer = "Recommended SOC Actions: 1) Quarantine binary and block SHA-256 on EDR; 2) Search SIEM logs for associated network domains/IPs; 3) Sandbox trace runtime execution for process hollowing; 4) Check persistence registry keys."
+            else:
+                answer = "Recommended SOC Actions: 1) Verify compiler signature and software publisher; 2) Compare hashes with approved enterprise baseline; 3) Standard monitoring in production."
+        elif "summary" in q or "management" in q or "executive" in q:
+            answer = f"Executive Summary for {sample.filename}: Static PE analysis completed with classification {sample.classification or 'LOW'} (Risk Index: {sample.risk_score or 0}/100). The binary contains {len(sample.sections)} sections, {len(sample.imports)} imports, and {len(sample.iocs)} IOC indicators. Zero-execution policy was enforced during inspection."
+        else:
+            answer = f"Analysis evidence for '{sample.filename}' (SHA-256: {sample.sha256[:16]}...): Status: {sample.status}, Heuristic Risk: {sample.risk_score or 0}/100 ({sample.classification or 'LOW'}). Contains {len(susp_apis)} suspicious APIs and {len(sample.iocs)} IOCs."
+
+        return {
+            "analysis_id": sample.analysis_id,
+            "question": payload.question,
+            "answer": answer,
+            "confidence": "HIGH" if len(sample.risk_factors) > 0 else "MEDIUM",
+            "grounded_evidence_count": len(sample.risk_factors) + len(sample.imports) + len(sample.strings),
+            "disclaimer": "AI Security Analyst interpretations are grounded strictly on static binary evidence."
+        }
+    finally:
+        db.close()
+
+
+@router.get(
+    "/{analysis_id}/notes",
+    summary="List analyst notes for an analysis",
+    description="Retrieves all investigation notes and case observations recorded for this sample."
+)
+def get_sample_notes(
+    analysis_id: str,
+    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+):
+    """Fetches analyst notes for an analysis."""
+    db = SessionLocal()
+    try:
+        sample = SampleRepository.get_by_analysis_id(db, analysis_id)
+        if not sample:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+        notes = SampleRepository.get_notes_for_sample(db, sample.id)
+        return [
+            {
+                "id": n.id,
+                "author": n.author_username,
+                "content": n.content,
+                "tag": n.tag,
+                "created_at": n.created_at.isoformat() if n.created_at else None,
             }
+            for n in notes
+        ]
+    finally:
+        db.close()
+
+
+@router.post(
+    "/{analysis_id}/notes",
+    summary="Add analyst note to an analysis",
+    description="Records an analyst observation, IOC confirmation, or mitigation note."
+)
+def add_sample_note(
+    analysis_id: str,
+    payload: NoteCreateRequest,
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Adds a new persistent note to the sample analysis."""
+    db = SessionLocal()
+    try:
+        sample = SampleRepository.get_by_analysis_id(db, analysis_id)
+        if not sample:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+        if not payload.content.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Note content cannot be empty.")
+        note = SampleRepository.add_note_to_sample(
+            db=db,
+            sample_id=sample.id,
+            user_id=current_user.id,
+            author_username=current_user.username,
+            content=payload.content.strip(),
+            tag=payload.tag
+        )
+        return {
+            "id": note.id,
+            "author": note.author_username,
+            "content": note.content,
+            "tag": note.tag,
+            "created_at": note.created_at.isoformat(),
+        }
+    finally:
+        db.close()
+
+
+@router.delete(
+    "/{analysis_id}/notes/{note_id}",
+    summary="Delete an analyst note",
+    description="Deletes a specific note recorded for this analysis."
+)
+def delete_sample_note(
+    analysis_id: str,
+    note_id: int,
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Deletes an analyst note."""
+    db = SessionLocal()
+    try:
+        sample = SampleRepository.get_by_analysis_id(db, analysis_id)
+        if not sample:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+        success = SampleRepository.delete_note(db, note_id)
+        if not success:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found.")
+        return {"status": "deleted", "note_id": note_id}
+    finally:
+        db.close()
+
+
+@router.patch(
+    "/{analysis_id}/case",
+    summary="Update case metadata for an analysis",
+    description="Updates case ID, priority, and investigation status (OPEN, INVESTIGATING, CONTAINED, RESOLVED)."
+)
+def update_sample_case(
+    analysis_id: str,
+    payload: CaseUpdateRequest,
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Updates case tracking information for the binary analysis."""
+    db = SessionLocal()
+    try:
+        sample = SampleRepository.get_by_analysis_id(db, analysis_id)
+        if not sample:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+        updated = SampleRepository.update_case_info(
+            db=db,
+            sample_id=sample.id,
+            case_id=payload.case_id,
+            case_status=payload.case_status,
+            case_priority=payload.case_priority
+        )
+        return {
+            "case_id": updated.case_id,
+            "case_status": updated.case_status,
+            "case_priority": updated.case_priority
         }
     finally:
         db.close()

@@ -774,224 +774,684 @@
                 <!-- ============================================== -->
                 <!-- 2. ANALYSIS VIEW                               -->
                 <!-- ============================================== -->
+                <!-- ============================================== -->
+                <!-- 2. ANALYSIS VIEW (INTERACTIVE INVESTIGATION)   -->
+                <!-- ============================================== -->
                 <section class="view-panel" id="view-analysis">
-                    <div class="view-header">
+                    
+                    <!-- View Header & Functional Export Bar -->
+                    <div class="view-header flex-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
                         <div>
                             <h2 data-i18n="analysis_overview_title">Analysis Overview & Threat Posture</h2>
                             <p data-i18n="analysis_overview_subtitle">Cryptographic identity, architectural classification, and heuristic threat score.</p>
                         </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn-secondary" onclick="exportCurrentReport('json')" title="Download JSON Data">📥 JSON</button>
-                            <button class="btn-primary" onclick="exportCurrentReport('html')" title="Download Standalone HTML Report">📄 HTML Report</button>
-                            <button class="btn-secondary" onclick="exportCurrentReport('text')" title="Download Text Report">📝 Text</button>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            <button class="btn-secondary" onclick="exportCurrentReport('json')" title="Download raw JSON analysis artifact">📥 JSON</button>
+                            <button class="btn-primary" onclick="exportCurrentReport('html')" title="Generate standalone HTML security report">📄 HTML Report</button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('text')" title="Export readable text report">📝 Text</button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('markdown')" title="Export Markdown forensic report">📑 Markdown</button>
+                            <button class="btn-secondary" onclick="openCompareModal()" title="Compare with another analysis">⚖️ Compare</button>
+                            <button class="btn-secondary" onclick="switchTab('history')" title="View previous analysis history">📜 History</button>
                         </div>
                     </div>
 
-                    <!-- Defensive Analysis Execution Pipeline Status -->
-                    <div class="analysis-pipeline-container" id="overview-analysis-pipeline">
-                        <div class="pipeline-header">
-                            <div class="pipeline-title"><span>⚡</span> Defensive Static Analysis Pipeline</div>
-                            <div class="pipeline-status-text" id="overview-pipeline-status-text">ANALYSIS COMPLETED</div>
-                        </div>
-                        <div class="pipeline-stages-flow" id="overview-pipeline-stages">
-                            <div class="pipeline-stage completed" id="ov-stage-1"><div class="stage-node">✓</div><div class="stage-label">File Intake</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-2"><div class="stage-node">✓</div><div class="stage-label">Hashes</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-3"><div class="stage-node">✓</div><div class="stage-label">PE Headers</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-4"><div class="stage-node">✓</div><div class="stage-label">Sections</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-5"><div class="stage-node">✓</div><div class="stage-label">Imports</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-6"><div class="stage-node">✓</div><div class="stage-label">Strings</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-7"><div class="stage-node">✓</div><div class="stage-label">IOC Scorer</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-8"><div class="stage-node">✓</div><div class="stage-label">Risk Engine</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-9"><div class="stage-node">✓</div><div class="stage-label">AI Review</div></div>
-                            <div class="pipeline-stage completed" id="ov-stage-10"><div class="stage-node">✓</div><div class="stage-label">Report</div></div>
+                    <!-- Empty State Notice (Shown when no sample loaded) -->
+                    <div id="analysis-empty-state" class="soc-card" style="display: none; text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 36px; margin-bottom: 12px;">🛡️</div>
+                        <h3 style="font-size: 16px; color: var(--accent-cyan); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
+                        <p style="font-size: 12px; color: var(--text-muted); max-width: 480px; margin: 0 auto 20px auto;">
+                            Select an existing binary from analysis history or upload a supported Windows PE (.exe / .dll) sample to begin static inspection.
+                        </p>
+                        <div style="display: flex; gap: 12px; justify-content: center;">
+                            <button class="btn-primary" onclick="switchTab('home')">📤 Start New Analysis</button>
+                            <button class="btn-secondary" onclick="switchTab('history')">📜 Open History</button>
                         </div>
                     </div>
 
-                    <!-- Circular Threat Gauge & Architectural Matrix Grid -->
-                    <div class="grid-2col" style="margin-bottom: 20px;">
-                        <!-- Animated Circular Threat Risk Gauge -->
-                        <div class="soc-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px; text-align: center;">
-                            <div class="card-head" style="width: 100%; border: none; padding: 0 0 12px 0; justify-content: space-between;">
+                    <div id="analysis-content-wrapper">
+                        
+                        <!-- Compact File Identity Header Bar -->
+                        <div class="soc-card" style="margin-bottom: 18px; border-left: 4px solid var(--accent-cyan);">
+                            <div class="card-body" style="padding: 14px 18px;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Target Binary</div>
+                                        <div style="font-size: 14px; font-weight: 800; color: var(--accent-cyan); word-break: break-all;" id="ov-filename">Not available</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">SHA-256 Digest</div>
+                                        <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+                                            <span id="ov-sha256-short">Not available</span>
+                                            <button class="btn-secondary" onclick="copyAnalysisHash()" style="font-size: 9px; padding: 2px 6px;" title="Copy full SHA-256">📋 Copy</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Architecture & Type</div>
+                                        <div style="font-size: 12px; font-weight: 700; color: var(--text-primary);" id="ov-arch-type">Not available</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">File Size</div>
+                                        <div style="font-size: 12px; font-weight: 700; color: var(--text-primary);" id="ov-filesize">Not available</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Analysis ID & Status</div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="font-size: 11px; font-family: var(--font-mono); color: var(--accent-cyan);" id="ov-analysis-id">ANL-000000</span>
+                                            <span class="badge badge-low" id="ov-status-badge">COMPLETED</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 10-Stage Interactive Defensive Pipeline -->
+                        <div class="analysis-pipeline-container" id="overview-analysis-pipeline" style="margin-bottom: 20px;">
+                            <div class="pipeline-header">
+                                <div class="pipeline-title"><span>⚡</span> Defensive Static Analysis Pipeline Flow</div>
+                                <div class="pipeline-status-text" id="overview-pipeline-status-text">ANALYSIS COMPLETED</div>
+                            </div>
+                            <div class="pipeline-stages-flow" id="overview-pipeline-stages">
+                                <div class="pipeline-stage completed" id="ov-stage-1" onclick="jumpToAnalysisStage('identity')" title="View File Intake Metadata"><div class="stage-node">✓</div><div class="stage-label">1. Intake</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-2" onclick="jumpToAnalysisStage('hashes')" title="View Cryptographic Hashes"><div class="stage-node">✓</div><div class="stage-label">2. Hashes</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-3" onclick="jumpToAnalysisStage('pe-headers')" title="View PE Headers"><div class="stage-node">✓</div><div class="stage-label">3. PE Headers</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-4" onclick="jumpToAnalysisStage('sections')" title="View PE Sections & Entropy"><div class="stage-node">✓</div><div class="stage-label">4. Sections</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-5" onclick="jumpToAnalysisStage('imports')" title="View Windows APIs"><div class="stage-node">✓</div><div class="stage-label">5. Imports</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-6" onclick="jumpToAnalysisStage('strings')" title="View Extracted Strings"><div class="stage-node">✓</div><div class="stage-label">6. Strings</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-7" onclick="jumpToAnalysisStage('iocs')" title="View IOC Scorer"><div class="stage-node">✓</div><div class="stage-label">7. IOCs</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-8" onclick="jumpToAnalysisStage('risk-engine')" title="View Why This Score Calculation"><div class="stage-node">✓</div><div class="stage-label">8. Risk Engine</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-9" onclick="jumpToAnalysisStage('ai-analyst')" title="View Grounded AI Review"><div class="stage-node">✓</div><div class="stage-label">9. AI Review</div></div>
+                                <div class="pipeline-stage completed" id="ov-stage-10" onclick="exportCurrentReport('html')" title="Export Forensic Security Report"><div class="stage-node">✓</div><div class="stage-label">10. Report</div></div>
+                            </div>
+                        </div>
+
+                        <!-- 7 Threat Evidence Quick Breakdown Cards -->
+                        <div class="evidence-grid" id="evidence-cards-grid">
+                            <div class="evidence-card" onclick="jumpToAnalysisStage('imports')" id="ev-card-apis">
+                                <div class="evidence-card-title"><span>⚙️</span> Suspicious APIs</div>
+                                <div class="evidence-card-count" id="ev-apis-count">0</div>
+                                <div class="evidence-card-foot">
+                                    <span class="badge badge-low" id="ev-apis-badge">LOW</span>
+                                    <span style="color: var(--accent-cyan);">View &rarr;</span>
+                                </div>
+                            </div>
+                            <div class="evidence-card" onclick="jumpToAnalysisStage('strings')" id="ev-card-strings">
+                                <div class="evidence-card-title"><span>🔤</span> Suspicious Strings</div>
+                                <div class="evidence-card-count" id="ev-strings-count">0</div>
+                                <div class="evidence-card-foot">
+                                    <span class="badge badge-low" id="ev-strings-badge">LOW</span>
+                                    <span style="color: var(--accent-cyan);">View &rarr;</span>
+                                </div>
+                            </div>
+                            <div class="evidence-card" onclick="jumpToAnalysisStage('iocs')" id="ev-card-net">
+                                <div class="evidence-card-title"><span>🌐</span> Network IOCs</div>
+                                <div class="evidence-card-count" id="ev-net-count">0</div>
+                                <div class="evidence-card-foot">
+                                    <span class="badge badge-low" id="ev-net-badge">LOW</span>
+                                    <span style="color: var(--accent-cyan);">View &rarr;</span>
+                                </div>
+                            </div>
+                            <div class="evidence-card" onclick="jumpToAnalysisStage('iocs')" id="ev-card-reg">
+                                <div class="evidence-card-title"><span>🗝️</span> Registry Indicators</div>
+                                <div class="evidence-card-count" id="ev-reg-count">0</div>
+                                <div class="evidence-card-foot">
+                                    <span class="badge badge-low" id="ev-reg-badge">LOW</span>
+                                    <span style="color: var(--accent-cyan);">View &rarr;</span>
+                                </div>
+                            </div>
+                            <div class="evidence-card" onclick="jumpToAnalysisStage('sections')" id="ev-card-entropy">
+                                <div class="evidence-card-title"><span>📈</span> High Entropy</div>
+                                <div class="evidence-card-count" id="ev-entropy-count">0</div>
+                                <div class="evidence-card-foot">
+                                    <span class="badge badge-low" id="ev-entropy-badge">NORMAL</span>
+                                    <span style="color: var(--accent-cyan);">View &rarr;</span>
+                                </div>
+                            </div>
+                            <div class="evidence-card" onclick="jumpToAnalysisStage('sections')" id="ev-card-packing">
+                                <div class="evidence-card-title"><span>📦</span> Packing Indicators</div>
+                                <div class="evidence-card-count" id="ev-packing-count">0</div>
+                                <div class="evidence-card-foot">
+                                    <span class="badge badge-low" id="ev-packing-badge">NONE</span>
+                                    <span style="color: var(--accent-cyan);">View &rarr;</span>
+                                </div>
+                            </div>
+                            <div class="evidence-card" onclick="jumpToAnalysisStage('imports')" id="ev-card-persistence">
+                                <div class="evidence-card-title"><span>🔒</span> Persistence Vectors</div>
+                                <div class="evidence-card-count" id="ev-persistence-count">0</div>
+                                <div class="evidence-card-foot">
+                                    <span class="badge badge-low" id="ev-persistence-badge">LOW</span>
+                                    <span style="color: var(--accent-cyan);">View &rarr;</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2-Column Grid: Circular Gauge & "WHY THIS SCORE?" -->
+                        <div class="grid-2col" style="margin-bottom: 20px;" id="sec-risk-engine">
+                            
+                            <!-- Circular Threat Risk Gauge -->
+                            <div class="soc-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px; text-align: center;">
+                                <div class="card-head" style="width: 100%; border: none; padding: 0 0 12px 0; justify-content: space-between;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">🎯</span>
+                                        <h3 class="card-heading">Automated Threat Risk Score</h3>
+                                    </div>
+                                    <span class="badge badge-low" id="ov-risk-level"><span id="ov-risk-level-text">LOW</span></span>
+                                </div>
+                                <div class="threat-gauge-wrapper">
+                                    <svg class="threat-gauge-svg" width="160" height="160" viewBox="0 0 160 160">
+                                        <circle class="gauge-bg-circle" cx="80" cy="80" r="68"></circle>
+                                        <circle class="gauge-progress-circle" id="ov-threat-gauge-circle" cx="80" cy="80" r="68"></circle>
+                                    </svg>
+                                    <div class="gauge-center-content">
+                                        <div class="gauge-score-number" id="ov-score-num">0</div>
+                                        <div class="gauge-score-total">/ 100</div>
+                                        <div class="gauge-tier-badge" id="ov-tier-badge">LOW</div>
+                                    </div>
+                                </div>
+                                <div style="font-size: 11px; color: var(--text-dim); margin-top: 8px;" id="ov-risk-desc">
+                                    Deterministic multi-factor static heuristic calculation
+                                </div>
+                            </div>
+
+                            <!-- "WHY THIS SCORE?" Explanation Card -->
+                            <div class="soc-card">
+                                <div class="card-head flex-between">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">⚖️</span>
+                                        <h3 class="card-heading">WHY THIS SCORE? (Contributing Factors)</h3>
+                                    </div>
+                                    <span class="badge badge-low" id="ov-factors-count-badge">0 FACTORS</span>
+                                </div>
+                                <div class="card-body no-padding table-scroll" style="max-height: 240px;">
+                                    <table class="soc-table" style="font-size: 11px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Contributing Factor</th>
+                                                <th>Category</th>
+                                                <th>Severity</th>
+                                                <th style="text-align: right;">Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="ov-risk-factors-tbody">
+                                            <tr><td colspan="4" class="empty-state-cell">No contributing risk factors recorded.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card-foot flex-between" style="padding: 8px 16px; font-size: 11px; color: var(--text-muted);">
+                                    <span>Heuristic Weights Engine</span>
+                                    <strong style="color: var(--accent-cyan);" id="ov-factors-sum-text">Calculated Index: 0</strong>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- 2-Column Grid: Binary Identity & Cryptographic Hashes -->
+                        <div class="grid-2col" style="margin-bottom: 20px;" id="sec-identity">
+                            
+                            <!-- Binary Structure & Identity -->
+                            <div class="soc-card">
+                                <div class="card-head">
+                                    <span class="card-icon">📦</span>
+                                    <h3 class="card-heading">Binary Structure & Identity</h3>
+                                </div>
+                                <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <div class="info-list-item">
+                                        <span class="info-list-label">File Type:</span>
+                                        <span class="info-list-val" id="ov-filetype">Windows Portable Executable</span>
+                                    </div>
+                                    <div class="info-list-item">
+                                        <span class="info-list-label">Architecture:</span>
+                                        <span class="info-list-val" id="ov-arch">x64 PE32+</span>
+                                    </div>
+                                    <div class="info-list-item">
+                                        <span class="info-list-label">Entry Point (RVA):</span>
+                                        <span class="info-list-val font-mono" id="pe-entry-point">0x00001000</span>
+                                    </div>
+                                    <div class="info-list-item">
+                                        <span class="info-list-label">Image Base:</span>
+                                        <span class="info-list-val font-mono" id="pe-image-base">0x00400000</span>
+                                    </div>
+                                    <div class="info-list-item">
+                                        <span class="info-list-label">Subsystem:</span>
+                                        <span class="info-list-val" id="pe-subsystem">Windows GUI</span>
+                                    </div>
+                                    <div class="info-list-item">
+                                        <span class="info-list-label">Compilation Date:</span>
+                                        <span class="info-list-val font-mono" id="ov-compile-date">Not available</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cryptographic Hashes -->
+                            <div class="soc-card" id="sec-hashes">
+                                <div class="card-head">
+                                    <span class="card-icon">🔑</span>
+                                    <h3 class="card-heading">Cryptographic Hashes</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="hash-field">
+                                        <span class="hash-type">SHA-256</span>
+                                        <div class="hash-text" id="ov-sha256">Not available</div>
+                                    </div>
+                                    <div class="hash-field">
+                                        <span class="hash-type">SHA-1</span>
+                                        <div class="hash-text" id="ov-sha1">Not available</div>
+                                    </div>
+                                    <div class="hash-field">
+                                        <span class="hash-type">MD5</span>
+                                        <div class="hash-text" id="ov-md5">Not available</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- PE Memory Sections & Entropy Table -->
+                        <div class="soc-card" style="margin-bottom: 20px;" id="sec-sections">
+                            <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🎯</span>
-                                    <h3 class="card-heading">Automated Threat Risk Score</h3>
+                                    <span class="card-icon">📑</span>
+                                    <h3 class="card-heading">PE MEMORY SECTIONS & ENTROPY</h3>
                                 </div>
-                                <span class="badge badge-low" id="ov-risk-level"><span id="ov-risk-level-text">LOW</span></span>
+                                <span class="badge badge-low" id="pe-sections-count-badge">0 SECTIONS</span>
                             </div>
-                            <div class="threat-gauge-wrapper">
-                                <svg class="threat-gauge-svg" width="160" height="160" viewBox="0 0 160 160">
-                                    <circle class="gauge-bg-circle" cx="80" cy="80" r="68"></circle>
-                                    <circle class="gauge-progress-circle" id="ov-threat-gauge-circle" cx="80" cy="80" r="68"></circle>
-                                </svg>
-                                <div class="gauge-center-content">
-                                    <div class="gauge-score-number" id="ov-score-num">0</div>
-                                    <div class="gauge-score-total">/ 100</div>
-                                    <div class="gauge-tier-badge" id="ov-tier-badge">LOW</div>
-                                </div>
-                            </div>
-                            <div style="font-size: 11px; color: var(--text-dim); margin-top: 8px;" id="ov-risk-desc">
-                                Deterministic multi-factor static heuristic calculation
-                            </div>
-                            <div class="score-progress-track" style="display: none;">
-                                <div class="score-progress-bar" id="ov-score-bar" style="width: 0%;"></div>
-                            </div>
-                        </div>
-
-                        <!-- Architecture & Static Parameters -->
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">📦</span>
-                                <h3 class="card-heading">Binary Structure & Identity</h3>
-                            </div>
-                            <div class="card-body" style="display: flex; flex-direction: column; gap: 12px;">
-                                <div class="info-list-item">
-                                    <span class="info-list-label" data-i18n="lbl_filename">Filename:</span>
-                                    <span class="info-list-val" id="ov-filename" style="color: var(--accent-cyan); font-family: var(--font-mono); font-weight: 700;">sample.exe</span>
-                                </div>
-                                <div class="info-list-item">
-                                    <span class="info-list-label" data-i18n="lbl_arch">Architecture:</span>
-                                    <span class="info-list-val" id="ov-arch">x64 PE32+ (Executable)</span>
-                                </div>
-                                <div class="info-list-item">
-                                    <span class="info-list-label">File Type:</span>
-                                    <span class="info-list-val" id="ov-filetype">Windows Portable Executable</span>
-                                </div>
-                                <div class="info-list-item">
-                                    <span class="info-list-label">File Size:</span>
-                                    <span class="info-list-val" id="ov-filesize">0 KB</span>
-                                </div>
-                                <div class="info-list-item">
-                                    <span class="info-list-label">Compilation Date:</span>
-                                    <span class="info-list-val" id="ov-compile-date" style="font-family: var(--font-mono);">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Cryptographic Hashes & Ethiopian Context -->
-                    <div class="grid-2col" style="margin-top: 20px;">
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">🔑</span>
-                                <h3 class="card-heading" data-i18n="lbl_crypto_hashes">Cryptographic Hashes</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="hash-field">
-                                    <span class="hash-type">SHA-256</span>
-                                    <div class="hash-text" id="ov-sha256">None</div>
-                                </div>
-                                <div class="hash-field">
-                                    <span class="hash-type">SHA-1</span>
-                                    <div class="hash-text" id="ov-sha1">None</div>
-                                </div>
-                                <div class="hash-field">
-                                    <span class="hash-type">MD5</span>
-                                    <div class="hash-text" id="ov-md5">None</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">🇪🇹</span>
-                                <h3 class="card-heading" data-i18n="lbl_ethio_context">Ethiopian Context Assessment</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="context-item">
-                                    <span class="context-label" data-i18n="lbl_environment">Target Environment:</span>
-                                    <span class="context-val" id="ov-ethio-env">GENERAL</span>
-                                </div>
-                                <div class="context-item">
-                                    <span class="context-label" data-i18n="lbl_relevance">Sector Relevance:</span>
-                                    <span class="context-val" id="ov-ethio-relevance"><span class="badge badge-low">LOW</span></span>
-                                </div>
-                                <div class="context-item">
-                                    <span class="context-label" data-i18n="lbl_context_reason">Evaluation Context:</span>
-                                    <p class="context-desc" id="ov-ethio-reason">No domestic specific targeting detected.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Risk Factors & Evidence Breakdown (Why this score was generated) -->
-                    <div class="soc-card" style="margin-top: 20px;" id="ov-risk-factors-card">
-                        <div class="card-head">
-                            <span class="card-icon">⚖️</span>
-                            <h3 class="card-heading">Heuristic Score Factors & Evidence Rationale</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="soc-table">
+                            <div class="card-body no-padding table-scroll">
+                                <table class="data-table">
                                     <thead>
                                         <tr>
-                                            <th>Contributing Factor</th>
-                                            <th>Category</th>
-                                            <th>Severity</th>
-                                            <th>Score Weight</th>
-                                            <th>Evidence / Technical Reason</th>
+                                            <th>Name</th>
+                                            <th>Virtual Size</th>
+                                            <th>Raw Size</th>
+                                            <th>Entropy (0-8)</th>
+                                            <th>Interpretation</th>
+                                            <th>Characteristics</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="ov-risk-factors-tbody">
-                                        <tr><td colspan="5" class="empty-state-cell">No risk factors identified.</td></tr>
+                                    <tbody id="pe-sections-tbody">
+                                        <tr><td colspan="6" class="empty-table-msg">No sections data available.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-foot" style="font-size: 11px; color: var(--text-muted); padding: 8px 16px;">
+                                🛡️ <em>Entropy interpretation: &lt;6.0 Normal • 6.0–7.0 Unusual • &gt;7.0 High entropy (packed/compressed). Entropy is an indicator, not proof of maliciousness.</em>
+                            </div>
+                        </div>
+
+                        <!-- Windows API & Import Intelligence -->
+                        <div class="soc-card" style="margin-bottom: 20px;" id="sec-imports">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">⚙️</span>
+                                    <h3 class="card-heading">IMPORT & API INTELLIGENCE</h3>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <input type="text" id="imports-search-input" class="search-input" placeholder="Search API or DLL..." onkeyup="filterImportsTable()" style="font-size: 11px; padding: 4px 8px; width: 160px;">
+                                    <span class="badge badge-low" id="imports-count-badge">0 IMPORTS</span>
+                                </div>
+                            </div>
+                            <div class="card-body no-padding table-scroll" style="max-height: 280px;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>DLL Name</th>
+                                            <th>API Function</th>
+                                            <th>Category</th>
+                                            <th>Risk Relevance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="imports-tbody">
+                                        <tr><td colspan="4" class="empty-table-msg">No imported APIs detected.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Defensive Threat Evidence Relationship Map -->
-                    <div class="threat-graph-container" style="margin-top: 20px;">
-                        <div class="threat-graph-header">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 18px;">🕸️</span>
-                                <h3 class="card-heading" style="color: var(--accent-cyan);">Threat Evidence Relationship Map</h3>
+                        <!-- String Intelligence Summary -->
+                        <div class="soc-card" style="margin-bottom: 20px;" id="sec-strings">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🔤</span>
+                                    <h3 class="card-heading">STRING INTELLIGENCE SUMMARY</h3>
+                                </div>
+                                <button class="btn-secondary" onclick="switchTab('strings')" style="font-size: 11px; padding: 4px 10px;">
+                                    🔍 Open Full String Intelligence &rarr;
+                                </button>
                             </div>
-                            <span class="badge badge-low" style="font-size: 10px;">EVIDENCE-BASED CORRELATION</span>
-                        </div>
-                        <div class="threat-graph-nodes" id="threat-graph-nodes">
-                            <div class="graph-node" id="node-file">
-                                <div class="graph-node-title">Target Binary</div>
-                                <div class="graph-node-value" id="graph-filename">sample.exe</div>
-                                <div class="graph-node-count" id="graph-filesize">0 KB</div>
-                            </div>
-                            <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
-                            <div class="graph-node" id="node-apis">
-                                <div class="graph-node-title">Suspicious APIs</div>
-                                <div class="graph-node-value" id="graph-api-count">0 APIs</div>
-                                <div class="graph-node-count">Memory / Execution</div>
-                            </div>
-                            <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
-                            <div class="graph-node" id="node-iocs">
-                                <div class="graph-node-title">Heuristic IOCs</div>
-                                <div class="graph-node-value" id="graph-ioc-count">0 Findings</div>
-                                <div class="graph-node-count">Entropy / Sections</div>
-                            </div>
-                            <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
-                            <div class="graph-node" id="node-mitre">
-                                <div class="graph-node-title">MITRE ATT&CK</div>
-                                <div class="graph-node-value" id="graph-mitre-technique">T1059 / T1055</div>
-                                <div class="graph-node-count">Mapped TTPs</div>
-                            </div>
-                        </div>
-                    </div>
+                            <div class="card-body">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px;">
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 8px; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--text-muted);">TOTAL STRINGS</div>
+                                        <div style="font-size: 16px; font-weight: 800; color: var(--text-primary);" id="ov-str-total">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 8px; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--sev-high);">SUSPICIOUS</div>
+                                        <div style="font-size: 16px; font-weight: 800; color: var(--sev-high);" id="ov-str-susp">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 8px; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--accent-cyan);">URLs</div>
+                                        <div style="font-size: 16px; font-weight: 800; color: var(--accent-cyan);" id="ov-str-urls">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 8px; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--accent-blue);">IPs</div>
+                                        <div style="font-size: 16px; font-weight: 800; color: var(--accent-blue);" id="ov-str-ips">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 8px; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--sev-susp);">COMMANDS</div>
+                                        <div style="font-size: 16px; font-weight: 800; color: var(--sev-susp);" id="ov-str-cmds">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 8px; border-radius: 4px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--text-muted);">REGISTRY</div>
+                                        <div style="font-size: 16px; font-weight: 800; color: var(--text-primary);" id="ov-str-reg">0</div>
+                                    </div>
+                                </div>
 
-                    <!-- Recommended Defensive Action Panel -->
-                    <div class="soc-card" style="margin-top: 20px; background: rgba(14, 28, 56, 0.5); border-color: var(--border-strong);">
-                        <div class="card-head" style="justify-content: space-between;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">🛡️</span>
-                                <h3 class="card-heading">Recommended Defensive Actions</h3>
+                                <div class="table-responsive" style="max-height: 200px;">
+                                    <table class="soc-table" style="font-size: 11px;">
+                                        <thead>
+                                            <tr>
+                                                <th>String</th>
+                                                <th>Category</th>
+                                                <th>Severity</th>
+                                                <th>Reason / Detection Heuristic</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="ov-top-strings-tbody">
+                                            <tr><td colspan="4" class="empty-state-cell">No suspicious strings recorded.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                            <span class="badge badge-low">SOC OPERATIONAL ACTIONS</span>
                         </div>
-                        <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <button class="btn-primary" onclick="exportCurrentReport('html')">📄 Export Forensic Report</button>
-                            <button class="btn-secondary" onclick="switchTab('strings')">🔤 Inspect String Intelligence</button>
-                            <button class="btn-secondary" onclick="exportCurrentReport('json')">📦 Export SIEM JSON</button>
-                            <button class="btn-danger" id="btn-quarantine-action" onclick="showSocNotification('File Quarantined', 'Sample has been safely isolated in the zero-execution vault.', 'success')">🔒 Quarantine File</button>
+
+                        <!-- Indicators of Compromise (IOCs) Table -->
+                        <div class="soc-card" style="margin-bottom: 20px;" id="sec-iocs">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🌐</span>
+                                    <h3 class="card-heading">INDICATORS OF COMPROMISE (IOCs)</h3>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-secondary" onclick="copyAllIOCs()" style="font-size: 10px; padding: 3px 8px;">📋 Copy All</button>
+                                    <button class="btn-secondary" onclick="exportIOCsAsCSV()" style="font-size: 10px; padding: 3px 8px;">📦 Export CSV</button>
+                                    <span class="badge badge-low" id="ov-iocs-count-badge">0 IOCs</span>
+                                </div>
+                            </div>
+                            <div class="card-body no-padding table-scroll" style="max-height: 240px;">
+                                <table class="soc-table" style="font-size: 11px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Value</th>
+                                            <th>Source</th>
+                                            <th>Confidence</th>
+                                            <th style="text-align: right;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ov-iocs-tbody">
+                                        <tr><td colspan="5" class="empty-state-cell">No active Indicators of Compromise extracted.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
+
+                        <!-- 2-Column Grid: YARA Detections & MITRE ATT&CK Mapping -->
+                        <div class="grid-2col" style="margin-bottom: 20px;">
+                            
+                            <!-- YARA Detections -->
+                            <div class="soc-card">
+                                <div class="card-head flex-between">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">🎯</span>
+                                        <h3 class="card-heading">YARA RULE DETECTIONS</h3>
+                                    </div>
+                                    <span class="badge badge-low" id="ov-yara-count-badge">0 MATCHES</span>
+                                </div>
+                                <div class="card-body no-padding table-scroll" style="max-height: 220px;">
+                                    <table class="soc-table" style="font-size: 11px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Rule Name</th>
+                                                <th>Namespace</th>
+                                                <th>Tags / Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="ov-yara-tbody">
+                                            <tr><td colspan="3" class="empty-state-cell">No YARA signature matches detected.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- MITRE ATT&CK Mapping -->
+                            <div class="soc-card">
+                                <div class="card-head flex-between">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">🗺️</span>
+                                        <h3 class="card-heading">MITRE ATT&CK MAPPING</h3>
+                                    </div>
+                                    <span class="badge badge-low" id="ov-mitre-count-badge">0 TECHNIQUES</span>
+                                </div>
+                                <div class="card-body no-padding table-scroll" style="max-height: 220px;">
+                                    <table class="soc-table" style="font-size: 11px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Technique ID</th>
+                                                <th>Name / Tactic</th>
+                                                <th>Evidence</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="ov-mitre-tbody">
+                                            <tr><td colspan="3" class="empty-state-cell">No mapped techniques for this sample.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card-foot" style="font-size: 10px; color: var(--text-muted); padding: 6px 14px;">
+                                    ⚠️ <em>Potential techniques inferred from static presence. Static presence alone does not establish confirmed runtime execution.</em>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- AI Security Analyst & Interactive Ask AI Panel -->
+                        <div class="soc-card" style="margin-bottom: 20px; border-color: rgba(0, 240, 255, 0.3);" id="sec-ai-analyst">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🤖</span>
+                                    <h3 class="card-heading" style="color: var(--accent-cyan);">AI SECURITY ANALYST INTERPRETATION</h3>
+                                </div>
+                                <span class="badge badge-low" id="ov-ai-conf-badge">CONFIDENCE: MEDIUM</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="font-size: 13px; color: var(--text-primary); line-height: 1.6; margin-bottom: 14px; background: rgba(0, 240, 255, 0.03); padding: 12px; border-radius: 6px; border: 1px solid rgba(0, 240, 255, 0.1);" id="ov-ai-summary">
+                                    Static analysis complete.
+                                </div>
+
+                                <div class="grid-2col" style="margin-bottom: 16px;">
+                                    <div>
+                                        <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 6px; text-transform: uppercase;">Key Observations</div>
+                                        <ul style="font-size: 12px; color: var(--text-secondary); padding-left: 18px; margin: 0; line-height: 1.5;" id="ov-ai-findings-list">
+                                            <li>Heuristic evaluation completed across PE structure.</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 6px; text-transform: uppercase;">Defensive Recommendations</div>
+                                        <ul style="font-size: 12px; color: var(--text-secondary); padding-left: 18px; margin: 0; line-height: 1.5;" id="ov-ai-recs-list">
+                                            <li>Verify binary hashes with approved enterprise baseline.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- Interactive Ask AI Prompt Box -->
+                                <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+                                    <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px;">⚡ ASK AI ABOUT THIS ANALYSIS</div>
+                                    
+                                    <div class="prompt-chips-wrapper">
+                                        <span class="prompt-chip" onclick="askAiPrompt('Why is this file high risk?')">Why is this file high risk?</span>
+                                        <span class="prompt-chip" onclick="askAiPrompt('What are the most suspicious indicators?')">What are the most suspicious indicators?</span>
+                                        <span class="prompt-chip" onclick="askAiPrompt('Explain the suspicious APIs.')">Explain the suspicious APIs</span>
+                                        <span class="prompt-chip" onclick="askAiPrompt('What should a SOC analyst investigate next?')">What should SOC investigate next?</span>
+                                        <span class="prompt-chip" onclick="askAiPrompt('Summarize this analysis for management.')">Executive summary</span>
+                                    </div>
+
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" id="ask-ai-input" class="search-input" placeholder="Type a specific question about this binary..." style="flex: 1; font-size: 12px;" onkeydown="if(event.key==='Enter') executeAskAi()">
+                                        <button class="btn-primary" onclick="executeAskAi()" id="btn-ask-ai-send" style="font-size: 12px; padding: 6px 14px;">⚡ Ask AI</button>
+                                    </div>
+
+                                    <div id="ask-ai-response-box" style="display: none; margin-top: 12px; padding: 12px 14px; background: rgba(14, 165, 233, 0.06); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 6px; font-size: 12px; line-height: 1.5; color: var(--text-primary);">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2-Column Grid: Analyst Notes & Case Management -->
+                        <div class="grid-2col" style="margin-bottom: 20px;">
+                            
+                            <!-- Case Management Information -->
+                            <div class="soc-card">
+                                <div class="card-head flex-between">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">📁</span>
+                                        <h3 class="card-heading">CASE MANAGEMENT</h3>
+                                    </div>
+                                    <button class="btn-secondary" onclick="saveCaseInfo()" style="font-size: 10px; padding: 3px 8px;">💾 Save Case</button>
+                                </div>
+                                <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <div>
+                                            <label style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Case ID</label>
+                                            <input type="text" id="case-id-input" class="search-input" placeholder="CASE-001" style="width: 100%; font-size: 11px; margin-top: 4px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Investigator</label>
+                                            <input type="text" id="case-investigator-input" class="search-input" value="SOC Analyst" readonly style="width: 100%; font-size: 11px; margin-top: 4px; opacity: 0.8;">
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <div>
+                                            <label style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Case Status</label>
+                                            <select id="case-status-select" class="search-input" style="width: 100%; font-size: 11px; margin-top: 4px;">
+                                                <option value="OPEN">OPEN</option>
+                                                <option value="INVESTIGATING">INVESTIGATING</option>
+                                                <option value="CONTAINED">CONTAINED</option>
+                                                <option value="RESOLVED">RESOLVED</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Priority</label>
+                                            <select id="case-priority-select" class="search-input" style="width: 100%; font-size: 11px; margin-top: 4px;">
+                                                <option value="LOW">LOW</option>
+                                                <option value="MEDIUM">MEDIUM</option>
+                                                <option value="HIGH">HIGH</option>
+                                                <option value="CRITICAL">CRITICAL</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Analyst Investigation Notes -->
+                            <div class="soc-card">
+                                <div class="card-head flex-between">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">📝</span>
+                                        <h3 class="card-heading">ANALYST INVESTIGATION NOTES</h3>
+                                    </div>
+                                    <span class="badge badge-low" id="notes-count-badge">0 NOTES</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="notes-container" id="analyst-notes-list">
+                                        <div class="empty-state-cell">No investigation notes recorded for this analysis yet.</div>
+                                    </div>
+
+                                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                        <select id="note-tag-select" class="search-input" style="width: 130px; font-size: 10px;">
+                                            <option value="OBSERVATION">Observation</option>
+                                            <option value="IOC_CONFIRMED">IOC Confirmed</option>
+                                            <option value="MITIGATION_APPLIED">Mitigation</option>
+                                            <option value="ESCALATION">Escalation</option>
+                                        </select>
+                                        <input type="text" id="note-content-input" class="search-input" placeholder="Add an observation or triage note..." style="flex: 1; font-size: 11px;" onkeydown="if(event.key==='Enter') addAnalystNote()">
+                                        <button class="btn-primary" onclick="addAnalystNote()" style="font-size: 11px; padding: 4px 10px;">+ Add</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Recommended Defensive Action Panel -->
+                        <div class="soc-card" style="margin-top: 20px; background: rgba(14, 28, 56, 0.5); border-color: var(--border-strong);">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🛡️</span>
+                                    <h3 class="card-heading">DEFENSIVE RECOMMENDATIONS & ACTIONS</h3>
+                                </div>
+                                <span class="badge badge-low">SOC OPERATIONAL PLAYBOOK</span>
+                            </div>
+                            <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <button class="btn-primary" onclick="exportCurrentReport('html')">📄 Export Forensic Report</button>
+                                <button class="btn-secondary" onclick="switchTab('strings')">🔤 Inspect String Intelligence</button>
+                                <button class="btn-secondary" onclick="exportCurrentReport('json')">📦 Export SIEM JSON</button>
+                                <button class="btn-secondary" onclick="openCompareModal()">⚖️ Compare Analysis</button>
+                                <button class="btn-danger" id="btn-quarantine-action" onclick="showSocNotification('File Quarantined', 'Sample has been safely isolated in the zero-execution vault.', 'success')">🔒 Quarantine File</button>
+                            </div>
+                        </div>
+
                     </div>
                 </section>
+
+                <!-- ============================================== -->
+                <!-- SAMPLE COMPARISON MODAL                        -->
+                <!-- ============================================== -->
+                <div id="compare-analysis-modal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content" style="max-width: 780px;">
+                        <div class="modal-header flex-between">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span>⚖️</span>
+                                <h3 style="font-size: 15px; color: var(--accent-cyan); margin: 0;">Binary Analysis Comparison</h3>
+                            </div>
+                            <button class="btn-icon" onclick="closeCompareModal()">✕</button>
+                        </div>
+                        <div class="modal-body" style="padding: 16px;">
+                            <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 14px;">
+                                <label style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">Select Sample to Compare with Current:</label>
+                                <select id="compare-target-select" class="search-input" style="flex: 1; font-size: 12px;" onchange="executeAnalysisComparison()">
+                                    <option value="">-- Choose analysis from history --</option>
+                                </select>
+                            </div>
+
+                            <div id="compare-results-container" style="display: none;">
+                                <div class="compare-grid">
+                                    <div class="compare-card" id="compare-card-a">
+                                        <div style="font-size: 11px; color: var(--accent-cyan); font-weight: 700; margin-bottom: 8px;" id="cmp-a-title">Current Sample</div>
+                                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+                                            <div>Filename: <strong id="cmp-a-file">-</strong></div>
+                                            <div>Risk Score: <strong id="cmp-a-score">-</strong></div>
+                                            <div>Architecture: <span id="cmp-a-arch">-</span></div>
+                                            <div>Suspicious APIs: <span id="cmp-a-apis">-</span></div>
+                                            <div>Suspicious Strings: <span id="cmp-a-strings">-</span></div>
+                                            <div>Max Entropy: <span id="cmp-a-entropy">-</span></div>
+                                            <div>Total IOCs: <span id="cmp-a-iocs">-</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="compare-card" id="compare-card-b">
+                                        <div style="font-size: 11px; color: var(--accent-blue); font-weight: 700; margin-bottom: 8px;" id="cmp-b-title">Target Sample</div>
+                                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+                                            <div>Filename: <strong id="cmp-b-file">-</strong></div>
+                                            <div>Risk Score: <strong id="cmp-b-score">-</strong></div>
+                                            <div>Architecture: <span id="cmp-b-arch">-</span></div>
+                                            <div>Suspicious APIs: <span id="cmp-b-apis">-</span></div>
+                                            <div>Suspicious Strings: <span id="cmp-b-strings">-</span></div>
+                                            <div>Max Entropy: <span id="cmp-b-entropy">-</span></div>
+                                            <div>Total IOCs: <span id="cmp-b-iocs">-</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="compare-delta-summary" style="margin-top: 12px; padding: 10px; background: rgba(0, 240, 255, 0.05); border-radius: 4px; font-size: 12px; text-align: center; color: var(--accent-cyan);">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- ============================================== -->
                 <!-- 3. PE ANALYSIS VIEW                            -->

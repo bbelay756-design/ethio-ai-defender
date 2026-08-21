@@ -81,6 +81,12 @@ def init_db() -> None:
                     cursor.execute("ALTER TABLE samples ADD COLUMN risk_score INTEGER DEFAULT 0")
                 if "classification" not in cols:
                     cursor.execute("ALTER TABLE samples ADD COLUMN classification VARCHAR(32) DEFAULT 'LOW'")
+                if "case_id" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN case_id VARCHAR(64)")
+                if "case_status" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN case_status VARCHAR(32) DEFAULT 'OPEN'")
+                if "case_priority" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN case_priority VARCHAR(32) DEFAULT 'MEDIUM'")
                 if "completed_at" not in cols:
                     cursor.execute("ALTER TABLE samples ADD COLUMN completed_at DATETIME")
                 conn.connection.commit()

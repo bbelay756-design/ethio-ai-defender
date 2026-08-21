@@ -1963,6 +1963,149 @@ body::before {
 }
 
 /* ==========================================================================
+   EVIDENCE CARDS & INVESTIGATION WORKFLOW
+   ========================================================================== */
+
+.evidence-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.evidence-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all var(--anim-fast) ease;
+    cursor: pointer;
+}
+
+.evidence-card:hover {
+    border-color: var(--accent-cyan);
+    background: rgba(0, 240, 255, 0.03);
+    transform: translateY(-2px);
+}
+
+.evidence-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.evidence-card-count {
+    font-size: 20px;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    color: var(--accent-cyan);
+    margin: 6px 0 2px 0;
+}
+
+.evidence-card-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 10px;
+}
+
+/* Prompt Chips for Ask AI */
+.prompt-chips-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.prompt-chip {
+    background: rgba(14, 165, 233, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    color: var(--accent-cyan);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.prompt-chip:hover {
+    background: rgba(0, 240, 255, 0.2);
+    border-color: var(--accent-cyan);
+    transform: translateY(-1px);
+}
+
+/* Notes List */
+.notes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 280px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.note-item {
+    background: var(--bg-card-alt);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+}
+
+.note-author {
+    font-weight: 700;
+    color: var(--accent-cyan);
+}
+
+.note-tag-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.note-content {
+    font-size: 12px;
+    color: var(--text-primary);
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+/* Side-by-side Comparison */
+.compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 14px;
+}
+
+.compare-card {
+    background: var(--bg-card-alt);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+}
+
+/* ==========================================================================
    RESPONSIVE DESIGN (DESKTOP, TABLET, MOBILE)
    ========================================================================== */
 
@@ -1987,7 +2130,7 @@ body::before {
     .menu-toggle-btn {
         display: inline-block;
     }
-    .grid-2col, .grid-3col, .grid-4col {
+    .grid-2col, .grid-3col, .grid-4col, .compare-grid {
         grid-template-columns: 1fr;
     }
     .investigation-drawer {
