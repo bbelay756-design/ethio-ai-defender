@@ -1557,52 +1557,65 @@
                     <div class="view-header flex-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
                         <div>
                             <h2 data-i18n="strings_title">String Intelligence</h2>
-                            <p data-i18n="strings_subtitle">Extracted and classified strings from the selected PE analysis.</p>
+                            <p data-i18n="strings_subtitle">Static forensic string extraction, categorization, indicator attribution & AI analysis.</p>
                         </div>
-                        <div id="strings-header-actions" style="display: flex; gap: 8px; align-items: center;">
-                            <button class="btn-secondary" onclick="switchTab('history')" style="display: flex; align-items: center; gap: 6px;">
+                        <div id="strings-header-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn-secondary" onclick="openStringsSelectAnalysisModal()" style="display: flex; align-items: center; gap: 6px;">
                                 <span>📂</span> Select Analysis
+                            </button>
+                            <button class="btn-secondary" onclick="reloadCurrentStrings()" title="Reload strings from server" style="display: flex; align-items: center; gap: 6px;">
+                                <span>🔄</span> Refresh
                             </button>
                         </div>
                     </div>
 
-                    <!-- No Analysis Selected Warning State -->
-                    <div id="strings-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 40px 20px; border-left: 4px solid var(--accent-blue);">
-                        <div style="font-size: 40px; margin-bottom: 12px;">🔍</div>
-                        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">No analysis selected.</h3>
-                        <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 20px auto; font-size: 13px;">
-                            Please select an analyzed sample from Analysis History or upload a Windows PE binary (.exe, .dll) to inspect its extracted string intelligence.
+                    <!-- No Analysis Selected State -->
+                    <div id="strings-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-blue);">
+                        <div style="font-size: 48px; margin-bottom: 14px;">🔤</div>
+                        <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
+                        <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
+                            Please select a completed analysis to inspect extracted strings, review suspicious forensic indicators, and query AI intelligence.
                         </p>
-                        <button class="btn-primary" onclick="switchTab('history')">
-                            📂 Select Analysis from History
+                        <button class="btn-primary" onclick="openStringsSelectAnalysisModal()" style="font-size: 13px; padding: 8px 18px;">
+                            📂 Select Analysis
                         </button>
                     </div>
 
                     <!-- Active Analysis Content Container -->
                     <div id="strings-content-container">
                         <!-- Active Analysis Info Ribbon -->
-                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid var(--accent-blue);">
-                            <div class="flex-between" style="flex-wrap: wrap; gap: 10px;">
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid var(--accent-cyan); background: rgba(11, 25, 44, 0.65);">
+                            <div class="flex-between" style="flex-wrap: wrap; gap: 12px;">
                                 <div>
                                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                         <span style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="strings-active-filename">-</span>
-                                        <span class="badge badge-rule" id="strings-active-analysis-id">ANL-UNKNOWN</span>
+                                        <span class="badge badge-rule" id="strings-active-analysis-id" style="cursor: pointer;" onclick="copyActiveAnalysisId()" title="Click to copy Analysis ID">ANL-UNKNOWN</span>
                                         <span class="badge badge-low" id="strings-active-status-badge">COMPLETED</span>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); flex-wrap: wrap;">
-                                        <span>SHA-256: <code id="strings-active-sha256" style="color: var(--accent-blue);">-</code></span>
+                                        <span>SHA-256: <code id="strings-active-sha256" style="color: var(--accent-cyan);">-</code></span>
                                         <button class="btn-icon-copy" id="strings-copy-sha256-btn" onclick="copyActiveSha256()" title="Copy SHA-256">📋</button>
                                     </div>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                                     <div style="text-align: right;">
-                                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Total Extracted Strings</div>
-                                        <div style="font-size: 20px; font-weight: 800; color: var(--accent-blue);" id="strings-active-total-counter">0</div>
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total Extracted Strings</div>
+                                        <div style="font-size: 22px; font-weight: 800; color: var(--accent-cyan);" id="strings-active-total-counter">0</div>
                                     </div>
-                                    <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="switchTab('history')" title="Switch to another analysis record">
+                                    <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="openStringsSelectAnalysisModal()" title="Switch to another analysis record">
                                         ⇄ Change Analysis
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- Contextual Cross-View Navigation Bar -->
+                            <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap;">
+                                <span style="font-size: 11px; color: var(--text-muted); align-self: center; margin-right: 4px;">Jump to:</span>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('analysis')" style="font-size: 11px; padding: 3px 8px;">📊 Overview</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('pe')" style="font-size: 11px; padding: 3px 8px;">🧩 PE Headers</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('imports')" style="font-size: 11px; padding: 3px 8px;">⚙️ Imports & APIs</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('indicators')" style="font-size: 11px; padding: 3px 8px;">🎯 Threat IOCs</button>
+                                <button class="btn-secondary" onclick="exportCurrentReport('html')" style="font-size: 11px; padding: 3px 8px;">📄 Forensic Report</button>
                             </div>
                         </div>
 
@@ -1651,19 +1664,44 @@
                         </div>
 
                         <!-- AI String Intelligence Summary Box -->
-                        <div class="soc-card" style="margin-bottom: 20px; background: rgba(14, 165, 233, 0.04); border-left: 3px solid var(--accent-blue);">
-                            <div class="card-head" style="padding-bottom: 6px;">
+                        <div class="soc-card" style="margin-bottom: 20px; background: rgba(0, 240, 255, 0.03); border-left: 3px solid var(--accent-cyan);">
+                            <div class="card-head flex-between" style="padding-bottom: 6px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="card-icon">🤖</span>
                                     <h3 class="card-heading" style="font-size: 14px;">AI String Intelligence Summary</h3>
                                 </div>
-                                <span class="badge badge-low" style="font-size: 10px;">DEFENSIVE STATIC SCOPING</span>
+                                <span class="badge badge-low" id="strings-ai-status-badge" style="font-size: 10px;">DEFENSIVE STATIC SCOPING</span>
                             </div>
                             <div class="card-body">
                                 <p id="strings-ai-summary-text" style="font-size: 13px; color: var(--text-primary); line-height: 1.6; margin: 0;">
                                     Loading string intelligence summary...
                                 </p>
                             </div>
+                        </div>
+
+                        <!-- Specialized Intelligence Quick-Triage Chips -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+                            <button class="btn-secondary quick-string-pill active" id="pill-all" onclick="applyStringQuickFilter('ALL')" style="font-size: 11px; padding: 4px 10px;">
+                                🔤 All Strings (<span id="pill-all-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-string-pill" id="pill-susp" onclick="applyStringQuickFilter('SUSPICIOUS')" style="font-size: 11px; padding: 4px 10px; color: var(--sev-high); border-color: rgba(239, 68, 68, 0.3);">
+                                ⚠️ Suspicious Indicators (<span id="pill-susp-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-string-pill" id="pill-net" onclick="applyStringQuickFilter('URL')" style="font-size: 11px; padding: 4px 10px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">
+                                🌐 URLs & Domains (<span id="pill-net-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-string-pill" id="pill-ips" onclick="applyStringQuickFilter('IP_ADDRESS')" style="font-size: 11px; padding: 4px 10px; color: #fb923c; border-color: rgba(251, 146, 60, 0.3);">
+                                📍 IP Addresses (<span id="pill-ips-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-string-pill" id="pill-reg" onclick="applyStringQuickFilter('REGISTRY')" style="font-size: 11px; padding: 4px 10px; color: #a855f7; border-color: rgba(168, 85, 247, 0.3);">
+                                🗝️ Registry Paths (<span id="pill-reg-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-string-pill" id="pill-cmd" onclick="applyStringQuickFilter('COMMAND')" style="font-size: 11px; padding: 4px 10px; color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);">
+                                💻 Commands & Scripts (<span id="pill-cmd-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-string-pill" id="pill-api" onclick="applyStringQuickFilter('API')" style="font-size: 11px; padding: 4px 10px; color: #ec4899; border-color: rgba(236, 72, 153, 0.3);">
+                                ⚙️ Windows APIs (<span id="pill-api-count">0</span>)
+                            </button>
                         </div>
 
                         <!-- Search, Filter & Action Toolbar -->
@@ -1709,6 +1747,9 @@
                                         <input type="checkbox" id="strings-filter-suspicious" onchange="onStringsFilterChange()" style="cursor: pointer;">
                                         <span style="font-weight: 600; color: var(--sev-high);">⚠️ Suspicious only</span>
                                     </label>
+                                    <button class="btn-secondary" id="btn-strings-clear-filters" onclick="clearStringsFilters()" style="font-size: 11px; padding: 4px 8px;" title="Reset search and filters">
+                                        ✕ Clear Filters
+                                    </button>
                                 </div>
 
                                 <!-- Right controls (Sort & Export) -->
@@ -1719,6 +1760,8 @@
                                         <option value="offset_desc">Sort: Offset (High to Low)</option>
                                         <option value="category">Sort: Category (A-Z)</option>
                                         <option value="value">Sort: String Value (A-Z)</option>
+                                        <option value="length_desc">Sort: Longest Strings</option>
+                                        <option value="length_asc">Sort: Shortest Strings</option>
                                     </select>
                                     <button class="btn-secondary" onclick="exportStringsCSV()" title="Export current strings to CSV file" style="font-size: 12px; padding: 6px 10px;">
                                         📥 Export CSV
@@ -1726,8 +1769,8 @@
                                     <button class="btn-secondary" onclick="exportStringsJSON()" title="Export current strings to JSON file" style="font-size: 12px; padding: 6px 10px;">
                                         📥 Export JSON
                                     </button>
-                                    <button class="btn-secondary" onclick="reloadCurrentStrings()" title="Reload strings from server" style="font-size: 12px; padding: 6px 8px;">
-                                        🔄
+                                    <button class="btn-secondary" onclick="exportStringsTXT()" title="Export investigation summary to TXT" style="font-size: 12px; padding: 6px 10px;">
+                                        📝 Export TXT
                                     </button>
                                 </div>
                             </div>
@@ -1750,18 +1793,19 @@
                                         <thead>
                                             <tr>
                                                 <th style="width: 50px; text-align: center;">#</th>
+                                                <th style="width: 80px;">Severity</th>
                                                 <th>String Value</th>
                                                 <th style="width: 110px;">Category</th>
-                                                <th style="width: 90px;">Encoding</th>
-                                                <th style="width: 100px;">Offset</th>
-                                                <th style="width: 90px;">Severity</th>
-                                                <th style="width: 100px;">Suspicious</th>
+                                                <th style="width: 85px;">Encoding</th>
+                                                <th style="width: 95px;">Offset</th>
+                                                <th style="width: 70px;">Length</th>
+                                                <th style="width: 75px;">Confidence</th>
                                                 <th>Detection Reason</th>
-                                                <th style="width: 110px; text-align: center;">Actions</th>
+                                                <th style="width: 90px; text-align: center;">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody id="strings-tbody">
-                                            <tr><td colspan="9" class="empty-state-cell">Loading string intelligence...</td></tr>
+                                            <tr><td colspan="10" class="empty-state-cell">Loading string intelligence...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -3202,9 +3246,9 @@
                     </div>
                 </div>
 
-                <!-- Modal 4: Detailed String Forensic Inspection Modal -->
+                <!-- Modal 4: Detailed String Forensic Inspection Drawer / Modal -->
                 <div id="string-detail-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeStringDetailModal();">
-                    <div class="soc-card" style="max-width: 720px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-blue);">
+                    <div class="soc-card" style="max-width: 760px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
                         <div class="card-head flex-between">
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <span class="card-icon">🔤</span>
@@ -3212,56 +3256,135 @@
                             </div>
                             <button class="btn-secondary" onclick="closeStringDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
                         </div>
-                        <div class="card-body" style="display: flex; flex-direction: column; gap: 16px;">
-                            <!-- Full String Content Box with Copy -->
+                        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px; max-height: 75vh; overflow-y: auto;">
+                            <!-- Full String Content Box with Copy & Controls -->
                             <div>
                                 <div class="flex-between" style="margin-bottom: 6px;">
                                     <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Full Extracted String Value:</span>
-                                    <button class="btn-secondary" id="btn-modal-copy-string" onclick="copyModalStringValue()" style="font-size: 11px; padding: 3px 8px; display: flex; align-items: center; gap: 4px;">
-                                        📋 Copy String
-                                    </button>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="btn-secondary" id="btn-modal-wrap-toggle" onclick="toggleModalStringWrap()" style="font-size: 10px; padding: 2px 8px;">
+                                            Wrap Text
+                                        </button>
+                                        <button class="btn-secondary" id="btn-modal-copy-string" onclick="copyModalStringValue()" style="font-size: 10px; padding: 2px 8px; display: flex; align-items: center; gap: 4px;">
+                                            📋 Copy String
+                                        </button>
+                                    </div>
                                 </div>
-                                <pre id="modal-string-value" style="background: var(--bg-darkest, #0b1120); border: 1px solid var(--border-color); padding: 14px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--accent-blue); word-break: break-all; white-space: pre-wrap; max-height: 180px; overflow-y: auto; margin: 0;"></pre>
+                                <pre id="modal-string-value" style="background: var(--bg-darkest, #0b1120); border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--accent-cyan); word-break: break-all; white-space: pre-wrap; max-height: 160px; overflow-y: auto; margin: 0;"></pre>
                             </div>
 
                             <!-- Forensic Attributes Grid -->
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
-                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
                                     <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Category</div>
-                                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="modal-string-category">-</div>
+                                    <div style="font-size: 12px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="modal-string-category">-</div>
                                 </div>
-                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
                                     <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Encoding & Length</div>
-                                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="modal-string-encoding">-</div>
+                                    <div style="font-size: 12px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="modal-string-encoding">-</div>
                                 </div>
-                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
                                     <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Binary Byte Offset</div>
-                                    <div style="font-size: 13px; font-family: var(--font-mono); font-weight: 700; color: var(--accent-blue); margin-top: 4px;" id="modal-string-offset">-</div>
+                                    <div style="font-size: 12px; font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan); margin-top: 4px; display: flex; align-items: center; justify-content: space-between;">
+                                        <span id="modal-string-offset">-</span>
+                                        <button class="btn-icon-copy" onclick="copyModalStringOffset()" title="Copy offset" style="font-size: 10px; padding: 1px 4px;">📋</button>
+                                    </div>
                                 </div>
-                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
                                     <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Severity & Confidence</div>
-                                    <div style="font-size: 13px; font-weight: 700; margin-top: 4px;" id="modal-string-severity">-</div>
+                                    <div style="font-size: 12px; font-weight: 700; margin-top: 4px;" id="modal-string-severity">-</div>
                                 </div>
                             </div>
 
                             <!-- Detection Reason & Context -->
-                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
-                                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Forensic Detection Reason:</div>
-                                <div id="modal-string-reason" style="font-size: 13px; color: var(--text-primary); line-height: 1.5;">-</div>
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 12px;">
+                                <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 3px;">Forensic Detection Reason:</div>
+                                <div id="modal-string-reason" style="font-size: 12px; color: var(--text-primary); line-height: 1.4;">-</div>
                             </div>
 
                             <!-- MITRE ATT&CK Mapping Card -->
-                            <div id="modal-string-mitre-box" style="display: none; background: rgba(14, 165, 233, 0.06); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 6px; padding: 12px;">
-                                <div style="font-size: 11px; font-weight: 700; color: var(--accent-blue); text-transform: uppercase; margin-bottom: 4px;">Potential MITRE ATT&CK Association:</div>
-                                <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);" id="modal-string-mitre-name">-</div>
-                                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
-                                    <em>Note: Potentially associated with this adversary technique. Static string presence alone does not establish confirmed execution.</em>
+                            <div id="modal-string-mitre-box" style="display: none; background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 6px; padding: 10px 12px;">
+                                <div style="font-size: 10px; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase; margin-bottom: 3px;">Potential MITRE ATT&CK Association:</div>
+                                <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);" id="modal-string-mitre-name">-</div>
+                                <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">
+                                    <em>Note: Potential technique indicator. Static presence does not establish runtime execution.</em>
+                                </div>
+                            </div>
+
+                            <!-- Related Sample Context -->
+                            <div style="font-size: 11px; color: var(--text-muted); display: flex; gap: 14px; flex-wrap: wrap;">
+                                <span>Sample: <strong id="modal-string-sample-name" style="color: var(--text-primary);">-</strong></span>
+                                <span>SHA-256: <code id="modal-string-sample-sha" style="color: var(--accent-cyan);">-</code></span>
+                            </div>
+
+                            <!-- Grounded Interactive Ask AI Section -->
+                            <div style="border-top: 1px solid var(--border-subtle); padding-top: 12px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span>🤖</span>
+                                        <span style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase;">Ask AI About This String</span>
+                                    </div>
+                                    <div style="display: flex; gap: 6px;">
+                                        <button class="btn-secondary" onclick="askAiModalPrompt('What does this string indicate in malware analysis?')" style="font-size: 10px; padding: 2px 6px;">Indicator Meaning</button>
+                                        <button class="btn-secondary" onclick="askAiModalPrompt('Is this string commonly observed in benign software or malware?')" style="font-size: 10px; padding: 2px 6px;">Benign vs Malicious</button>
+                                        <button class="btn-secondary" onclick="askAiModalPrompt('What should an analyst investigate next given this string?')" style="font-size: 10px; padding: 2px 6px;">Next Investigation Steps</button>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="modal-ask-ai-input" class="soc-input" placeholder="Ask AI analyst about this specific string..." style="flex: 1; font-size: 11px;" onkeydown="if(event.key==='Enter') executeModalAskAi()">
+                                    <button class="btn-primary" id="btn-modal-ask-ai" onclick="executeModalAskAi()" style="font-size: 11px; padding: 4px 12px;">Ask AI</button>
+                                </div>
+                                <div id="modal-string-ai-answer" style="display: none; margin-top: 8px; padding: 10px 12px; background: rgba(0, 240, 255, 0.04); border-radius: 4px; border: 1px solid rgba(0, 240, 255, 0.2); font-size: 12px; line-height: 1.5; color: var(--text-primary);">
                                 </div>
                             </div>
                         </div>
+                        <div class="card-foot flex-between" style="padding: 10px 18px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button class="btn-secondary" onclick="searchSimilarStringsFromModal()" style="font-size: 11px; padding: 4px 8px;">🔍 Search Similar</button>
+                                <button class="btn-secondary" style="font-size: 11px; padding: 4px 8px; opacity: 0.6; cursor: not-allowed;" title="Binary offset viewer is not available in static mode." disabled>📍 Open at Offset</button>
+                            </div>
+                            <button class="btn-secondary" onclick="closeStringDetailModal()" style="font-size: 11px; padding: 4px 12px;">Close</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: Select Analysis Record for Strings -->
+                <div id="strings-select-analysis-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeStringsSelectAnalysisModal();">
+                    <div class="soc-card" style="max-width: 820px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
+                        <div class="card-head flex-between">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="card-icon">📂</span>
+                                <h3 class="card-heading" style="font-size: 15px;">Select Analysis Record for String Intelligence</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closeStringsSelectAnalysisModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body" style="padding: 16px;">
+                            <div style="margin-bottom: 12px; display: flex; gap: 10px; align-items: center;">
+                                <input type="text" id="strings-modal-search" class="soc-input" placeholder="Search by filename, analysis ID, or SHA-256..." oninput="filterStringsModalAnalyses()" style="flex: 1; font-size: 12px;">
+                                <button class="btn-secondary" onclick="loadAnalysesForStringsModal()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh</button>
+                            </div>
+                            <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                                <table class="soc-table" id="strings-modal-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Filename</th>
+                                            <th>Analysis ID</th>
+                                            <th>SHA-256</th>
+                                            <th>Risk Posture</th>
+                                            <th>Status</th>
+                                            <th>Created Date</th>
+                                            <th style="text-align: center;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="strings-modal-analyses-tbody">
+                                        <tr><td colspan="7" class="empty-state-cell">Loading available analyses from database...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                         <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
-                            <span style="font-size: 11px; color: var(--text-muted);">Defensive Static Binary Inspection</span>
-                            <button class="btn-secondary" onclick="closeStringDetailModal()">Close</button>
+                            <span style="font-size: 11px; color: var(--text-muted);">Select any completed analysis to inspect its static string evidence</span>
+                            <button class="btn-secondary" onclick="closeStringsSelectAnalysisModal()">Cancel</button>
                         </div>
                     </div>
                 </div>

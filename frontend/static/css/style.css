@@ -2105,6 +2105,20 @@ body::before {
     padding: 16px;
 }
 
+/* String Intelligence Quick Filter Pills */
+.quick-string-pill {
+    transition: all var(--anim-fast) ease;
+    cursor: pointer;
+}
+
+.quick-string-pill.active {
+    background: rgba(0, 240, 255, 0.15) !important;
+    border-color: var(--accent-cyan) !important;
+    color: var(--accent-cyan) !important;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
 /* ==========================================================================
    RESPONSIVE DESIGN (DESKTOP, TABLET, MOBILE)
    ========================================================================== */

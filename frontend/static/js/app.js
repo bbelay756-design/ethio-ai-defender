@@ -2047,39 +2047,97 @@ function copyTextToClipboard(text) {
  * ============================================================================
  */
 state.stringsData = null;
+// ============================================================================
+// MODULE: STRING FORENSIC INTELLIGENCE WORKSPACE
+// ============================================================================
+
+state.stringsData = null;
 state.stringsList = [];
 state.stringsFilteredList = [];
 state.stringsCurrentPage = 1;
 state.stringsPageSize = 50;
 state.stringsTotalPages = 1;
 state.stringsSelectedModalItem = null;
+state.stringsModalAnalysesList = [];
+state.stringsActiveQuickFilter = 'ALL';
+state.stringsIsWrapEnabled = true;
 
 function renderStatEl(elementId, value) {
     const el = document.getElementById(elementId);
     if (el) el.textContent = value;
 }
 
+/**
+ * Load and Render String Intelligence
+ * Priority:
+ * 1. Explicit analysisId parameter
+ * 2. URL query parameter '?analysis_id=...'
+ * 3. Selected analysis from global application state
+ * 4. Most recently completed analysis from database
+ * 5. Otherwise show "No Analysis Selected"
+ */
 async function loadStringsIntelligence(analysisId = null, resetFilters = false) {
-    const urlParamId = new URLSearchParams(window.location.search).get('analysis_id');
-    const targetId = analysisId || urlParamId || state.activeAnalysisId || (state.sampleData ? (state.sampleData.analysis_id || state.sampleData.id) : null);
-    
     const banner = document.getElementById('strings-no-analysis-banner');
     const content = document.getElementById('strings-content-container');
     const tbody = document.getElementById('strings-tbody');
+    const aiSummaryEl = document.getElementById('strings-ai-summary-text');
+    const aiStatusBadge = document.getElementById('strings-ai-status-badge');
 
+    let targetId = analysisId;
+
+    // 1. Check URL search param
+    if (!targetId) {
+        const urlParams = new URLSearchParams(window.location.search);
+        targetId = urlParams.get('analysis_id');
+    }
+
+    // 2. Check global state
+    if (!targetId) {
+        targetId = state.activeAnalysisId || (state.sampleData ? (state.sampleData.analysis_id || state.sampleData.id) : null);
+    }
+
+    // 3. Check most recently completed analysis from server
+    if (!targetId) {
+        try {
+            const historyRes = await fetchWithAuth('/api/analyses?limit=1');
+            if (historyRes.ok) {
+                const historyData = await historyRes.json();
+                if (historyData.items && historyData.items.length > 0) {
+                    targetId = historyData.items[0].analysis_id;
+                }
+            }
+        } catch (e) {
+            console.warn('Could not auto-fetch recent analysis:', e);
+        }
+    }
+
+    // 4. If no analysis exists anywhere, show NO ANALYSIS SELECTED
     if (!targetId) {
         if (banner) banner.style.display = 'block';
         if (content) content.style.display = 'none';
         return;
     }
 
+    // Analysis found: show content workspace
     if (banner) banner.style.display = 'none';
     if (content) content.style.display = 'block';
 
     state.activeAnalysisId = targetId;
 
+    // Update URL query without page reload
+    if (window.history && window.history.replaceState) {
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set('analysis_id', targetId);
+        window.history.replaceState(null, '', newUrl.toString());
+    }
+
     if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell" style="padding: 24px;">Loading string intelligence for <code>${escapeHtml(targetId)}</code>...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="empty-state-cell" style="padding: 28px;">Extracting and classifying static strings for <code>${escapeHtml(targetId)}</code>...</td></tr>`;
+    }
+    if (aiSummaryEl) aiSummaryEl.textContent = '🤖 AI Security Analyst synthesizing forensic string intelligence...';
+    if (aiStatusBadge) {
+        aiStatusBadge.textContent = 'ANALYZING...';
+        aiStatusBadge.className = 'badge badge-rule';
     }
 
     try {
@@ -2091,6 +2149,14 @@ async function loadStringsIntelligence(analysisId = null, resetFilters = false) 
         state.stringsData = data;
         state.stringsList = data.strings || [];
 
+        // Update Topbar Sample Badge
+        const sampleBadge = document.getElementById('current-sample-badge');
+        const sampleName = document.getElementById('current-sample-name');
+        if (sampleBadge && sampleName) {
+            sampleBadge.style.display = 'flex';
+            sampleName.textContent = data.filename || targetId;
+        }
+
         // Render Ribbon & Header Information
         const filenameEl = document.getElementById('strings-active-filename');
         const idEl = document.getElementById('strings-active-analysis-id');
@@ -2100,7 +2166,7 @@ async function loadStringsIntelligence(analysisId = null, resetFilters = false) 
 
         if (filenameEl) filenameEl.textContent = data.filename || 'sample.exe';
         if (idEl) idEl.textContent = data.analysis_id || targetId;
-        if (shaEl) shaEl.textContent = data.sha256 || '-';
+        if (shaEl) shaEl.textContent = data.sha256 || 'Not available';
         if (totalCounterEl) totalCounterEl.textContent = (data.total_strings || state.stringsList.length).toLocaleString();
         if (statusEl) {
             statusEl.textContent = data.status || 'COMPLETED';
@@ -2109,41 +2175,236 @@ async function loadStringsIntelligence(analysisId = null, resetFilters = false) 
 
         // Render 8 Summary Statistics Cards
         const stats = data.statistics || {};
-        renderStatEl('stat-total-strings', stats.total !== undefined ? stats.total.toLocaleString() : state.stringsList.length.toLocaleString());
-        renderStatEl('stat-total-sub', `${(stats.ascii_count || 0).toLocaleString()} ASCII / ${(stats.unicode_count || 0).toLocaleString()} Unicode`);
-        renderStatEl('stat-suspicious-strings', (stats.suspicious_count || 0).toLocaleString());
-        renderStatEl('stat-urls-domains', ((stats.urls_count || 0) + (stats.domains_count || 0)).toLocaleString());
-        renderStatEl('stat-ip-addresses', (stats.ips_count || 0).toLocaleString());
-        renderStatEl('stat-registry-paths', (stats.registry_count || 0).toLocaleString());
-        renderStatEl('stat-commands-scripts', ((stats.commands_count || 0) + (stats.powershell_count || 0)).toLocaleString());
-        renderStatEl('stat-ascii-strings', (stats.ascii_count || 0).toLocaleString());
-        renderStatEl('stat-unicode-strings', (stats.unicode_count || 0).toLocaleString());
+        const totalStr = stats.total !== undefined ? stats.total : state.stringsList.length;
+        const suspCount = stats.suspicious_count || 0;
+        const urlsCount = stats.urls_count || 0;
+        const domainsCount = stats.domains_count || 0;
+        const ipsCount = stats.ips_count || 0;
+        const regCount = stats.registry_count || 0;
+        const cmdsCount = stats.commands_count || 0;
+        const psCount = stats.powershell_count || 0;
+        const asciiCount = stats.ascii_count || 0;
+        const unicodeCount = stats.unicode_count || 0;
+        const apisCount = stats.apis_count || 0;
+
+        renderStatEl('stat-total-strings', totalStr.toLocaleString());
+        renderStatEl('stat-total-sub', `${asciiCount.toLocaleString()} ASCII / ${unicodeCount.toLocaleString()} Unicode`);
+        renderStatEl('stat-suspicious-strings', suspCount.toLocaleString());
+        renderStatEl('stat-suspicious-sub', suspCount > 0 ? 'Forensic Indicators' : 'Clean Baseline');
+        renderStatEl('stat-urls-domains', (urlsCount + domainsCount).toLocaleString());
+        renderStatEl('stat-urls-sub', `${urlsCount} URLs / ${domainsCount} Domains`);
+        renderStatEl('stat-ip-addresses', ipsCount.toLocaleString());
+        renderStatEl('stat-ips-sub', 'IPv4 Endpoints');
+        renderStatEl('stat-registry-paths', regCount.toLocaleString());
+        renderStatEl('stat-registry-sub', 'Persistence & Config');
+        renderStatEl('stat-commands-scripts', (cmdsCount + psCount).toLocaleString());
+        renderStatEl('stat-commands-sub', `${psCount} PowerShell / ${cmdsCount} CLI`);
+        renderStatEl('stat-ascii-strings', asciiCount.toLocaleString());
+        renderStatEl('stat-unicode-strings', unicodeCount.toLocaleString());
+
+        // Update Quick-Triage Pill Count Badges
+        renderStatEl('pill-all-count', totalStr.toLocaleString());
+        renderStatEl('pill-susp-count', suspCount.toLocaleString());
+        renderStatEl('pill-net-count', (urlsCount + domainsCount).toLocaleString());
+        renderStatEl('pill-ips-count', ipsCount.toLocaleString());
+        renderStatEl('pill-reg-count', regCount.toLocaleString());
+        renderStatEl('pill-cmd-count', (cmdsCount + psCount).toLocaleString());
+        renderStatEl('pill-api-count', apisCount.toLocaleString());
 
         // Render AI Intelligence Summary
-        const aiSummaryEl = document.getElementById('strings-ai-summary-text');
         if (aiSummaryEl) {
-            aiSummaryEl.textContent = data.ai_string_summary || 'Static string analysis complete.';
+            aiSummaryEl.textContent = data.ai_string_summary || 'Static string classification complete. Findings scoped from in-memory byte analysis.';
+        }
+        if (aiStatusBadge) {
+            if (suspCount > 0) {
+                aiStatusBadge.textContent = `${suspCount} SUSPICIOUS CLUES`;
+                aiStatusBadge.className = 'badge badge-high';
+            } else {
+                aiStatusBadge.textContent = 'CLEAN BASELINE';
+                aiStatusBadge.className = 'badge badge-low';
+            }
         }
 
         if (resetFilters) {
-            const searchIn = document.getElementById('strings-search-input');
-            const catSel = document.getElementById('strings-filter-category');
-            const sevSel = document.getElementById('strings-filter-severity');
-            const encSel = document.getElementById('strings-filter-encoding');
-            const suspChk = document.getElementById('strings-filter-suspicious');
-            if (searchIn) searchIn.value = '';
-            if (catSel) catSel.value = 'ALL';
-            if (sevSel) sevSel.value = 'ALL';
-            if (encSel) encSel.value = 'ALL';
-            if (suspChk) suspChk.checked = false;
+            clearStringsFilters(false);
         }
 
         applyStringsFilterAndRender();
 
     } catch (err) {
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell" style="color: var(--sev-high);">Failed to load string intelligence: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="empty-state-cell" style="color: var(--sev-high); padding: 24px;">
+                        <div style="font-weight: 700; margin-bottom: 6px;">STRING EXTRACTION FAILED</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">${escapeHtml(err.message)}</div>
+                        <div style="display: flex; gap: 8px; justify-content: center;">
+                            <button class="btn-secondary" onclick="reloadCurrentStrings()">Retry</button>
+                            <button class="btn-primary" onclick="openStringsSelectAnalysisModal()">Choose Another Sample</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
         }
+        if (aiSummaryEl) aiSummaryEl.textContent = `String intelligence unavailable: ${err.message}`;
+        if (aiStatusBadge) {
+            aiStatusBadge.textContent = 'ERROR';
+            aiStatusBadge.className = 'badge badge-crit';
+        }
+    }
+}
+
+/**
+ * Contextual Cross-View Navigation preserving Analysis ID
+ */
+function navigateToAnalysisTab(targetTab) {
+    if (state.activeAnalysisId) {
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set('analysis_id', state.activeAnalysisId);
+        window.history.replaceState(null, '', newUrl.toString());
+    }
+    switchTab(targetTab);
+}
+
+/**
+ * Select Analysis Modal Controls
+ */
+async function openStringsSelectAnalysisModal() {
+    const modal = document.getElementById('strings-select-analysis-modal');
+    if (modal) modal.style.display = 'flex';
+    await loadAnalysesForStringsModal();
+}
+
+function closeStringsSelectAnalysisModal() {
+    const modal = document.getElementById('strings-select-analysis-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function loadAnalysesForStringsModal() {
+    const tbody = document.getElementById('strings-modal-analyses-tbody');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell">Loading available analyses from database...</td></tr>`;
+    }
+
+    try {
+        const res = await fetchWithAuth('/api/analyses?limit=50');
+        if (!res.ok) throw new Error('Failed to fetch analysis records');
+        const data = await res.json();
+        state.stringsModalAnalysesList = data.items || [];
+        renderStringsModalAnalysesList();
+    } catch (err) {
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell" style="color: var(--sev-high);">Failed to load analyses: ${escapeHtml(err.message)}</td></tr>`;
+        }
+    }
+}
+
+function filterStringsModalAnalyses() {
+    renderStringsModalAnalysesList();
+}
+
+function renderStringsModalAnalysesList() {
+    const tbody = document.getElementById('strings-modal-analyses-tbody');
+    const searchIn = document.getElementById('strings-modal-search');
+    if (!tbody) return;
+
+    const term = (searchIn ? searchIn.value : '').toLowerCase().trim();
+    const list = (state.stringsModalAnalysesList || []).filter(item => {
+        if (!term) return true;
+        return (
+            (item.filename || '').toLowerCase().includes(term) ||
+            (item.analysis_id || '').toLowerCase().includes(term) ||
+            (item.sha256 || '').toLowerCase().includes(term)
+        );
+    });
+
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell">No analyses matching criteria.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map(a => {
+        const isCurrent = a.analysis_id === state.activeAnalysisId;
+        const shaShort = a.sha256 ? `${a.sha256.substring(0, 12)}...` : 'N/A';
+        const dateStr = a.created_at ? a.created_at.substring(0, 19).replace('T', ' ') : 'Recent';
+        const riskLevel = a.risk_level || (a.risk_score >= 75 ? 'CRITICAL' : (a.risk_score >= 50 ? 'HIGH' : (a.risk_score >= 25 ? 'MEDIUM' : 'LOW')));
+        const riskBadge = `<span class="badge ${getRiskBadgeClass(riskLevel)}">${riskLevel} (${a.risk_score || 0})</span>`;
+
+        return `
+            <tr style="${isCurrent ? 'background: rgba(0, 240, 255, 0.05);' : ''}">
+                <td><strong>${escapeHtml(a.filename || 'sample.exe')}</strong></td>
+                <td><code style="font-family: var(--font-mono); color: var(--accent-cyan);">${escapeHtml(a.analysis_id)}</code></td>
+                <td><code style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);" title="${escapeHtml(a.sha256 || '')}">${escapeHtml(shaShort)}</code></td>
+                <td>${riskBadge}</td>
+                <td><span class="badge badge-low">${escapeHtml(a.status || 'COMPLETED')}</span></td>
+                <td style="font-size: 11px; color: var(--text-muted);">${escapeHtml(dateStr)}</td>
+                <td style="text-align: center;">
+                    <button class="btn-${isCurrent ? 'secondary' : 'primary'}" onclick="selectAnalysisForStrings('${escapeHtml(a.analysis_id)}')" style="font-size: 11px; padding: 3px 10px;">
+                        ${isCurrent ? '✓ Active' : 'Open'}
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function selectAnalysisForStrings(analysisId) {
+    closeStringsSelectAnalysisModal();
+    loadStringsIntelligence(analysisId, true);
+    showSocNotification('Analysis Selected', `Loaded static strings for ${analysisId}`, 'success');
+}
+
+/**
+ * Quick Triage Filter Pills
+ */
+function applyStringQuickFilter(filterType) {
+    state.stringsActiveQuickFilter = filterType;
+
+    // Update pill buttons visual state
+    document.querySelectorAll('.quick-string-pill').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activePill = document.getElementById(`pill-${filterType.toLowerCase()}`);
+    if (activePill) activePill.classList.add('active');
+
+    const catSelect = document.getElementById('strings-filter-category');
+    const suspCheck = document.getElementById('strings-filter-suspicious');
+
+    if (filterType === 'ALL') {
+        if (catSelect) catSelect.value = 'ALL';
+        if (suspCheck) suspCheck.checked = false;
+    } else if (filterType === 'SUSPICIOUS') {
+        if (catSelect) catSelect.value = 'ALL';
+        if (suspCheck) suspCheck.checked = true;
+    } else {
+        if (catSelect) catSelect.value = filterType;
+        if (suspCheck) suspCheck.checked = false;
+    }
+
+    onStringsFilterChange();
+}
+
+function clearStringsFilters(triggerRender = true) {
+    const searchIn = document.getElementById('strings-search-input');
+    const catSel = document.getElementById('strings-filter-category');
+    const sevSel = document.getElementById('strings-filter-severity');
+    const encSel = document.getElementById('strings-filter-encoding');
+    const suspChk = document.getElementById('strings-filter-suspicious');
+    const sortSel = document.getElementById('strings-sort-by');
+
+    if (searchIn) searchIn.value = '';
+    if (catSel) catSel.value = 'ALL';
+    if (sevSel) sevSel.value = 'ALL';
+    if (encSel) encSel.value = 'ALL';
+    if (suspChk) suspChk.checked = false;
+    if (sortSel) sortSel.value = 'severity';
+
+    document.querySelectorAll('.quick-string-pill').forEach(btn => btn.classList.remove('active'));
+    const allPill = document.getElementById('pill-all');
+    if (allPill) allPill.classList.add('active');
+
+    if (triggerRender) {
+        onStringsFilterChange();
     }
 }
 
@@ -2188,15 +2449,18 @@ function applyStringsFilterAndRender() {
             const catMatch = (s.category || '').toLowerCase().includes(search);
             const reasonMatch = (s.reason || '').toLowerCase().includes(search);
             const mitreMatch = (s.mitre_technique || '').toLowerCase().includes(search);
-            if (!valMatch && !catMatch && !reasonMatch && !mitreMatch) return false;
+            const offMatch = (s.offset_hex || '').toLowerCase().includes(search);
+            if (!valMatch && !catMatch && !reasonMatch && !mitreMatch && !offMatch) return false;
         }
 
         // Category filter
         if (category !== 'ALL') {
             const sCat = (s.category || '').toUpperCase();
-            if (category === 'COMMAND' && sCat !== 'COMMAND' && sCat !== 'CMD') return false;
+            if (category === 'COMMAND' && !['COMMAND', 'CMD', 'POWERSHELL', 'SCRIPT'].includes(sCat)) return false;
+            if (category === 'URL' && !['URL', 'DOMAIN'].includes(sCat)) return false;
             if (category === 'IP_ADDRESS' && sCat !== 'IP_ADDRESS' && sCat !== 'IP') return false;
-            if (category !== 'COMMAND' && category !== 'IP_ADDRESS' && sCat !== category) return false;
+            if (category === 'REGISTRY' && sCat !== 'REGISTRY' && sCat !== 'REGISTRY_PATH') return false;
+            if (!['COMMAND', 'URL', 'IP_ADDRESS', 'REGISTRY'].includes(category) && sCat !== category) return false;
         }
 
         // Severity filter
@@ -2228,8 +2492,12 @@ function applyStringsFilterAndRender() {
             return (a.category || '').localeCompare(b.category || '');
         } else if (sortBy === 'value') {
             return (a.value || '').localeCompare(b.value || '');
+        } else if (sortBy === 'length_desc') {
+            return (b.value ? b.value.length : 0) - (a.value ? a.value.length : 0);
+        } else if (sortBy === 'length_asc') {
+            return (a.value ? a.value.length : 0) - (b.value ? b.value.length : 0);
         } else {
-            // Default: severity/suspicious first
+            // Default: severity/suspicious first, then offset
             const diff = (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5);
             if (diff !== 0) return diff;
             return (a.offset || 0) - (b.offset || 0);
@@ -2253,11 +2521,20 @@ function renderStringsTableSlice() {
 
     const list = state.stringsFilteredList || [];
     const total = list.length;
+    const totalOverall = (state.stringsList || []).length;
 
     if (total === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell" style="padding: 24px;">No strings matching the current filters.</td></tr>`;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" class="empty-state-cell" style="padding: 32px; text-align: center;">
+                    <div style="font-size: 14px; font-weight: 700; margin-bottom: 6px;">NO STRINGS MATCHING FILTERS</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Try clearing search or adjusting category / severity filters.</div>
+                    <button class="btn-secondary" onclick="clearStringsFilters()">Clear Filters</button>
+                </td>
+            </tr>
+        `;
         if (summaryEl) summaryEl.textContent = `Showing 0-0 of 0 strings`;
-        if (matchCountEl) matchCountEl.textContent = `Showing 0 strings`;
+        if (matchCountEl) matchCountEl.textContent = `Showing 0 strings (${totalOverall.toLocaleString()} total)`;
         renderStringsPaginationControls(0, 0, 0);
         return;
     }
@@ -2267,40 +2544,42 @@ function renderStringsTableSlice() {
     const slice = list.slice(startIdx, endIdx);
 
     if (summaryEl) summaryEl.textContent = `Showing ${(startIdx + 1).toLocaleString()}-${endIdx.toLocaleString()} of ${total.toLocaleString()} strings`;
-    if (matchCountEl) matchCountEl.textContent = `Showing ${total.toLocaleString()} filtered strings`;
+    if (matchCountEl) matchCountEl.textContent = `Showing ${total.toLocaleString()} filtered strings (${totalOverall.toLocaleString()} total)`;
 
     tbody.innerHTML = slice.map((item, index) => {
         const globalIdx = startIdx + index;
-        const offsetStr = item.offset_hex || (item.offset !== null && item.offset !== undefined ? `0x${item.offset.toString(16).toUpperCase().padStart(8, '0')}` : 'N/A');
+        const offsetStr = item.offset_hex || (item.offset !== null && item.offset !== undefined ? `0x${item.offset.toString(16).toUpperCase().padStart(8, '0')}` : '0x00000000');
         const sevClass = getRiskBadgeClass(item.severity || 'LOW');
         const isSusp = item.suspicious;
-        const suspBadge = isSusp ? `<span class="badge badge-high" style="font-size: 10px;">⚠️ Suspicious</span>` : `<span class="badge badge-low" style="font-size: 10px;">Normal</span>`;
         const catBadge = getCategoryBadgeHtml(item.category || 'GENERAL');
+        const strLen = item.value ? item.value.length : 0;
+        const confPct = Math.round((item.confidence || 1.0) * 100);
 
-        // Escape string value for attribute and display
-        const displayVal = item.value.length > 70 ? item.value.substring(0, 70) + '...' : item.value;
+        // Truncate long display value gracefully
+        const displayVal = item.value.length > 65 ? item.value.substring(0, 65) + '...' : item.value;
 
         return `
             <tr>
                 <td style="text-align: center; color: var(--text-muted); font-size: 11px;">${globalIdx + 1}</td>
+                <td><span class="badge ${sevClass}" style="font-size: 10px;">${escapeHtml(item.severity || 'INFO')}</span></td>
                 <td>
                     <div style="display: flex; align-items: center; gap: 6px;">
-                        <code style="font-family: var(--font-mono); font-size: 12px; color: ${isSusp ? 'var(--accent-orange)' : 'var(--text-primary)'}; word-break: break-all;" title="${escapeHtml(item.value)}">${escapeHtml(displayVal)}</code>
+                        <code style="font-family: var(--font-mono); font-size: 12px; color: ${isSusp ? 'var(--accent-orange)' : 'var(--text-primary)'}; word-break: break-all; cursor: pointer;" onclick="openStringDetailModal(${globalIdx})" title="${escapeHtml(item.value)}">${escapeHtml(displayVal)}</code>
                     </div>
                 </td>
                 <td>${catBadge}</td>
                 <td><span class="badge badge-rule" style="font-size: 10px;">${escapeHtml(item.encoding || 'ASCII')}</span></td>
-                <td><code style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-blue);">${escapeHtml(offsetStr)}</code></td>
-                <td><span class="badge ${sevClass}" style="font-size: 10px;">${escapeHtml(item.severity || 'INFO')}</span></td>
-                <td>${suspBadge}</td>
-                <td style="font-size: 11px; color: var(--text-secondary); max-width: 240px;">
-                    <div style="line-height: 1.4;">${escapeHtml(item.reason || 'Standard string')}</div>
-                    ${item.mitre_technique ? `<div style="font-size: 10px; color: var(--accent-blue); margin-top: 2px;">🎯 ${escapeHtml(item.mitre_technique)}</div>` : ''}
+                <td><code style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-cyan);">${escapeHtml(offsetStr)}</code></td>
+                <td style="font-size: 11px; color: var(--text-muted);">${strLen}B</td>
+                <td style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">${confPct}%</td>
+                <td style="font-size: 11px; color: var(--text-secondary); max-width: 220px;">
+                    <div style="line-height: 1.3;">${escapeHtml(item.reason || 'Standard string')}</div>
+                    ${item.mitre_technique ? `<div style="font-size: 9px; color: var(--accent-cyan); margin-top: 2px;">🎯 ${escapeHtml(item.mitre_technique)}</div>` : ''}
                 </td>
                 <td style="text-align: center;">
                     <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
-                        <button class="btn-secondary" onclick="copySingleString(${globalIdx}, this)" style="font-size: 10px; padding: 3px 6px;" title="Copy string text">📋</button>
-                        <button class="btn-primary" onclick="openStringDetailModal(${globalIdx})" style="font-size: 10px; padding: 3px 8px;" title="Inspect forensic details">🔍</button>
+                        <button class="btn-secondary" onclick="copySingleString(${globalIdx}, this)" style="font-size: 10px; padding: 2px 6px;" title="Copy string text">📋</button>
+                        <button class="btn-primary" onclick="openStringDetailModal(${globalIdx})" style="font-size: 10px; padding: 2px 7px;" title="Inspect forensic details">🔍</button>
                     </div>
                 </td>
             </tr>
@@ -2316,8 +2595,9 @@ function getCategoryBadgeHtml(cat) {
     if (c === 'CMD') return `<span class="badge badge-mod" style="font-size: 10px;">CMD</span>`;
     if (c === 'COMMAND') return `<span class="badge badge-mod" style="font-size: 10px;">Command</span>`;
     if (c === 'URL') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #38bdf8; color: #38bdf8;">URL</span>`;
-    if (c === 'IP_ADDRESS') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #fb923c; color: #fb923c;">IP</span>`;
-    if (c === 'REGISTRY') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #a855f7; color: #a855f7;">Registry</span>`;
+    if (c === 'DOMAIN') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #38bdf8; color: #38bdf8;">Domain</span>`;
+    if (c === 'IP_ADDRESS' || c === 'IP') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #fb923c; color: #fb923c;">IP</span>`;
+    if (c === 'REGISTRY' || c === 'REGISTRY_PATH') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #a855f7; color: #a855f7;">Registry</span>`;
     if (c === 'API') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #ec4899; color: #ec4899;">API</span>`;
     if (c === 'DLL') return `<span class="badge badge-rule" style="font-size: 10px;">DLL</span>`;
     if (c === 'FILE_PATH') return `<span class="badge badge-rule" style="font-size: 10px;">File Path</span>`;
@@ -2359,7 +2639,7 @@ function renderStringsPaginationControls(currentPage, totalPages, totalItems) {
     }
 
     numbersContainer.innerHTML = pages.map(p => `
-        <button class="btn-secondary ${p === currentPage ? 'active' : ''}" onclick="goToStringsPage(${p})" style="font-size: 11px; padding: 4px 8px; ${p === currentPage ? 'background: var(--accent-blue); color: #fff; font-weight: bold;' : ''}">
+        <button class="btn-secondary ${p === currentPage ? 'active' : ''}" onclick="goToStringsPage(${p})" style="font-size: 11px; padding: 4px 8px; ${p === currentPage ? 'background: var(--accent-cyan); color: #0b1324; font-weight: bold;' : ''}">
             ${p}
         </button>
     `).join('');
@@ -2371,6 +2651,9 @@ function goToStringsPage(pageNum) {
     renderStringsTableSlice();
 }
 
+/**
+ * String Forensic Detail Drawer & Interactive AI
+ */
 function openStringDetailModal(index) {
     const item = (state.stringsFilteredList || [])[index];
     if (!item) return;
@@ -2386,17 +2669,24 @@ function openStringDetailModal(index) {
     const reasonEl = document.getElementById('modal-string-reason');
     const mitreBox = document.getElementById('modal-string-mitre-box');
     const mitreNameEl = document.getElementById('modal-string-mitre-name');
+    const sampleNameEl = document.getElementById('modal-string-sample-name');
+    const sampleShaEl = document.getElementById('modal-string-sample-sha');
+    const aiAnswerBox = document.getElementById('modal-string-ai-answer');
+    const aiInput = document.getElementById('modal-ask-ai-input');
 
-    if (valEl) valEl.textContent = item.value;
+    if (valEl) {
+        valEl.textContent = item.value;
+        valEl.style.whiteSpace = 'pre-wrap';
+    }
     if (catEl) catEl.innerHTML = getCategoryBadgeHtml(item.category);
-    if (encEl) encEl.textContent = `${item.encoding || 'ASCII'} (${item.value.length} chars)`;
-    if (offEl) offEl.textContent = `${item.offset_hex || ('0x' + (item.offset || 0).toString(16).toUpperCase())} (Decimal: ${(item.offset || 0).toLocaleString()})`;
+    if (encEl) encEl.textContent = `${item.encoding || 'ASCII'} (${item.value.length} bytes)`;
+    if (offEl) offEl.textContent = item.offset_hex || `0x${(item.offset || 0).toString(16).toUpperCase()}`;
     if (sevEl) {
         const sevBadge = `<span class="badge ${getRiskBadgeClass(item.severity)}">${item.severity || 'INFO'}</span>`;
-        const suspText = item.suspicious ? `<span style="color: var(--sev-high); font-size: 11px; margin-left: 6px;">⚠️ Suspicious Indicator</span>` : `<span style="color: #10b981; font-size: 11px; margin-left: 6px;">✓ Clean</span>`;
-        sevEl.innerHTML = `${sevBadge} ${suspText}`;
+        const confText = `<span style="color: var(--text-muted); font-size: 11px; margin-left: 6px;">${Math.round((item.confidence || 1.0) * 100)}% Confidence</span>`;
+        sevEl.innerHTML = `${sevBadge} ${confText}`;
     }
-    if (reasonEl) reasonEl.textContent = item.reason || 'Standard printable text or binary metadata sequence.';
+    if (reasonEl) reasonEl.textContent = item.reason || 'Standard printable text or metadata artifact.';
 
     if (item.mitre_technique) {
         if (mitreBox) mitreBox.style.display = 'block';
@@ -2404,6 +2694,12 @@ function openStringDetailModal(index) {
     } else {
         if (mitreBox) mitreBox.style.display = 'none';
     }
+
+    if (sampleNameEl) sampleNameEl.textContent = (state.stringsData && state.stringsData.filename) || (state.sampleData ? state.sampleData.filename : 'sample.exe');
+    if (sampleShaEl) sampleShaEl.textContent = (state.stringsData && state.stringsData.sha256) || (state.sampleData ? state.sampleData.sha256 : 'N/A');
+
+    if (aiAnswerBox) aiAnswerBox.style.display = 'none';
+    if (aiInput) aiInput.value = '';
 
     if (modal) modal.style.display = 'flex';
 }
@@ -2413,6 +2709,15 @@ function closeStringDetailModal() {
     if (modal) modal.style.display = 'none';
 }
 
+function toggleModalStringWrap() {
+    const valEl = document.getElementById('modal-string-value');
+    const btn = document.getElementById('btn-modal-wrap-toggle');
+    if (!valEl) return;
+    state.stringsIsWrapEnabled = !state.stringsIsWrapEnabled;
+    valEl.style.whiteSpace = state.stringsIsWrapEnabled ? 'pre-wrap' : 'pre';
+    if (btn) btn.textContent = state.stringsIsWrapEnabled ? 'Unwrap' : 'Wrap Text';
+}
+
 function copyModalStringValue() {
     if (!state.stringsSelectedModalItem) return;
     const text = state.stringsSelectedModalItem.value;
@@ -2420,10 +2725,79 @@ function copyModalStringValue() {
     copyTextToClipboardWithFeedback(text, btn, '📋 Copy String');
 }
 
+function copyModalStringOffset() {
+    if (!state.stringsSelectedModalItem) return;
+    const offsetStr = state.stringsSelectedModalItem.offset_hex || `0x${(state.stringsSelectedModalItem.offset || 0).toString(16).toUpperCase()}`;
+    navigator.clipboard.writeText(offsetStr);
+    showSocNotification('Copied Offset', `Offset ${offsetStr} copied to clipboard`, 'success');
+}
+
+function searchSimilarStringsFromModal() {
+    if (!state.stringsSelectedModalItem) return;
+    const item = state.stringsSelectedModalItem;
+    closeStringDetailModal();
+    const searchIn = document.getElementById('strings-search-input');
+    if (searchIn) {
+        searchIn.value = item.category !== 'GENERAL' ? item.category : item.value.substring(0, 16);
+        onStringsFilterChange();
+    }
+}
+
+function askAiModalPrompt(promptText) {
+    const input = document.getElementById('modal-ask-ai-input');
+    if (input) {
+        input.value = promptText;
+        executeModalAskAi();
+    }
+}
+
+async function executeModalAskAi() {
+    const input = document.getElementById('modal-ask-ai-input');
+    const answerBox = document.getElementById('modal-string-ai-answer');
+    const btn = document.getElementById('btn-modal-ask-ai');
+    if (!input || !answerBox || !state.stringsSelectedModalItem) return;
+
+    const question = input.value.trim() || 'What does this string indicate in malware analysis?';
+    const item = state.stringsSelectedModalItem;
+    const analysisId = state.activeAnalysisId || (state.stringsData ? state.stringsData.analysis_id : '');
+
+    answerBox.style.display = 'block';
+    answerBox.innerHTML = '<span style="color: var(--accent-cyan);">🤖 AI Security Analyst investigating string context...</span>';
+    if (btn) btn.disabled = true;
+
+    try {
+        const fullPrompt = `Regarding extracted string "${item.value}" (Category: ${item.category}, Encoding: ${item.encoding}, Offset: ${item.offset_hex}): ${question}`;
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(analysisId)}/ask-ai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: fullPrompt, language: state.currentLanguage || 'en' })
+        });
+        if (!res.ok) throw new Error('AI analysis service unavailable');
+        const data = await res.json();
+        answerBox.innerHTML = `
+            <div style="font-weight: 700; color: var(--accent-cyan); margin-bottom: 4px;">🤖 AI Forensic Scoping:</div>
+            <div>${escapeHtml(data.answer)}</div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;"><em>Static indicator analysis. String presence alone does not establish confirmed runtime malicious execution.</em></div>
+        `;
+    } catch (err) {
+        answerBox.innerHTML = `<span style="color: var(--sev-high);">AI Query Error: ${escapeHtml(err.message)}</span>`;
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 function copySingleString(index, btnElement) {
     const item = (state.stringsFilteredList || [])[index];
     if (!item) return;
     copyTextToClipboardWithFeedback(item.value, btnElement, '📋');
+}
+
+function copyActiveAnalysisId() {
+    const id = state.activeAnalysisId;
+    if (id) {
+        navigator.clipboard.writeText(id);
+        showSocNotification('Copied ID', `Analysis ID ${id} copied to clipboard`, 'success');
+    }
 }
 
 function copyActiveSha256() {
@@ -2446,6 +2820,7 @@ function copyTextToClipboardWithFeedback(text, btnElement, defaultLabel) {
                     btnElement.style.color = '';
                 }, 1500);
             }
+            showSocNotification('Copied', 'Text copied to clipboard.', 'success');
         }).catch(() => {
             prompt('Copy string:', text);
         });
@@ -2454,6 +2829,9 @@ function copyTextToClipboardWithFeedback(text, btnElement, defaultLabel) {
     }
 }
 
+/**
+ * Real String Evidence Exports (CSV, JSON, TXT)
+ */
 function exportStringsCSV() {
     const list = state.stringsFilteredList && state.stringsFilteredList.length > 0 ? state.stringsFilteredList : state.stringsList;
     if (!list || list.length === 0) {
@@ -2480,6 +2858,7 @@ function exportStringsCSV() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const filename = `strings_${state.activeAnalysisId || 'export'}.csv`;
     downloadBlobFile(blob, filename);
+    showSocNotification('Export Complete', `Exported ${list.length} strings as CSV`, 'success');
 }
 
 function exportStringsJSON() {
@@ -2494,6 +2873,42 @@ function exportStringsJSON() {
     const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
     const filename = `strings_${state.activeAnalysisId || 'export'}.json`;
     downloadBlobFile(blob, filename);
+    showSocNotification('Export Complete', `Exported ${state.stringsList.length} strings as JSON`, 'success');
+}
+
+function exportStringsTXT() {
+    const list = state.stringsFilteredList && state.stringsFilteredList.length > 0 ? state.stringsFilteredList : state.stringsList;
+    if (!list || list.length === 0) {
+        alert('No strings available to export.');
+        return;
+    }
+
+    const id = state.activeAnalysisId || 'ANL-UNKNOWN';
+    const fn = (state.stringsData && state.stringsData.filename) || (state.sampleData ? state.sampleData.filename : 'sample.exe');
+    const sha = (state.stringsData && state.stringsData.sha256) || 'N/A';
+
+    let txt = `===============================================================================\n`;
+    txt += `  ETHIO-AI DEFENDER - STATIC STRING FORENSIC INVESTIGATION REPORT\n`;
+    txt += `===============================================================================\n`;
+    txt += `Analysis ID: ${id}\n`;
+    txt += `Filename:    ${fn}\n`;
+    txt += `SHA-256:     ${sha}\n`;
+    txt += `Total Count: ${list.length} extracted strings\n`;
+    txt += `Generated:   ${new Date().toISOString()}\n`;
+    txt += `-------------------------------------------------------------------------------\n\n`;
+
+    list.forEach((s, idx) => {
+        txt += `[#${idx + 1}] [${s.severity || 'INFO'}] [${s.category || 'GENERAL'}] [${s.encoding || 'ASCII'}] Offset: ${s.offset_hex || '0x0000'}\n`;
+        txt += `String: ${s.value}\n`;
+        if (s.reason) txt += `Reason: ${s.reason}\n`;
+        if (s.mitre_technique) txt += `MITRE:  ${s.mitre_technique}\n`;
+        txt += `\n`;
+    });
+
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+    const filename = `strings_summary_${id}.txt`;
+    downloadBlobFile(blob, filename);
+    showSocNotification('Export Complete', `Exported string summary as TXT`, 'success');
 }
 
 function downloadBlobFile(blob, filename) {
@@ -2505,6 +2920,7 @@ function downloadBlobFile(blob, filename) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 function renderBulletList(containerId, list) {
