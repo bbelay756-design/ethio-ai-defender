@@ -289,6 +289,11 @@ class AuthService:
         total_audit_logs = db.query(AuditLogModel).count()
         revoked_tokens_count = db.query(RevokedTokenModel).count()
 
+        low_risk_count = db.query(SampleModel).filter(SampleModel.risk_score < 40).count()
+        medium_risk_count = db.query(SampleModel).filter((SampleModel.risk_score >= 40) & (SampleModel.risk_score < 70)).count()
+        high_risk_count = db.query(SampleModel).filter((SampleModel.risk_score >= 70) & (SampleModel.risk_score < 85)).count()
+        critical_risk_count = db.query(SampleModel).filter(SampleModel.risk_score >= 85).count()
+
         recent_users = [
             {
                 "id": u.id,
@@ -312,6 +317,10 @@ class AuthService:
             "total_indicators": total_indicators,
             "total_audit_logs": total_audit_logs,
             "revoked_tokens_count": revoked_tokens_count,
+            "low_risk_samples": low_risk_count,
+            "medium_risk_samples": medium_risk_count,
+            "high_risk_samples": high_risk_count,
+            "critical_risk_samples": critical_risk_count,
             "recent_users": recent_users,
             "system_health": "OPTIMAL",
             "zero_execution_guarantee": True,

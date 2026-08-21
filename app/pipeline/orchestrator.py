@@ -547,13 +547,30 @@ class UnifiedPipelineOrchestrator:
                 )
                 for i in imports_raw_list[:100]
             ]
-            strings_in = [
-                StringCreate(value=u, type="URL") for u in str_data.get("urls", [])[:20]
-            ] + [
-                StringCreate(value=ip, type="IP_ADDRESS") for ip in str_data.get("ip_addresses", [])[:20]
-            ] + [
-                StringCreate(value=r, type="REGISTRY_PATH") for r in str_data.get("registry_paths", [])[:20]
-            ]
+            if getattr(str_res, "items", None):
+                strings_in = [
+                    StringCreate(
+                        value=item.value,
+                        encoding=item.encoding,
+                        offset=item.offset,
+                        category=item.category,
+                        type=item.category,
+                        suspicious=item.suspicious,
+                        severity=item.severity,
+                        confidence=item.confidence,
+                        reason=item.reason,
+                        mitre_technique=item.mitre_technique
+                    )
+                    for item in str_res.items[:500]
+                ]
+            else:
+                strings_in = [
+                    StringCreate(value=u, type="URL", category="URL") for u in str_data.get("urls", [])[:20]
+                ] + [
+                    StringCreate(value=ip, type="IP_ADDRESS", category="IP_ADDRESS") for ip in str_data.get("ip_addresses", [])[:20]
+                ] + [
+                    StringCreate(value=r, type="REGISTRY_PATH", category="REGISTRY") for r in str_data.get("registry_paths", [])[:20]
+                ]
             indicators_in = [
                 IndicatorCreate(
                     name=ind.get("name", "Indicator"),

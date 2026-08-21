@@ -18,6 +18,7 @@ from sqlalchemy import (
     Float,
     Text,
     DateTime,
+    Boolean,
     ForeignKey,
     Index,
 )
@@ -101,14 +102,23 @@ class ImportModel(Base):
 
 class StringModel(Base):
     """
-    Extracted ASCII and Unicode strings classified by type.
+    Extracted ASCII and Unicode strings classified by type with forensic intelligence indicators.
     """
     __tablename__ = "strings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
     value = Column(Text, nullable=False)
+    encoding = Column(String(16), nullable=False, default="ASCII")
+    offset = Column(Integer, nullable=True)
+    category = Column(String(64), nullable=False, default="GENERAL", index=True)
     type = Column(String(64), nullable=False, default="GENERAL")
+    suspicious = Column(Boolean, nullable=False, default=False, index=True)
+    severity = Column(String(32), nullable=False, default="LOW")
+    confidence = Column(Float, nullable=False, default=1.0)
+    reason = Column(Text, nullable=True)
+    mitre_technique = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationship
     sample = relationship("SampleModel", back_populates="strings")

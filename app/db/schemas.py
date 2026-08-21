@@ -58,7 +58,15 @@ class ImportRead(ImportBase):
 # ----------------------------------------------------
 class StringBase(BaseModel):
     value: str
+    encoding: str = Field("ASCII", max_length=16)
+    offset: Optional[int] = None
+    category: str = Field("GENERAL", max_length=64)
     type: str = Field("GENERAL", max_length=64)
+    suspicious: bool = False
+    severity: str = Field("LOW", max_length=32)
+    confidence: float = Field(1.0, ge=0.0, le=1.0)
+    reason: Optional[str] = None
+    mitre_technique: Optional[str] = None
 
 
 class StringCreate(StringBase):
@@ -68,6 +76,8 @@ class StringCreate(StringBase):
 class StringRead(StringBase):
     id: int
     sample_id: int
+    offset_hex: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

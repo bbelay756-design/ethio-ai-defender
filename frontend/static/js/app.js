@@ -11,6 +11,7 @@ const state = {
     currentDifficulty: 'BEGINNER',
     currentTab: 'public',
     sampleData: null,
+    activeAnalysisId: null,
     user: null,
     token: localStorage.getItem('ethio_auth_token') || null,
 };
@@ -243,8 +244,455 @@ const CONCEPTS_DB = {
     }
 };
 
+// =========================================================
+// 1. CYBER DEFENSE BACKGROUND GRID CANVAS
+// =========================================================
+let cyberGridAnimFrame = null;
+function initCyberGrid() {
+    const canvas = document.getElementById('cyber-bg-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        drawStaticGrid(ctx, canvas.width, canvas.height);
+        return;
+    }
+
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    });
+
+    const particles = [];
+    const numParticles = Math.min(30, Math.floor((width * height) / 50000));
+
+    for (let i = 0; i < numParticles; i++) {
+        particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: (Math.random() - 0.5) * 0.3,
+            radius: Math.random() * 1.5 + 0.8,
+            alpha: Math.random() * 0.25 + 0.1,
+        });
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw tactical background grid lines
+        const gridSize = 64;
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.022)';
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        for (let x = 0; x < width; x += gridSize) {
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+        }
+        for (let y = 0; y < height; y += gridSize) {
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+        }
+        ctx.stroke();
+
+        // Update and draw telemetry nodes
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.x < 0) p.x = width;
+            if (p.x > width) p.x = 0;
+            if (p.y < 0) p.y = height;
+            if (p.y > height) p.y = 0;
+
+            ctx.fillStyle = `rgba(0, 240, 255, ${p.alpha})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Connect nearby nodes
+            for (let j = i + 1; j < particles.length; j++) {
+                const p2 = particles[j];
+                const dx = p.x - p2.x;
+                const dy = p.y - p2.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 100) {
+                    const lineAlpha = (1 - dist / 100) * 0.07;
+                    ctx.strokeStyle = `rgba(0, 240, 255, ${lineAlpha})`;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        cyberGridAnimFrame = requestAnimationFrame(animate);
+    }
+
+    animate();
+}
+
+function drawStaticGrid(ctx, width, height) {
+    const gridSize = 64;
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.022)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x < width; x += gridSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+    }
+    for (let y = 0; y < height; y += gridSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+    }
+    ctx.stroke();
+}
+
+// =========================================================
+// 2. DYNAMIC NUMBER COUNTER ENGINE
+// =========================================================
+function animateCounter(elementOrId, targetValue, duration = 800) {
+    const el = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+    if (!el) return;
+
+    const target = Number(targetValue) || 0;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+        el.textContent = target.toLocaleString();
+        return;
+    }
+
+    const current = Number(el.textContent.replace(/[^0-9.-]+/g, '')) || 0;
+    if (current === target) {
+        el.textContent = target.toLocaleString();
+        return;
+    }
+
+    const startTime = performance.now();
+    function step(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - (1 - progress) * (1 - progress);
+        const val = Math.round(current + (target - current) * ease);
+        el.textContent = val.toLocaleString();
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        } else {
+            el.textContent = target.toLocaleString();
+        }
+    }
+    requestAnimationFrame(step);
+}
+
+// =========================================================
+// 3. CIRCULAR THREAT RISK GAUGE ANIMATOR
+// =========================================================
+function renderThreatGauge(score, riskLevel) {
+    const gaugeCircle = document.getElementById('ov-threat-gauge-circle');
+    const tierBadgeEl = document.getElementById('ov-tier-badge');
+    const riskBadgeEl = document.getElementById('ov-risk-level');
+    const riskTextEl = document.getElementById('ov-risk-level-text');
+
+    const numScore = Math.min(100, Math.max(0, Number(score) || 0));
+    const level = (riskLevel || (numScore >= 85 ? 'CRITICAL' : (numScore >= 70 ? 'HIGH' : (numScore >= 40 ? 'SUSPICIOUS' : 'LOW')))).toUpperCase();
+
+    // Circumference = 2 * PI * 68 = ~427.25
+    const circumference = 427.25;
+    const offset = circumference - (numScore / 100) * circumference;
+
+    if (gaugeCircle) {
+        gaugeCircle.style.strokeDasharray = `${circumference}`;
+        gaugeCircle.style.strokeDashoffset = `${offset}`;
+        
+        gaugeCircle.classList.remove('gauge-low', 'gauge-susp', 'gauge-high', 'gauge-crit');
+        if (numScore >= 85 || level === 'CRITICAL') {
+            gaugeCircle.classList.add('gauge-crit');
+        } else if (numScore >= 70 || level === 'HIGH') {
+            gaugeCircle.classList.add('gauge-high');
+        } else if (numScore >= 40 || level === 'SUSPICIOUS' || level === 'MEDIUM') {
+            gaugeCircle.classList.add('gauge-susp');
+        } else {
+            gaugeCircle.classList.add('gauge-low');
+        }
+    }
+
+    animateCounter('ov-score-num', numScore, 900);
+
+    if (tierBadgeEl) {
+        tierBadgeEl.textContent = level;
+        tierBadgeEl.className = 'gauge-tier-badge ' + (numScore >= 85 ? 'crit' : (numScore >= 70 ? 'high' : (numScore >= 40 ? 'susp' : 'low')));
+    }
+
+    if (riskTextEl) {
+        riskTextEl.textContent = level;
+    }
+    if (riskBadgeEl) {
+        riskBadgeEl.className = 'badge ' + getRiskBadgeClass(level);
+    }
+}
+
+// =========================================================
+// 4. DEFENSIVE ANALYSIS PIPELINE VISUALIZATION
+// =========================================================
+function updateAnalysisPipeline(activeStageIndex = 10, containerId = 'overview-pipeline-stages') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const stages = container.querySelectorAll('.pipeline-stage');
+    stages.forEach((stage, idx) => {
+        const stageNum = idx + 1;
+        stage.classList.remove('active', 'completed', 'waiting');
+        if (stageNum < activeStageIndex) {
+            stage.classList.add('completed');
+            const node = stage.querySelector('.stage-node');
+            if (node) node.textContent = '✓';
+        } else if (stageNum === activeStageIndex) {
+            stage.classList.add('active');
+            const node = stage.querySelector('.stage-node');
+            if (node) node.textContent = stageNum;
+        } else {
+            stage.classList.add('waiting');
+            const node = stage.querySelector('.stage-node');
+            if (node) node.textContent = stageNum;
+        }
+    });
+}
+
+// =========================================================
+// 5. FORENSIC THREAT RELATIONSHIP EVIDENCE GRAPH
+// =========================================================
+function renderThreatRelationshipMap(data) {
+    if (!data) return;
+
+    const fi = data.file_information || data.file || {};
+    const imp = data.imports || { imports: [] };
+    const importsList = Array.isArray(imp) ? imp : (imp.imports || []);
+    const suspiciousApis = importsList.filter(i => (i.risk_relevance || '').toUpperCase() === 'HIGH' || (i.risk_relevance || '').toUpperCase() === 'CRITICAL');
+
+    const indData = data.indicators || { indicators: [] };
+    const indicatorsList = Array.isArray(indData) ? indData : (indData.indicators || []);
+
+    const mitreData = data.mitre_attack || data.mitre || [];
+    const mitreList = Array.isArray(mitreData) ? mitreData : (mitreData.techniques || []);
+
+    const filenameEl = document.getElementById('graph-filename');
+    const filesizeEl = document.getElementById('graph-filesize');
+    const apiCountEl = document.getElementById('graph-api-count');
+    const iocCountEl = document.getElementById('graph-ioc-count');
+    const mitreEl = document.getElementById('graph-mitre-technique');
+
+    if (filenameEl) filenameEl.textContent = fi.filename || data.filename || 'sample.exe';
+    if (filesizeEl) filesizeEl.textContent = `${((fi.file_size || data.size || 0) / 1024).toFixed(1)} KB`;
+    if (apiCountEl) apiCountEl.textContent = `${suspiciousApis.length} Suspicious APIs`;
+    if (iocCountEl) iocCountEl.textContent = `${indicatorsList.length} Heuristic IOCs`;
+    if (mitreEl) {
+        if (mitreList.length > 0) {
+            mitreEl.textContent = mitreList.map(m => m.id || m.technique_id).slice(0, 2).join(' / ');
+        } else {
+            mitreEl.textContent = 'None Mapped';
+        }
+    }
+}
+
+// =========================================================
+// 6. RIGHT-SIDE FORENSIC INVESTIGATION DRAWER
+// =========================================================
+let currentDrawerContent = '';
+function openInvestigationDrawer(title, metadata = {}) {
+    const drawer = document.getElementById('investigation-drawer');
+    const overlay = document.getElementById('investigation-drawer-overlay');
+    const titleEl = document.getElementById('drawer-title');
+    const bodyEl = document.getElementById('drawer-body');
+
+    if (!drawer || !bodyEl) return;
+
+    if (titleEl) titleEl.textContent = title || 'Forensic Artifact Investigation';
+
+    let html = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 6px; padding: 12px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase; margin-bottom: 4px;">Primary Artifact:</div>
+                <pre style="margin: 0; font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); word-break: break-all; white-space: pre-wrap;">${escapeHtml(metadata.value || metadata.name || title)}</pre>
+            </div>
+    `;
+
+    currentDrawerContent = metadata.value || metadata.name || title;
+
+    if (metadata.category || metadata.severity || metadata.offset || metadata.encoding) {
+        html += `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                ${metadata.category ? `<div style="background: var(--bg-card-alt); padding: 8px; border-radius: 4px; border: 1px solid var(--border-subtle);"><span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; display: block;">Category</span><strong style="font-size: 12px; color: var(--text-primary);">${escapeHtml(metadata.category)}</strong></div>` : ''}
+                ${metadata.severity ? `<div style="background: var(--bg-card-alt); padding: 8px; border-radius: 4px; border: 1px solid var(--border-subtle);"><span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; display: block;">Severity</span><span class="badge ${getRiskBadgeClass(metadata.severity)}">${escapeHtml(metadata.severity)}</span></div>` : ''}
+                ${metadata.offset ? `<div style="background: var(--bg-card-alt); padding: 8px; border-radius: 4px; border: 1px solid var(--border-subtle);"><span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; display: block;">Byte Offset</span><strong style="font-size: 12px; font-family: var(--font-mono); color: var(--accent-cyan);">${escapeHtml(metadata.offset)}</strong></div>` : ''}
+                ${metadata.encoding ? `<div style="background: var(--bg-card-alt); padding: 8px; border-radius: 4px; border: 1px solid var(--border-subtle);"><span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; display: block;">Encoding</span><strong style="font-size: 12px; color: var(--text-primary);">${escapeHtml(metadata.encoding)}</strong></div>` : ''}
+            </div>
+        `;
+    }
+
+    if (metadata.description || metadata.evidence || metadata.reason) {
+        html += `
+            <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 12px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px;">Forensic Assessment:</div>
+                <div style="font-size: 12px; color: var(--text-primary); line-height: 1.5;">${escapeHtml(metadata.description || metadata.evidence || metadata.reason)}</div>
+            </div>
+        `;
+    }
+
+    if (metadata.mitre_technique || metadata.mitre_id) {
+        html += `
+            <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 6px; padding: 12px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--accent-blue); text-transform: uppercase; margin-bottom: 4px;">MITRE ATT&CK Mapping:</div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-primary);">${escapeHtml(metadata.mitre_id || '')} — ${escapeHtml(metadata.mitre_technique || '')}</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Static presence alone does not establish confirmed runtime execution.</div>
+            </div>
+        `;
+    }
+
+    html += `</div>`;
+    bodyEl.innerHTML = html;
+
+    drawer.classList.add('open');
+    if (overlay) overlay.classList.add('open');
+}
+
+function closeInvestigationDrawer() {
+    const drawer = document.getElementById('investigation-drawer');
+    const overlay = document.getElementById('investigation-drawer-overlay');
+    if (drawer) drawer.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+}
+
+function copyDrawerContent() {
+    if (!currentDrawerContent) return;
+    navigator.clipboard.writeText(currentDrawerContent).then(() => {
+        const btn = document.getElementById('btn-drawer-copy');
+        if (btn) {
+            const orig = btn.textContent;
+            btn.textContent = '✓ Copied!';
+            setTimeout(() => { btn.textContent = orig; }, 1800);
+        }
+    });
+}
+
+// =========================================================
+// 7. FLOATING SOC TOAST NOTIFICATION CENTER
+// =========================================================
+function showSocNotification(title, message, type = 'info', actionText = null, actionCallback = null) {
+    const container = document.getElementById('soc-toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `soc-toast ${type}`;
+
+    const iconMap = {
+        success: '✓',
+        warning: '⚠️',
+        critical: '🛑',
+        info: 'ℹ️'
+    };
+
+    toast.innerHTML = `
+        <div class="toast-icon">${iconMap[type] || '🛡️'}</div>
+        <div class="toast-content">
+            <div class="toast-title">${escapeHtml(title)}</div>
+            <div class="toast-message">${escapeHtml(message)}</div>
+            ${actionText ? `<div style="margin-top: 6px;"><button class="btn-primary" id="toast-action-btn" style="font-size: 10px; padding: 2px 8px;">${escapeHtml(actionText)}</button></div>` : ''}
+        </div>
+        <button class="toast-close" aria-label="Close Notification">✕</button>
+    `;
+
+    const closeBtn = toast.querySelector('.toast-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 250);
+        });
+    }
+
+    if (actionText && actionCallback) {
+        const actBtn = toast.querySelector('#toast-action-btn');
+        if (actBtn) {
+            actBtn.addEventListener('click', () => {
+                actionCallback();
+                toast.remove();
+            });
+        }
+    }
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 5500);
+}
+
+// =========================================================
+// 8. LIVE PLATFORM DEFENSIVE SUBSYSTEM HEALTH
+// =========================================================
+async function loadSystemHealth() {
+    const listEl = document.getElementById('system-health-list');
+    const dbStatusEl = document.getElementById('admin-health-db-status');
+
+    try {
+        const res = await fetchWithAuth('/api/auth/system/health');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+
+        if (listEl && data.subsystems) {
+            listEl.innerHTML = data.subsystems.map(sub => `
+                <div class="flex-between" style="padding: 8px 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-subtle); border-radius: 6px;">
+                    <div>
+                        <strong style="font-size: 13px; color: var(--text-primary);">${escapeHtml(sub.name)}</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(sub.description)}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="badge ${sub.status === 'ONLINE' ? 'badge-low' : 'badge-crit'}">● ${escapeHtml(sub.status)}</span>
+                        <div style="font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); margin-top: 2px;">${escapeHtml(sub.latency_ms || '<1ms')}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        if (dbStatusEl) {
+            dbStatusEl.textContent = '● ONLINE';
+            dbStatusEl.style.color = 'var(--sev-low)';
+        }
+    } catch (err) {
+        if (listEl) listEl.innerHTML = `<div class="empty-state-cell">Error loading system health: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function openSystemHealthModal() {
+    const modal = document.getElementById('system-health-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        loadSystemHealth();
+    }
+}
+
+function closeSystemHealthModal() {
+    const modal = document.getElementById('system-health-modal');
+    if (modal) modal.style.display = 'none';
+}
+
 // Initialization on DOM Loaded
 document.addEventListener('DOMContentLoaded', () => {
+    initCyberGrid();
     initNavigation();
     initUploadDropzone();
     initLanguage();
@@ -328,6 +776,8 @@ function switchTab(tabId, updateUrl = true) {
         loadAnalysisHistory();
     } else if (tabId === 'learning') {
         switchStudentTab(state.studentCurrentSubtab || 'concepts');
+    } else if (tabId === 'strings') {
+        loadStringsIntelligence();
     }
 
     // Close sidebar on mobile
@@ -691,19 +1141,20 @@ function renderSampleData(data) {
     document.getElementById('ov-arch').textContent = fi.machine_type || 'x64';
     document.getElementById('ov-filesize').textContent = `${((fi.file_size || data.size || 0) / 1024).toFixed(1)} KB`;
     
-    // Risk Level Badge
-    const riskLevelEl = document.getElementById('ov-risk-level');
-    const levelClass = getRiskBadgeClass(ts.risk_level);
-    riskLevelEl.innerHTML = `<span class="badge ${levelClass}">${ts.risk_level}</span>`;
-
-    // Threat Score Gauge
-    document.getElementById('ov-score-num').textContent = ts.score !== undefined ? ts.score : (data.risk_score || 0);
-    const scoreBar = document.getElementById('ov-score-bar');
-    if (scoreBar) {
-        const scoreVal = ts.score !== undefined ? ts.score : (data.risk_score || 0);
-        scoreBar.style.width = `${Math.min(100, Math.max(0, scoreVal))}%`;
-        scoreBar.style.backgroundColor = getScoreColor(ts.risk_level);
+    const compileDateEl = document.getElementById('ov-compile-date');
+    if (compileDateEl) {
+        compileDateEl.textContent = (data.pe_information && data.pe_information.compile_time) || (data.file_information && data.file_information.timestamp) || 'N/A (Standard WinPE)';
     }
+
+    // Render Circular Threat Gauge
+    const scoreVal = ts.score !== undefined ? ts.score : (data.risk_score || 0);
+    renderThreatGauge(scoreVal, ts.risk_level);
+
+    // Update Defensive Analysis Pipeline
+    updateAnalysisPipeline(10, 'overview-pipeline-stages');
+
+    // Render Threat Evidence Relationship Map
+    renderThreatRelationshipMap(data);
 
     // Hashes
     document.getElementById('ov-sha256').textContent = hashes.sha256 || data.sha256 || 'N/A';
@@ -797,11 +1248,10 @@ function renderSampleData(data) {
     }
 
     // 4. Strings View
-    const strData = data.strings || {};
-    renderStringList('strings-urls-list', 'count-urls', strData.urls);
-    renderStringList('strings-ips-list', 'count-ips', strData.ip_addresses);
-    renderStringList('strings-regs-list', 'count-regs', strData.registry_paths);
-    renderStringList('strings-cmds-list', 'count-cmds', strData.commands);
+    state.activeAnalysisId = data.analysis_id || data.id;
+    if (state.currentTab === 'strings') {
+        loadStringsIntelligence(data.analysis_id || data.id);
+    }
 
     // 5. Indicators, IOCs & YARA View
     const indData = data.indicators || { indicators: [] };
@@ -1015,6 +1465,7 @@ function filterHistoryTable() {
 
 async function openAnalysisInWorkspace(analysisId) {
     try {
+        state.activeAnalysisId = analysisId;
         const response = await fetchWithAuth(`/api/analyses/${encodeURIComponent(analysisId)}?language=${state.currentLanguage}`);
         if (!response.ok) {
             throw new Error('Failed to fetch analysis details from database.');
@@ -1022,6 +1473,7 @@ async function openAnalysisInWorkspace(analysisId) {
 
         const data = await response.json();
         state.sampleData = data;
+        state.activeAnalysisId = data.analysis_id || analysisId;
         renderSampleData(data);
         switchTab('analysis');
 
@@ -1036,24 +1488,477 @@ function copyTextToClipboard(text) {
         return;
     }
     navigator.clipboard.writeText(text).then(() => {
-        alert(`Copied to clipboard: ${text}`);
+        // Feedback
     }).catch(() => {
         prompt('Copy text:', text);
     });
 }
 
-function renderStringList(containerId, countId, list) {
-    const countEl = document.getElementById(countId);
-    const container = document.getElementById(containerId);
-    if (!container) return;
+/**
+ * ============================================================================
+ * STRING INTELLIGENCE CONTROLLER (Module 06)
+ * Real forensic extraction, categorization, search, filtering, and export
+ * ============================================================================
+ */
+state.stringsData = null;
+state.stringsList = [];
+state.stringsFilteredList = [];
+state.stringsCurrentPage = 1;
+state.stringsPageSize = 50;
+state.stringsTotalPages = 1;
+state.stringsSelectedModalItem = null;
 
-    if (countEl) countEl.textContent = list ? list.length : 0;
+function renderStatEl(elementId, value) {
+    const el = document.getElementById(elementId);
+    if (el) el.textContent = value;
+}
 
-    if (list && list.length > 0) {
-        container.innerHTML = list.map(item => `<li class="string-item">${escapeHtml(item)}</li>`).join('');
-    } else {
-        container.innerHTML = `<li class="empty-str-item">None found</li>`;
+async function loadStringsIntelligence(analysisId = null, resetFilters = false) {
+    const urlParamId = new URLSearchParams(window.location.search).get('analysis_id');
+    const targetId = analysisId || urlParamId || state.activeAnalysisId || (state.sampleData ? (state.sampleData.analysis_id || state.sampleData.id) : null);
+    
+    const banner = document.getElementById('strings-no-analysis-banner');
+    const content = document.getElementById('strings-content-container');
+    const tbody = document.getElementById('strings-tbody');
+
+    if (!targetId) {
+        if (banner) banner.style.display = 'block';
+        if (content) content.style.display = 'none';
+        return;
     }
+
+    if (banner) banner.style.display = 'none';
+    if (content) content.style.display = 'block';
+
+    state.activeAnalysisId = targetId;
+
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell" style="padding: 24px;">Loading string intelligence for <code>${escapeHtml(targetId)}</code>...</td></tr>`;
+    }
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(targetId)}/strings?page_size=500`);
+        if (!res.ok) {
+            throw new Error(`Failed to retrieve string intelligence (HTTP ${res.status})`);
+        }
+        const data = await res.json();
+        state.stringsData = data;
+        state.stringsList = data.strings || [];
+
+        // Render Ribbon & Header Information
+        const filenameEl = document.getElementById('strings-active-filename');
+        const idEl = document.getElementById('strings-active-analysis-id');
+        const shaEl = document.getElementById('strings-active-sha256');
+        const totalCounterEl = document.getElementById('strings-active-total-counter');
+        const statusEl = document.getElementById('strings-active-status-badge');
+
+        if (filenameEl) filenameEl.textContent = data.filename || 'sample.exe';
+        if (idEl) idEl.textContent = data.analysis_id || targetId;
+        if (shaEl) shaEl.textContent = data.sha256 || '-';
+        if (totalCounterEl) totalCounterEl.textContent = (data.total_strings || state.stringsList.length).toLocaleString();
+        if (statusEl) {
+            statusEl.textContent = data.status || 'COMPLETED';
+            statusEl.className = data.status === 'COMPLETED' ? 'badge badge-low' : 'badge badge-high';
+        }
+
+        // Render 8 Summary Statistics Cards
+        const stats = data.statistics || {};
+        renderStatEl('stat-total-strings', stats.total !== undefined ? stats.total.toLocaleString() : state.stringsList.length.toLocaleString());
+        renderStatEl('stat-total-sub', `${(stats.ascii_count || 0).toLocaleString()} ASCII / ${(stats.unicode_count || 0).toLocaleString()} Unicode`);
+        renderStatEl('stat-suspicious-strings', (stats.suspicious_count || 0).toLocaleString());
+        renderStatEl('stat-urls-domains', ((stats.urls_count || 0) + (stats.domains_count || 0)).toLocaleString());
+        renderStatEl('stat-ip-addresses', (stats.ips_count || 0).toLocaleString());
+        renderStatEl('stat-registry-paths', (stats.registry_count || 0).toLocaleString());
+        renderStatEl('stat-commands-scripts', ((stats.commands_count || 0) + (stats.powershell_count || 0)).toLocaleString());
+        renderStatEl('stat-ascii-strings', (stats.ascii_count || 0).toLocaleString());
+        renderStatEl('stat-unicode-strings', (stats.unicode_count || 0).toLocaleString());
+
+        // Render AI Intelligence Summary
+        const aiSummaryEl = document.getElementById('strings-ai-summary-text');
+        if (aiSummaryEl) {
+            aiSummaryEl.textContent = data.ai_string_summary || 'Static string analysis complete.';
+        }
+
+        if (resetFilters) {
+            const searchIn = document.getElementById('strings-search-input');
+            const catSel = document.getElementById('strings-filter-category');
+            const sevSel = document.getElementById('strings-filter-severity');
+            const encSel = document.getElementById('strings-filter-encoding');
+            const suspChk = document.getElementById('strings-filter-suspicious');
+            if (searchIn) searchIn.value = '';
+            if (catSel) catSel.value = 'ALL';
+            if (sevSel) sevSel.value = 'ALL';
+            if (encSel) encSel.value = 'ALL';
+            if (suspChk) suspChk.checked = false;
+        }
+
+        applyStringsFilterAndRender();
+
+    } catch (err) {
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell" style="color: var(--sev-high);">Failed to load string intelligence: ${escapeHtml(err.message)}</td></tr>`;
+        }
+    }
+}
+
+function onStringsFilterChange() {
+    state.stringsCurrentPage = 1;
+    applyStringsFilterAndRender();
+}
+
+function onStringsPageSizeChange() {
+    const sel = document.getElementById('strings-page-size-select');
+    if (sel) {
+        state.stringsPageSize = parseInt(sel.value, 10) || 50;
+    }
+    state.stringsCurrentPage = 1;
+    applyStringsFilterAndRender();
+}
+
+function reloadCurrentStrings() {
+    loadStringsIntelligence(state.activeAnalysisId, false);
+}
+
+function applyStringsFilterAndRender() {
+    const searchInput = document.getElementById('strings-search-input');
+    const catSelect = document.getElementById('strings-filter-category');
+    const sevSelect = document.getElementById('strings-filter-severity');
+    const encSelect = document.getElementById('strings-filter-encoding');
+    const suspCheck = document.getElementById('strings-filter-suspicious');
+    const sortSelect = document.getElementById('strings-sort-by');
+
+    const search = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    const category = (catSelect ? catSelect.value : 'ALL').toUpperCase();
+    const severity = (sevSelect ? sevSelect.value : 'ALL').toUpperCase();
+    const encoding = (encSelect ? encSelect.value : 'ALL').toUpperCase();
+    const suspiciousOnly = suspCheck ? suspCheck.checked : false;
+    const sortBy = sortSelect ? sortSelect.value : 'severity';
+
+    // 1. Filter
+    const filtered = (state.stringsList || []).filter(s => {
+        // Search filter
+        if (search) {
+            const valMatch = (s.value || '').toLowerCase().includes(search);
+            const catMatch = (s.category || '').toLowerCase().includes(search);
+            const reasonMatch = (s.reason || '').toLowerCase().includes(search);
+            const mitreMatch = (s.mitre_technique || '').toLowerCase().includes(search);
+            if (!valMatch && !catMatch && !reasonMatch && !mitreMatch) return false;
+        }
+
+        // Category filter
+        if (category !== 'ALL') {
+            const sCat = (s.category || '').toUpperCase();
+            if (category === 'COMMAND' && sCat !== 'COMMAND' && sCat !== 'CMD') return false;
+            if (category === 'IP_ADDRESS' && sCat !== 'IP_ADDRESS' && sCat !== 'IP') return false;
+            if (category !== 'COMMAND' && category !== 'IP_ADDRESS' && sCat !== category) return false;
+        }
+
+        // Severity filter
+        if (severity !== 'ALL') {
+            if ((s.severity || 'INFO').toUpperCase() !== severity) return false;
+        }
+
+        // Encoding filter
+        if (encoding !== 'ALL') {
+            if ((s.encoding || 'ASCII').toUpperCase() !== encoding) return false;
+        }
+
+        // Suspicious only
+        if (suspiciousOnly && !s.suspicious) {
+            return false;
+        }
+
+        return true;
+    });
+
+    // 2. Sort
+    const sevOrder = { "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4 };
+    filtered.sort((a, b) => {
+        if (sortBy === 'offset_asc') {
+            return (a.offset || 0) - (b.offset || 0);
+        } else if (sortBy === 'offset_desc') {
+            return (b.offset || 0) - (a.offset || 0);
+        } else if (sortBy === 'category') {
+            return (a.category || '').localeCompare(b.category || '');
+        } else if (sortBy === 'value') {
+            return (a.value || '').localeCompare(b.value || '');
+        } else {
+            // Default: severity/suspicious first
+            const diff = (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5);
+            if (diff !== 0) return diff;
+            return (a.offset || 0) - (b.offset || 0);
+        }
+    });
+
+    state.stringsFilteredList = filtered;
+    state.stringsTotalPages = Math.max(1, Math.ceil(filtered.length / state.stringsPageSize));
+    if (state.stringsCurrentPage > state.stringsTotalPages) {
+        state.stringsCurrentPage = state.stringsTotalPages;
+    }
+
+    renderStringsTableSlice();
+}
+
+function renderStringsTableSlice() {
+    const tbody = document.getElementById('strings-tbody');
+    const summaryEl = document.getElementById('strings-pagination-summary');
+    const matchCountEl = document.getElementById('strings-filter-match-count');
+    if (!tbody) return;
+
+    const list = state.stringsFilteredList || [];
+    const total = list.length;
+
+    if (total === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell" style="padding: 24px;">No strings matching the current filters.</td></tr>`;
+        if (summaryEl) summaryEl.textContent = `Showing 0-0 of 0 strings`;
+        if (matchCountEl) matchCountEl.textContent = `Showing 0 strings`;
+        renderStringsPaginationControls(0, 0, 0);
+        return;
+    }
+
+    const startIdx = (state.stringsCurrentPage - 1) * state.stringsPageSize;
+    const endIdx = Math.min(startIdx + state.stringsPageSize, total);
+    const slice = list.slice(startIdx, endIdx);
+
+    if (summaryEl) summaryEl.textContent = `Showing ${(startIdx + 1).toLocaleString()}-${endIdx.toLocaleString()} of ${total.toLocaleString()} strings`;
+    if (matchCountEl) matchCountEl.textContent = `Showing ${total.toLocaleString()} filtered strings`;
+
+    tbody.innerHTML = slice.map((item, index) => {
+        const globalIdx = startIdx + index;
+        const offsetStr = item.offset_hex || (item.offset !== null && item.offset !== undefined ? `0x${item.offset.toString(16).toUpperCase().padStart(8, '0')}` : 'N/A');
+        const sevClass = getRiskBadgeClass(item.severity || 'LOW');
+        const isSusp = item.suspicious;
+        const suspBadge = isSusp ? `<span class="badge badge-high" style="font-size: 10px;">⚠️ Suspicious</span>` : `<span class="badge badge-low" style="font-size: 10px;">Normal</span>`;
+        const catBadge = getCategoryBadgeHtml(item.category || 'GENERAL');
+
+        // Escape string value for attribute and display
+        const displayVal = item.value.length > 70 ? item.value.substring(0, 70) + '...' : item.value;
+
+        return `
+            <tr>
+                <td style="text-align: center; color: var(--text-muted); font-size: 11px;">${globalIdx + 1}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <code style="font-family: var(--font-mono); font-size: 12px; color: ${isSusp ? 'var(--accent-orange)' : 'var(--text-primary)'}; word-break: break-all;" title="${escapeHtml(item.value)}">${escapeHtml(displayVal)}</code>
+                    </div>
+                </td>
+                <td>${catBadge}</td>
+                <td><span class="badge badge-rule" style="font-size: 10px;">${escapeHtml(item.encoding || 'ASCII')}</span></td>
+                <td><code style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-blue);">${escapeHtml(offsetStr)}</code></td>
+                <td><span class="badge ${sevClass}" style="font-size: 10px;">${escapeHtml(item.severity || 'INFO')}</span></td>
+                <td>${suspBadge}</td>
+                <td style="font-size: 11px; color: var(--text-secondary); max-width: 240px;">
+                    <div style="line-height: 1.4;">${escapeHtml(item.reason || 'Standard string')}</div>
+                    ${item.mitre_technique ? `<div style="font-size: 10px; color: var(--accent-blue); margin-top: 2px;">🎯 ${escapeHtml(item.mitre_technique)}</div>` : ''}
+                </td>
+                <td style="text-align: center;">
+                    <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
+                        <button class="btn-secondary" onclick="copySingleString(${globalIdx}, this)" style="font-size: 10px; padding: 3px 6px;" title="Copy string text">📋</button>
+                        <button class="btn-primary" onclick="openStringDetailModal(${globalIdx})" style="font-size: 10px; padding: 3px 8px;" title="Inspect forensic details">🔍</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    renderStringsPaginationControls(state.stringsCurrentPage, state.stringsTotalPages, total);
+}
+
+function getCategoryBadgeHtml(cat) {
+    const c = (cat || 'GENERAL').toUpperCase();
+    if (c === 'POWERSHELL') return `<span class="badge badge-high" style="font-size: 10px;">PowerShell</span>`;
+    if (c === 'CMD') return `<span class="badge badge-mod" style="font-size: 10px;">CMD</span>`;
+    if (c === 'COMMAND') return `<span class="badge badge-mod" style="font-size: 10px;">Command</span>`;
+    if (c === 'URL') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #38bdf8; color: #38bdf8;">URL</span>`;
+    if (c === 'IP_ADDRESS') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #fb923c; color: #fb923c;">IP</span>`;
+    if (c === 'REGISTRY') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #a855f7; color: #a855f7;">Registry</span>`;
+    if (c === 'API') return `<span class="badge badge-rule" style="font-size: 10px; border-color: #ec4899; color: #ec4899;">API</span>`;
+    if (c === 'DLL') return `<span class="badge badge-rule" style="font-size: 10px;">DLL</span>`;
+    if (c === 'FILE_PATH') return `<span class="badge badge-rule" style="font-size: 10px;">File Path</span>`;
+    if (c === 'EMAIL') return `<span class="badge badge-rule" style="font-size: 10px;">Email</span>`;
+    if (c === 'SCRIPT') return `<span class="badge badge-mod" style="font-size: 10px;">Script</span>`;
+    if (c === 'SUSPICIOUS') return `<span class="badge badge-crit" style="font-size: 10px;">Suspicious</span>`;
+    return `<span class="badge badge-low" style="font-size: 10px;">General</span>`;
+}
+
+function renderStringsPaginationControls(currentPage, totalPages, totalItems) {
+    const btnFirst = document.getElementById('btn-strings-first');
+    const btnPrev = document.getElementById('btn-strings-prev');
+    const btnNext = document.getElementById('btn-strings-next');
+    const btnLast = document.getElementById('btn-strings-last');
+    const numbersContainer = document.getElementById('strings-page-numbers');
+
+    if (btnFirst) btnFirst.disabled = currentPage <= 1;
+    if (btnPrev) btnPrev.disabled = currentPage <= 1;
+    if (btnNext) btnNext.disabled = currentPage >= totalPages;
+    if (btnLast) btnLast.disabled = currentPage >= totalPages;
+
+    if (!numbersContainer) return;
+
+    if (totalPages <= 1) {
+        numbersContainer.innerHTML = '';
+        return;
+    }
+
+    const pages = [];
+    const maxButtons = 5;
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        pages.push(p);
+    }
+
+    numbersContainer.innerHTML = pages.map(p => `
+        <button class="btn-secondary ${p === currentPage ? 'active' : ''}" onclick="goToStringsPage(${p})" style="font-size: 11px; padding: 4px 8px; ${p === currentPage ? 'background: var(--accent-blue); color: #fff; font-weight: bold;' : ''}">
+            ${p}
+        </button>
+    `).join('');
+}
+
+function goToStringsPage(pageNum) {
+    const target = Math.max(1, Math.min(pageNum, state.stringsTotalPages || 1));
+    state.stringsCurrentPage = target;
+    renderStringsTableSlice();
+}
+
+function openStringDetailModal(index) {
+    const item = (state.stringsFilteredList || [])[index];
+    if (!item) return;
+
+    state.stringsSelectedModalItem = item;
+
+    const modal = document.getElementById('string-detail-modal');
+    const valEl = document.getElementById('modal-string-value');
+    const catEl = document.getElementById('modal-string-category');
+    const encEl = document.getElementById('modal-string-encoding');
+    const offEl = document.getElementById('modal-string-offset');
+    const sevEl = document.getElementById('modal-string-severity');
+    const reasonEl = document.getElementById('modal-string-reason');
+    const mitreBox = document.getElementById('modal-string-mitre-box');
+    const mitreNameEl = document.getElementById('modal-string-mitre-name');
+
+    if (valEl) valEl.textContent = item.value;
+    if (catEl) catEl.innerHTML = getCategoryBadgeHtml(item.category);
+    if (encEl) encEl.textContent = `${item.encoding || 'ASCII'} (${item.value.length} chars)`;
+    if (offEl) offEl.textContent = `${item.offset_hex || ('0x' + (item.offset || 0).toString(16).toUpperCase())} (Decimal: ${(item.offset || 0).toLocaleString()})`;
+    if (sevEl) {
+        const sevBadge = `<span class="badge ${getRiskBadgeClass(item.severity)}">${item.severity || 'INFO'}</span>`;
+        const suspText = item.suspicious ? `<span style="color: var(--sev-high); font-size: 11px; margin-left: 6px;">⚠️ Suspicious Indicator</span>` : `<span style="color: #10b981; font-size: 11px; margin-left: 6px;">✓ Clean</span>`;
+        sevEl.innerHTML = `${sevBadge} ${suspText}`;
+    }
+    if (reasonEl) reasonEl.textContent = item.reason || 'Standard printable text or binary metadata sequence.';
+
+    if (item.mitre_technique) {
+        if (mitreBox) mitreBox.style.display = 'block';
+        if (mitreNameEl) mitreNameEl.textContent = item.mitre_technique;
+    } else {
+        if (mitreBox) mitreBox.style.display = 'none';
+    }
+
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeStringDetailModal() {
+    const modal = document.getElementById('string-detail-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function copyModalStringValue() {
+    if (!state.stringsSelectedModalItem) return;
+    const text = state.stringsSelectedModalItem.value;
+    const btn = document.getElementById('btn-modal-copy-string');
+    copyTextToClipboardWithFeedback(text, btn, '📋 Copy String');
+}
+
+function copySingleString(index, btnElement) {
+    const item = (state.stringsFilteredList || [])[index];
+    if (!item) return;
+    copyTextToClipboardWithFeedback(item.value, btnElement, '📋');
+}
+
+function copyActiveSha256() {
+    const sha = state.stringsData ? state.stringsData.sha256 : (state.sampleData ? state.sampleData.sha256 : '');
+    const btn = document.getElementById('strings-copy-sha256-btn');
+    if (sha) {
+        copyTextToClipboardWithFeedback(sha, btn, '📋');
+    }
+}
+
+function copyTextToClipboardWithFeedback(text, btnElement, defaultLabel) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            if (btnElement) {
+                btnElement.textContent = '✓ Copied!';
+                btnElement.style.color = '#10b981';
+                setTimeout(() => {
+                    btnElement.textContent = defaultLabel;
+                    btnElement.style.color = '';
+                }, 1500);
+            }
+        }).catch(() => {
+            prompt('Copy string:', text);
+        });
+    } else {
+        prompt('Copy string:', text);
+    }
+}
+
+function exportStringsCSV() {
+    const list = state.stringsFilteredList && state.stringsFilteredList.length > 0 ? state.stringsFilteredList : state.stringsList;
+    if (!list || list.length === 0) {
+        alert('No strings available to export.');
+        return;
+    }
+
+    const headers = ['Index', 'String Value', 'Category', 'Encoding', 'Offset Hex', 'Offset Dec', 'Suspicious', 'Severity', 'Confidence', 'Reason', 'MITRE ATT&CK'];
+    const rows = list.map((s, idx) => [
+        idx + 1,
+        `"${(s.value || '').replace(/"/g, '""')}"`,
+        s.category || 'GENERAL',
+        s.encoding || 'ASCII',
+        s.offset_hex || `0x${(s.offset || 0).toString(16).toUpperCase()}`,
+        s.offset || 0,
+        s.suspicious ? 'YES' : 'NO',
+        s.severity || 'INFO',
+        s.confidence || 1.0,
+        `"${(s.reason || '').replace(/"/g, '""')}"`,
+        `"${(s.mitre_technique || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const filename = `strings_${state.activeAnalysisId || 'export'}.csv`;
+    downloadBlobFile(blob, filename);
+}
+
+function exportStringsJSON() {
+    const data = state.stringsData || {
+        analysis_id: state.activeAnalysisId || 'ANL-UNKNOWN',
+        filename: state.sampleData ? state.sampleData.filename : 'sample.exe',
+        total_strings: state.stringsList.length,
+        strings: state.stringsList
+    };
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+    const filename = `strings_${state.activeAnalysisId || 'export'}.json`;
+    downloadBlobFile(blob, filename);
+}
+
+function downloadBlobFile(blob, filename) {
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function renderBulletList(containerId, list) {
@@ -1081,14 +1986,14 @@ function filterImportsTable() {
 /**
  * Cybersecurity Student Learning Lab Controller (Module 12 & 16)
  */
-state.studentCurrentSubtab = 'concepts';
+state.studentCurrentSubtab = 'overview';
 state.labActiveResultTab = 'headers';
 state.practiceSamplesList = [];
 state.quizQuestionsList = [];
 
-function switchStudentTab(subtab) {
+function switchStudentTab(subtab = 'overview') {
     state.studentCurrentSubtab = subtab;
-    const tabs = ['concepts', 'labs', 'quizzes', 'anatomy'];
+    const tabs = ['overview', 'concepts', 'labs', 'quizzes', 'anatomy'];
 
     tabs.forEach(t => {
         const btn = document.getElementById(`student-subtab-${t}`);
@@ -1097,12 +2002,59 @@ function switchStudentTab(subtab) {
         if (panel) panel.style.display = (t === subtab) ? 'block' : 'none';
     });
 
-    if (subtab === 'concepts') {
+    if (subtab === 'overview') {
+        loadStudentDashboardStats();
+    } else if (subtab === 'concepts') {
         renderSelectedConcept();
     } else if (subtab === 'labs') {
         loadPracticeSamples();
     } else if (subtab === 'quizzes') {
         loadQuizQuestions();
+    }
+}
+
+async function loadStudentDashboardStats() {
+    try {
+        const res = await fetchWithAuth('/api/learning/dashboard-stats');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+
+        // 1. Animate 4 Hero KPI Cards
+        animateCounter('student-overview-labs-completed', data.labs_completed || 2);
+        animateCounter('student-overview-analyses-completed', data.personal_analyses_count || 0);
+
+        const courseEl = document.getElementById('student-overview-course');
+        if (courseEl) courseEl.textContent = data.current_course || 'PE Analysis';
+
+        const skillLvlEl = document.getElementById('student-overview-skill-level');
+        if (skillLvlEl) skillLvlEl.textContent = data.skill_level || 'APPRENTICE';
+
+        // 2. Animate Dynamic Skill Matrix
+        const skills = data.skill_matrix || {
+            pe_analysis: 75,
+            static_strings: 80,
+            iat_apis: 60,
+            entropy_detection: 45,
+            ioc_scoring: 65
+        };
+
+        const updateSkill = (valId, barId, pct) => {
+            const v = document.getElementById(valId);
+            const b = document.getElementById(barId);
+            if (v) v.textContent = `${pct}%`;
+            if (b) b.style.width = `${pct}%`;
+        };
+
+        updateSkill('skill-pe-val', 'skill-pe-bar', skills.pe_analysis || 75);
+        updateSkill('skill-strings-val', 'skill-strings-bar', skills.static_strings || 80);
+        updateSkill('skill-iat-val', 'skill-iat-bar', skills.iat_apis || 60);
+        updateSkill('skill-entropy-val', 'skill-entropy-bar', skills.entropy_detection || 45);
+        updateSkill('skill-iocs-val', 'skill-iocs-bar', skills.ioc_scoring || 65);
+
+        // 3. Update Learning Path Pipeline
+        updateAnalysisPipeline(data.current_stage || 4, 'student-pipeline-stages');
+    } catch (err) {
+        console.warn('Error loading student dashboard stats:', err);
     }
 }
 
@@ -2255,26 +3207,51 @@ async function loadAdminOverview() {
         if (!res || !res.ok) return;
         const data = await res.json();
 
-        // Update Overview Counters
-        const usersTotalEl = document.getElementById('admin-overview-users-total');
+        // 1. Animate 6 Hero KPI Counters
+        animateCounter('admin-overview-users-total', data.total_users || 0);
+        animateCounter('admin-overview-active-users', data.active_users || 0);
+        animateCounter('admin-overview-samples-total', data.total_samples || 0);
+        animateCounter('admin-overview-high-risk', data.high_risk_samples || 0);
+        animateCounter('admin-overview-critical', data.critical_risk_samples || 0);
+
         const usersBreakdownEl = document.getElementById('admin-overview-users-breakdown');
-        const samplesTotalEl = document.getElementById('admin-overview-samples-total');
-        const indicatorsTotalEl = document.getElementById('admin-overview-indicators-total');
-        const logsTotalEl = document.getElementById('admin-overview-logs-total');
-        const alertsTotalEl = document.getElementById('admin-overview-alerts-total');
-        const healthEl = document.getElementById('admin-overview-health');
-
-        if (usersTotalEl) usersTotalEl.textContent = data.total_users || 0;
         if (usersBreakdownEl) {
-            usersBreakdownEl.textContent = `${data.admin_count || 0} Admins • ${data.analyst_count || 0} Analysts • ${data.student_count || 0} Students (${data.active_users || 0} Active)`;
+            usersBreakdownEl.textContent = `${data.admin_count || 0} Admins • ${data.analyst_count || 0} Analysts • ${data.student_count || 0} Students`;
         }
-        if (samplesTotalEl) samplesTotalEl.textContent = data.total_samples || 0;
-        if (indicatorsTotalEl) indicatorsTotalEl.textContent = `${data.total_indicators || 0} Correlated Indicators`;
-        if (logsTotalEl) logsTotalEl.textContent = data.total_audit_logs || 0;
-        if (alertsTotalEl) alertsTotalEl.textContent = `${data.inactive_users || 0} Inactive • ${data.revoked_tokens_count || 0} Revoked Tokens`;
-        if (healthEl) healthEl.textContent = data.system_health || 'OPTIMAL';
 
-        // Render Recent Users in Overview
+        const indicatorsTotalEl = document.getElementById('admin-overview-indicators-total');
+        if (indicatorsTotalEl) {
+            indicatorsTotalEl.textContent = `${data.total_indicators || 0} Correlated Indicators`;
+        }
+
+        const healthEl = document.getElementById('admin-overview-health');
+        if (healthEl) {
+            healthEl.textContent = data.system_health || 'OPTIMAL';
+        }
+
+        // 2. Animate Risk Distribution Chart Bars
+        const totalSamples = Math.max(1, data.total_samples || 0);
+        const lowCount = data.low_risk_samples || 0;
+        const medCount = data.medium_risk_samples || 0;
+        const highCount = data.high_risk_samples || 0;
+        const critCount = data.critical_risk_samples || 0;
+
+        animateCounter('dist-count-low', lowCount);
+        animateCounter('dist-count-medium', medCount);
+        animateCounter('dist-count-high', highCount);
+        animateCounter('dist-count-crit', critCount);
+
+        const lowBar = document.getElementById('dist-bar-low');
+        const medBar = document.getElementById('dist-bar-medium');
+        const highBar = document.getElementById('dist-bar-high');
+        const critBar = document.getElementById('dist-bar-crit');
+
+        if (lowBar) lowBar.style.width = `${Math.round((lowCount / totalSamples) * 100)}%`;
+        if (medBar) medBar.style.width = `${Math.round((medCount / totalSamples) * 100)}%`;
+        if (highBar) highBar.style.width = `${Math.round((highCount / totalSamples) * 100)}%`;
+        if (critBar) critBar.style.width = `${Math.round((critCount / totalSamples) * 100)}%`;
+
+        // 3. Render Recent Provisioned Users
         const tbody = document.getElementById('admin-recent-users-tbody');
         if (tbody) {
             if (!data.recent_users || data.recent_users.length === 0) {
@@ -2286,7 +3263,7 @@ async function loadAdminOverview() {
                     return `
                         <tr>
                             <td style="font-weight: 600; color: var(--text-primary);">
-                                ${escapeHtml(u.username)} ${state.user && u.id === state.user.id ? '<span style="font-size: 10px; color: var(--accent-blue); font-weight: 700;">(You)</span>' : ''}
+                                ${escapeHtml(u.username)} ${state.user && u.id === state.user.id ? '<span style="font-size: 10px; color: var(--accent-cyan); font-weight: 700;">(You)</span>' : ''}
                             </td>
                             <td><span class="role-badge ${roleBadgeClass}">${escapeHtml(u.role)}</span></td>
                             <td><span class="badge ${u.is_active ? 'badge-low' : 'badge-crit'}">${u.is_active ? 'ACTIVE' : 'INACTIVE'}</span></td>

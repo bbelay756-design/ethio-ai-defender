@@ -11,6 +11,12 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <!-- Subtle Animated Cyber Background Grid Canvas -->
+    <canvas id="cyber-bg-canvas" class="cyber-bg-canvas"></canvas>
+
+    <!-- Floating SOC Toast Notifications Container -->
+    <div id="soc-toast-container" class="soc-toast-container" aria-live="polite"></div>
+
     <!-- Authentication Loading Overlay (State 1: AUTHENTICATION_LOADING) -->
     <div id="auth-loading-overlay" class="auth-loading-overlay" style="display: none;">
         <div class="auth-spinner"></div>
@@ -187,7 +193,7 @@
                 </ul>
             </nav>
 
-            <div class="sidebar-status-box">
+            <div class="sidebar-status-box" onclick="openSystemHealthModal()" title="Click to view live subsystem health status">
                 <div class="status-indicator">
                     <span class="status-pulse-dot"></span>
                     <span class="status-label" data-i18n="engine_status">Static Engine: Operational</span>
@@ -294,19 +300,29 @@
                                 </div>
 
                                 <!-- Analysis In-Progress Staged Feedback -->
-                                <div id="upload-progress-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-cyan); margin-bottom: 12px;">
+                                <div id="upload-progress-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-cyan); margin-bottom: 16px;">
                                     <div class="card-body">
-                                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                                            <span class="auth-loading-spinner" style="width: 16px; height: 16px; border-width: 2px;"></span>
-                                            <span style="font-weight: 700; font-size: 13px; color: var(--accent-cyan);" id="upload-progress-current-text">Analyzing Binary...</span>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                <span class="auth-loading-spinner" style="width: 16px; height: 16px; border-width: 2px;"></span>
+                                                <span style="font-weight: 700; font-size: 13px; color: var(--accent-cyan);" id="upload-progress-current-text">Executing Zero-Execution Analysis Pipeline...</span>
+                                            </div>
+                                            <span class="badge badge-low" style="font-size: 10px;">STATIC INTAKE</span>
                                         </div>
-                                        <div id="upload-progress-stages" style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono);">
-                                            <div id="prog-stage-1">⏳ 1. Uploading payload stream safely...</div>
-                                            <div id="prog-stage-2">⏳ 2. Validating DOS header & PE format...</div>
-                                            <div id="prog-stage-3">⏳ 3. Calculating SHA-256, SHA-1, MD5 hashes...</div>
-                                            <div id="prog-stage-4">⏳ 4. Parsing PE headers & sections...</div>
-                                            <div id="prog-stage-5">⏳ 5. Extracting APIs, strings & threat indicators...</div>
-                                            <div id="prog-stage-6">⏳ 6. Running YARA & synthesizing AI assessment...</div>
+                                        <div class="pipeline-stages-flow" id="upload-pipeline-flow">
+                                            <div class="pipeline-stage active" id="intake-stage-1"><div class="stage-node">1</div><div class="stage-label">File</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-2"><div class="stage-node">2</div><div class="stage-label">Hash</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-3"><div class="stage-node">3</div><div class="stage-label">PE Struct</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-4"><div class="stage-node">4</div><div class="stage-label">Sections</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-5"><div class="stage-node">5</div><div class="stage-label">Imports</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-6"><div class="stage-node">6</div><div class="stage-label">Strings</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-7"><div class="stage-node">7</div><div class="stage-label">IOCs</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-8"><div class="stage-node">8</div><div class="stage-label">Risk</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-9"><div class="stage-node">9</div><div class="stage-label">AI Review</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-10"><div class="stage-node">10</div><div class="stage-label">Report</div></div>
+                                        </div>
+                                        <div id="upload-progress-subtext" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 8px; text-align: center;">
+                                            Validating DOS header signature & calculating cryptographic hashes...
                                         </div>
                                     </div>
                                 </div>
@@ -434,31 +450,83 @@
                         </div>
                     </div>
 
-                    <!-- Metric Cards -->
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-label" data-i18n="lbl_filename">Filename</div>
-                            <div class="metric-val" id="ov-filename">N/A</div>
-                            <div class="metric-sub" id="ov-filetype">Windows PE</div>
+                    <!-- Defensive Analysis Execution Pipeline Status -->
+                    <div class="analysis-pipeline-container" id="overview-analysis-pipeline">
+                        <div class="pipeline-header">
+                            <div class="pipeline-title"><span>⚡</span> Defensive Static Analysis Pipeline</div>
+                            <div class="pipeline-status-text" id="overview-pipeline-status-text">ANALYSIS COMPLETED</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label" data-i18n="lbl_arch">Architecture</div>
-                            <div class="metric-val" id="ov-arch">x64</div>
-                            <div class="metric-sub" id="ov-filesize">0 KB</div>
+                        <div class="pipeline-stages-flow" id="overview-pipeline-stages">
+                            <div class="pipeline-stage completed" id="ov-stage-1"><div class="stage-node">✓</div><div class="stage-label">File Intake</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-2"><div class="stage-node">✓</div><div class="stage-label">Hashes</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-3"><div class="stage-node">✓</div><div class="stage-label">PE Headers</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-4"><div class="stage-node">✓</div><div class="stage-label">Sections</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-5"><div class="stage-node">✓</div><div class="stage-label">Imports</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-6"><div class="stage-node">✓</div><div class="stage-label">Strings</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-7"><div class="stage-node">✓</div><div class="stage-label">IOC Scorer</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-8"><div class="stage-node">✓</div><div class="stage-label">Risk Engine</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-9"><div class="stage-node">✓</div><div class="stage-label">AI Review</div></div>
+                            <div class="pipeline-stage completed" id="ov-stage-10"><div class="stage-node">✓</div><div class="stage-label">Report</div></div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label" data-i18n="lbl_risk_level">Risk Level</div>
-                            <div class="metric-val" id="ov-risk-level"><span class="badge badge-low">LOW</span></div>
-                            <div class="metric-sub" data-i18n="heuristic_metric">Heuristic Analyst Metric</div>
-                        </div>
-                        <div class="metric-card score-metric-card">
-                            <div class="metric-label" data-i18n="lbl_threat_score">Threat Score</div>
-                            <div class="score-display">
-                                <span class="score-num" id="ov-score-num">0</span>
-                                <span class="score-max">/ 100</span>
+                    </div>
+
+                    <!-- Circular Threat Gauge & Architectural Matrix Grid -->
+                    <div class="grid-2col" style="margin-bottom: 20px;">
+                        <!-- Animated Circular Threat Risk Gauge -->
+                        <div class="soc-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px; text-align: center;">
+                            <div class="card-head" style="width: 100%; border: none; padding: 0 0 12px 0; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🎯</span>
+                                    <h3 class="card-heading">Automated Threat Risk Score</h3>
+                                </div>
+                                <span class="badge badge-low" id="ov-risk-level"><span id="ov-risk-level-text">LOW</span></span>
                             </div>
-                            <div class="score-progress-track">
+                            <div class="threat-gauge-wrapper">
+                                <svg class="threat-gauge-svg" width="160" height="160" viewBox="0 0 160 160">
+                                    <circle class="gauge-bg-circle" cx="80" cy="80" r="68"></circle>
+                                    <circle class="gauge-progress-circle" id="ov-threat-gauge-circle" cx="80" cy="80" r="68"></circle>
+                                </svg>
+                                <div class="gauge-center-content">
+                                    <div class="gauge-score-number" id="ov-score-num">0</div>
+                                    <div class="gauge-score-total">/ 100</div>
+                                    <div class="gauge-tier-badge" id="ov-tier-badge">LOW</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 11px; color: var(--text-dim); margin-top: 8px;" id="ov-risk-desc">
+                                Deterministic multi-factor static heuristic calculation
+                            </div>
+                            <div class="score-progress-track" style="display: none;">
                                 <div class="score-progress-bar" id="ov-score-bar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Architecture & Static Parameters -->
+                        <div class="soc-card">
+                            <div class="card-head">
+                                <span class="card-icon">📦</span>
+                                <h3 class="card-heading">Binary Structure & Identity</h3>
+                            </div>
+                            <div class="card-body" style="display: flex; flex-direction: column; gap: 12px;">
+                                <div class="info-list-item">
+                                    <span class="info-list-label" data-i18n="lbl_filename">Filename:</span>
+                                    <span class="info-list-val" id="ov-filename" style="color: var(--accent-cyan); font-family: var(--font-mono); font-weight: 700;">sample.exe</span>
+                                </div>
+                                <div class="info-list-item">
+                                    <span class="info-list-label" data-i18n="lbl_arch">Architecture:</span>
+                                    <span class="info-list-val" id="ov-arch">x64 PE32+ (Executable)</span>
+                                </div>
+                                <div class="info-list-item">
+                                    <span class="info-list-label">File Type:</span>
+                                    <span class="info-list-val" id="ov-filetype">Windows Portable Executable</span>
+                                </div>
+                                <div class="info-list-item">
+                                    <span class="info-list-label">File Size:</span>
+                                    <span class="info-list-val" id="ov-filesize">0 KB</span>
+                                </div>
+                                <div class="info-list-item">
+                                    <span class="info-list-label">Compilation Date:</span>
+                                    <span class="info-list-val" id="ov-compile-date" style="font-family: var(--font-mono);">-</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -531,6 +599,59 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Defensive Threat Evidence Relationship Map -->
+                    <div class="threat-graph-container" style="margin-top: 20px;">
+                        <div class="threat-graph-header">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 18px;">🕸️</span>
+                                <h3 class="card-heading" style="color: var(--accent-cyan);">Threat Evidence Relationship Map</h3>
+                            </div>
+                            <span class="badge badge-low" style="font-size: 10px;">EVIDENCE-BASED CORRELATION</span>
+                        </div>
+                        <div class="threat-graph-nodes" id="threat-graph-nodes">
+                            <div class="graph-node" id="node-file">
+                                <div class="graph-node-title">Target Binary</div>
+                                <div class="graph-node-value" id="graph-filename">sample.exe</div>
+                                <div class="graph-node-count" id="graph-filesize">0 KB</div>
+                            </div>
+                            <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
+                            <div class="graph-node" id="node-apis">
+                                <div class="graph-node-title">Suspicious APIs</div>
+                                <div class="graph-node-value" id="graph-api-count">0 APIs</div>
+                                <div class="graph-node-count">Memory / Execution</div>
+                            </div>
+                            <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
+                            <div class="graph-node" id="node-iocs">
+                                <div class="graph-node-title">Heuristic IOCs</div>
+                                <div class="graph-node-value" id="graph-ioc-count">0 Findings</div>
+                                <div class="graph-node-count">Entropy / Sections</div>
+                            </div>
+                            <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
+                            <div class="graph-node" id="node-mitre">
+                                <div class="graph-node-title">MITRE ATT&CK</div>
+                                <div class="graph-node-value" id="graph-mitre-technique">T1059 / T1055</div>
+                                <div class="graph-node-count">Mapped TTPs</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommended Defensive Action Panel -->
+                    <div class="soc-card" style="margin-top: 20px; background: rgba(14, 28, 56, 0.5); border-color: var(--border-strong);">
+                        <div class="card-head" style="justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">🛡️</span>
+                                <h3 class="card-heading">Recommended Defensive Actions</h3>
+                            </div>
+                            <span class="badge badge-low">SOC OPERATIONAL ACTIONS</span>
+                        </div>
+                        <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <button class="btn-primary" onclick="exportCurrentReport('html')">📄 Export Forensic Report</button>
+                            <button class="btn-secondary" onclick="switchTab('strings')">🔤 Inspect String Intelligence</button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('json')">📦 Export SIEM JSON</button>
+                            <button class="btn-danger" id="btn-quarantine-action" onclick="showSocNotification('File Quarantined', 'Sample has been safely isolated in the zero-execution vault.', 'success')">🔒 Quarantine File</button>
                         </div>
                     </div>
                 </section>
@@ -636,57 +757,242 @@
                 <!-- 5. STRINGS VIEW                                -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-strings">
-                    <div class="view-header">
-                        <h2 data-i18n="strings_title">Extracted Static Strings</h2>
-                        <p data-i18n="strings_subtitle">Classified ASCII and UTF-16LE Unicode sequences (URLs, IPs, Registry, Commands).</p>
+                    <div class="view-header flex-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                        <div>
+                            <h2 data-i18n="strings_title">String Intelligence</h2>
+                            <p data-i18n="strings_subtitle">Extracted and classified strings from the selected PE analysis.</p>
+                        </div>
+                        <div id="strings-header-actions" style="display: flex; gap: 8px; align-items: center;">
+                            <button class="btn-secondary" onclick="switchTab('history')" style="display: flex; align-items: center; gap: 6px;">
+                                <span>📂</span> Select Analysis
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="grid-2col">
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">🌐</span>
-                                <h3 class="card-heading">URLs & Network Endpoints (<span id="count-urls">0</span>)</h3>
-                            </div>
-                            <div class="card-body">
-                                <ul class="string-list" id="strings-urls-list">
-                                    <li class="empty-str-item">No URLs found</li>
-                                </ul>
+                    <!-- No Analysis Selected Warning State -->
+                    <div id="strings-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 40px 20px; border-left: 4px solid var(--accent-blue);">
+                        <div style="font-size: 40px; margin-bottom: 12px;">🔍</div>
+                        <h3 style="font-size: 18px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">No analysis selected.</h3>
+                        <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 20px auto; font-size: 13px;">
+                            Please select an analyzed sample from Analysis History or upload a Windows PE binary (.exe, .dll) to inspect its extracted string intelligence.
+                        </p>
+                        <button class="btn-primary" onclick="switchTab('history')">
+                            📂 Select Analysis from History
+                        </button>
+                    </div>
+
+                    <!-- Active Analysis Content Container -->
+                    <div id="strings-content-container">
+                        <!-- Active Analysis Info Ribbon -->
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid var(--accent-blue);">
+                            <div class="flex-between" style="flex-wrap: wrap; gap: 10px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <span style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="strings-active-filename">-</span>
+                                        <span class="badge badge-rule" id="strings-active-analysis-id">ANL-UNKNOWN</span>
+                                        <span class="badge badge-low" id="strings-active-status-badge">COMPLETED</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); flex-wrap: wrap;">
+                                        <span>SHA-256: <code id="strings-active-sha256" style="color: var(--accent-blue);">-</code></span>
+                                        <button class="btn-icon-copy" id="strings-copy-sha256-btn" onclick="copyActiveSha256()" title="Copy SHA-256">📋</button>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Total Extracted Strings</div>
+                                        <div style="font-size: 20px; font-weight: 800; color: var(--accent-blue);" id="strings-active-total-counter">0</div>
+                                    </div>
+                                    <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="switchTab('history')" title="Switch to another analysis record">
+                                        ⇄ Change Analysis
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">🖥️</span>
-                                <h3 class="card-heading">IP Addresses (<span id="count-ips">0</span>)</h3>
+                        <!-- 8 Summary Statistics Cards -->
+                        <div class="grid-4col" style="margin-bottom: 20px;">
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Total Strings</span>
+                                <span class="metric-val" id="stat-total-strings">0</span>
+                                <span class="metric-sub" id="stat-total-sub">ASCII + UTF-16LE</span>
                             </div>
-                            <div class="card-body">
-                                <ul class="string-list" id="strings-ips-list">
-                                    <li class="empty-str-item">No IP addresses found</li>
-                                </ul>
+                            <div class="soc-metric-card" style="border-top: 2px solid var(--sev-high);">
+                                <span class="metric-label">Suspicious Indicators</span>
+                                <span class="metric-val" style="color: var(--sev-high);" id="stat-suspicious-strings">0</span>
+                                <span class="metric-sub" id="stat-suspicious-sub">Forensic Clues</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">URLs & Domains</span>
+                                <span class="metric-val" style="color: #38bdf8;" id="stat-urls-domains">0</span>
+                                <span class="metric-sub" id="stat-urls-sub">Network Endpoints</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">IP Addresses</span>
+                                <span class="metric-val" style="color: #fb923c;" id="stat-ip-addresses">0</span>
+                                <span class="metric-sub" id="stat-ips-sub">Network Targets</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Registry Paths</span>
+                                <span class="metric-val" style="color: #a855f7;" id="stat-registry-paths">0</span>
+                                <span class="metric-sub" id="stat-registry-sub">Persistence / Config</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Commands & Scripts</span>
+                                <span class="metric-val" style="color: #f43f5e;" id="stat-commands-scripts">0</span>
+                                <span class="metric-sub" id="stat-commands-sub">CLI & PowerShell</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">ASCII Sequences</span>
+                                <span class="metric-val" id="stat-ascii-strings">0</span>
+                                <span class="metric-sub">7-bit ASCII text</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Unicode (UTF-16LE)</span>
+                                <span class="metric-val" id="stat-unicode-strings">0</span>
+                                <span class="metric-sub">Wide-character text</span>
                             </div>
                         </div>
 
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">🗂️</span>
-                                <h3 class="card-heading">Registry Paths (<span id="count-regs">0</span>)</h3>
+                        <!-- AI String Intelligence Summary Box -->
+                        <div class="soc-card" style="margin-bottom: 20px; background: rgba(14, 165, 233, 0.04); border-left: 3px solid var(--accent-blue);">
+                            <div class="card-head" style="padding-bottom: 6px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🤖</span>
+                                    <h3 class="card-heading" style="font-size: 14px;">AI String Intelligence Summary</h3>
+                                </div>
+                                <span class="badge badge-low" style="font-size: 10px;">DEFENSIVE STATIC SCOPING</span>
                             </div>
                             <div class="card-body">
-                                <ul class="string-list" id="strings-regs-list">
-                                    <li class="empty-str-item">No registry paths found</li>
-                                </ul>
+                                <p id="strings-ai-summary-text" style="font-size: 13px; color: var(--text-primary); line-height: 1.6; margin: 0;">
+                                    Loading string intelligence summary...
+                                </p>
                             </div>
                         </div>
 
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">⚡</span>
-                                <h3 class="card-heading">Commands & Scripts (<span id="count-cmds">0</span>)</h3>
+                        <!-- Search, Filter & Action Toolbar -->
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 16px;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+                                <!-- Left filters -->
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; flex: 1; min-width: 280px;">
+                                    <div style="position: relative; min-width: 220px; flex: 1;">
+                                        <input type="text" id="strings-search-input" class="soc-input" placeholder="Search string value, category, or reason..." oninput="onStringsFilterChange()" style="width: 100%; padding-left: 32px; font-size: 12px;">
+                                        <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px;">🔍</span>
+                                    </div>
+                                    <select id="strings-filter-category" class="soc-select" onchange="onStringsFilterChange()" style="font-size: 12px; padding: 6px 10px;">
+                                        <option value="ALL">All Categories</option>
+                                        <option value="URL">URLs (Web)</option>
+                                        <option value="DOMAIN">Domains</option>
+                                        <option value="IP_ADDRESS">IP Addresses</option>
+                                        <option value="REGISTRY">Registry Keys</option>
+                                        <option value="POWERSHELL">PowerShell</option>
+                                        <option value="COMMAND">CLI Commands</option>
+                                        <option value="CMD">cmd.exe</option>
+                                        <option value="SCRIPT">Scripts (.vbs, .ps1, etc.)</option>
+                                        <option value="FILE_PATH">File Paths</option>
+                                        <option value="DLL">DLL Modules</option>
+                                        <option value="API">Windows APIs</option>
+                                        <option value="EMAIL">Emails</option>
+                                        <option value="SUSPICIOUS">Suspicious Keywords</option>
+                                        <option value="GENERAL">General Text</option>
+                                    </select>
+                                    <select id="strings-filter-severity" class="soc-select" onchange="onStringsFilterChange()" style="font-size: 12px; padding: 6px 10px;">
+                                        <option value="ALL">All Severities</option>
+                                        <option value="CRITICAL">Critical</option>
+                                        <option value="HIGH">High</option>
+                                        <option value="MEDIUM">Medium</option>
+                                        <option value="LOW">Low</option>
+                                        <option value="INFO">Info</option>
+                                    </select>
+                                    <select id="strings-filter-encoding" class="soc-select" onchange="onStringsFilterChange()" style="font-size: 12px; padding: 6px 10px;">
+                                        <option value="ALL">All Encodings</option>
+                                        <option value="ASCII">ASCII</option>
+                                        <option value="UTF-16LE">UTF-16LE Unicode</option>
+                                    </select>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="strings-filter-suspicious" onchange="onStringsFilterChange()" style="cursor: pointer;">
+                                        <span style="font-weight: 600; color: var(--sev-high);">⚠️ Suspicious only</span>
+                                    </label>
+                                </div>
+
+                                <!-- Right controls (Sort & Export) -->
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <select id="strings-sort-by" class="soc-select" onchange="onStringsFilterChange()" style="font-size: 12px; padding: 6px 10px;">
+                                        <option value="severity">Sort: Suspicious First</option>
+                                        <option value="offset_asc">Sort: Offset (0x0000...)</option>
+                                        <option value="offset_desc">Sort: Offset (High to Low)</option>
+                                        <option value="category">Sort: Category (A-Z)</option>
+                                        <option value="value">Sort: String Value (A-Z)</option>
+                                    </select>
+                                    <button class="btn-secondary" onclick="exportStringsCSV()" title="Export current strings to CSV file" style="font-size: 12px; padding: 6px 10px;">
+                                        📥 Export CSV
+                                    </button>
+                                    <button class="btn-secondary" onclick="exportStringsJSON()" title="Export current strings to JSON file" style="font-size: 12px; padding: 6px 10px;">
+                                        📥 Export JSON
+                                    </button>
+                                    <button class="btn-secondary" onclick="reloadCurrentStrings()" title="Reload strings from server" style="font-size: 12px; padding: 6px 8px;">
+                                        🔄
+                                    </button>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <ul class="string-list" id="strings-cmds-list">
-                                    <li class="empty-str-item">No command references found</li>
-                                </ul>
+                        </div>
+
+                        <!-- Searchable Strings Table -->
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-head flex-between" style="padding-bottom: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🔤</span>
+                                    <h3 class="card-heading">Extracted Binary Strings</h3>
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-muted);" id="strings-filter-match-count">
+                                    Showing 0 strings
+                                </div>
+                            </div>
+                            <div class="card-body" style="padding: 0;">
+                                <div class="table-responsive">
+                                    <table class="soc-table" id="strings-main-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 50px; text-align: center;">#</th>
+                                                <th>String Value</th>
+                                                <th style="width: 110px;">Category</th>
+                                                <th style="width: 90px;">Encoding</th>
+                                                <th style="width: 100px;">Offset</th>
+                                                <th style="width: 90px;">Severity</th>
+                                                <th style="width: 100px;">Suspicious</th>
+                                                <th>Detection Reason</th>
+                                                <th style="width: 110px; text-align: center;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="strings-tbody">
+                                            <tr><td colspan="9" class="empty-state-cell">Loading string intelligence...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Pagination Controls Bar -->
+                            <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary);">
+                                    <span id="strings-pagination-summary">Showing 0-0 of 0 strings</span>
+                                    <span style="color: var(--border-color);">|</span>
+                                    <label style="display: flex; align-items: center; gap: 6px;">
+                                        <span>Per page:</span>
+                                        <select id="strings-page-size-select" class="soc-select" onchange="onStringsPageSizeChange()" style="font-size: 11px; padding: 2px 6px;">
+                                            <option value="25">25</option>
+                                            <option value="50" selected>50</option>
+                                            <option value="100">100</option>
+                                            <option value="250">250</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div style="display: flex; align-items: center; gap: 6px;" id="strings-pagination-controls">
+                                    <button class="btn-secondary" id="btn-strings-first" onclick="goToStringsPage(1)" style="font-size: 11px; padding: 4px 8px;" title="First Page">⏮️</button>
+                                    <button class="btn-secondary" id="btn-strings-prev" onclick="goToStringsPage(state.stringsCurrentPage - 1)" style="font-size: 11px; padding: 4px 8px;" title="Previous Page">◀️</button>
+                                    <div id="strings-page-numbers" style="display: flex; gap: 4px;"></div>
+                                    <button class="btn-secondary" id="btn-strings-next" onclick="goToStringsPage(state.stringsCurrentPage + 1)" style="font-size: 11px; padding: 4px 8px;" title="Next Page">▶️</button>
+                                    <button class="btn-secondary" id="btn-strings-last" onclick="goToStringsPage(state.stringsTotalPages)" style="font-size: 11px; padding: 4px 8px;" title="Last Page">⏭️</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -848,7 +1154,8 @@
                             <p data-i18n="learning_subtitle">Interactive educational reverse-engineering lessons, concept breakdowns, safe sample practice, and knowledge check quizzes.</p>
                         </div>
                         <div class="admin-subtabs">
-                            <button class="diff-btn active" id="student-subtab-concepts" onclick="switchStudentTab('concepts')">📖 Concept Academy</button>
+                            <button class="diff-btn active" id="student-subtab-overview" onclick="switchStudentTab('overview')">📊 Lab Command Overview</button>
+                            <button class="diff-btn" id="student-subtab-concepts" onclick="switchStudentTab('concepts')">📖 Concept Academy</button>
                             <button class="diff-btn" id="student-subtab-labs" onclick="switchStudentTab('labs')">🧪 Safe Practice Labs</button>
                             <button class="diff-btn" id="student-subtab-quizzes" onclick="switchStudentTab('quizzes')">🧩 Knowledge Quizzes</button>
                             <button class="diff-btn" id="student-subtab-anatomy" onclick="switchStudentTab('anatomy')">📐 Visual PE Architecture</button>
@@ -869,9 +1176,206 @@
                     </div>
 
                     <!-- ============================================== -->
+                    <!-- SUBTAB 0: STUDENT LAB COMMAND OVERVIEW         -->
+                    <!-- ============================================== -->
+                    <div id="student-panel-overview" class="student-subpanel" style="display: block;">
+                        <!-- 4 Summary KPI Cards -->
+                        <div class="grid-4col" style="margin-bottom: 20px;">
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Labs Completed</span>
+                                <span class="metric-val" id="student-overview-labs-completed" style="color: var(--accent-cyan);">0</span>
+                                <span class="metric-sub" id="student-overview-labs-sub">Synthetic Scenarios</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Current Curriculum</span>
+                                <span class="metric-val" id="student-overview-course" style="font-size: 16px; color: var(--text-primary);">PE Analysis</span>
+                                <span class="metric-sub">Defensive Engineering</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Analyses Completed</span>
+                                <span class="metric-val" id="student-overview-analyses-completed" style="color: var(--sev-low);">0</span>
+                                <span class="metric-sub">Personal Vault</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Skill Mastery Level</span>
+                                <span class="metric-val" id="student-overview-skill-level" style="color: var(--sev-susp); font-size: 18px;">APPRENTICE</span>
+                                <span class="metric-sub">Level 2 / 5</span>
+                            </div>
+                        </div>
+
+                        <!-- Animated Learning Path Pipeline -->
+                        <div class="analysis-pipeline-container" style="margin-bottom: 20px;">
+                            <div class="pipeline-header">
+                                <div class="pipeline-title"><span>🎓</span> Student Learning Curriculum Progression</div>
+                                <div class="pipeline-status-text" id="student-pipeline-status">MODULE 4 IN PROGRESS</div>
+                            </div>
+                            <div class="pipeline-stages-flow" id="student-pipeline-stages">
+                                <div class="pipeline-stage completed" id="st-stage-1"><div class="stage-node">✓</div><div class="stage-label">PE Basics</div></div>
+                                <div class="pipeline-stage completed" id="st-stage-2"><div class="stage-node">✓</div><div class="stage-label">DOS & NT</div></div>
+                                <div class="pipeline-stage completed" id="st-stage-3"><div class="stage-node">✓</div><div class="stage-label">IAT & APIs</div></div>
+                                <div class="pipeline-stage active" id="st-stage-4"><div class="stage-node">4</div><div class="stage-label">Strings</div></div>
+                                <div class="pipeline-stage waiting" id="st-stage-5"><div class="stage-node">5</div><div class="stage-label">Entropy</div></div>
+                                <div class="pipeline-stage waiting" id="st-stage-6"><div class="stage-node">6</div><div class="stage-label">YARA Rules</div></div>
+                                <div class="pipeline-stage waiting" id="st-stage-7"><div class="stage-node">7</div><div class="stage-label">Triaging</div></div>
+                                <div class="pipeline-stage waiting" id="st-stage-8"><div class="stage-node">8</div><div class="stage-label">AI Analyst</div></div>
+                            </div>
+                        </div>
+
+                        <!-- Skill Matrix & Reverse Engineering Challenges Grid -->
+                        <div class="grid-2col" style="margin-bottom: 20px;">
+                            <!-- Dynamic Skill Matrix -->
+                            <div class="soc-card">
+                                <div class="card-head">
+                                    <span class="card-icon">📈</span>
+                                    <h3 class="card-heading">Cybersecurity Skill Mastery Matrix</h3>
+                                </div>
+                                <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--text-primary); font-weight: 600;">PE Structural Analysis</span>
+                                            <span id="skill-pe-val" style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan);">75%</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="skill-pe-bar" style="background: var(--accent-cyan); height: 100%; width: 75%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--text-primary); font-weight: 600;">Static String & Artifact Extraction</span>
+                                            <span id="skill-strings-val" style="font-family: var(--font-mono); font-weight: 700; color: #38bdf8;">80%</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="skill-strings-bar" style="background: #38bdf8; height: 100%; width: 80%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--text-primary); font-weight: 600;">Import Address Table & API Capability</span>
+                                            <span id="skill-iat-val" style="font-family: var(--font-mono); font-weight: 700; color: #a855f7;">60%</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="skill-iat-bar" style="background: #a855f7; height: 100%; width: 60%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--text-primary); font-weight: 600;">Entropy & Obfuscation Detection</span>
+                                            <span id="skill-entropy-val" style="font-family: var(--font-mono); font-weight: 700; color: #f59e0b;">45%</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="skill-entropy-bar" style="background: #f59e0b; height: 100%; width: 45%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--text-primary); font-weight: 600;">Correlated Threat Scorer (Heuristics)</span>
+                                            <span id="skill-iocs-val" style="font-family: var(--font-mono); font-weight: 700; color: var(--sev-low);">65%</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="skill-iocs-bar" style="background: var(--sev-low); height: 100%; width: 65%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reverse Engineering Challenges -->
+                            <div class="soc-card">
+                                <div class="card-head" style="justify-content: space-between;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">🏆</span>
+                                        <h3 class="card-heading">Hands-On Practice Challenges</h3>
+                                    </div>
+                                    <button class="btn-secondary" onclick="switchStudentTab('labs')" style="font-size: 11px; padding: 2px 8px;">Open Practice Labs →</button>
+                                </div>
+                                <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <div class="flex-between" style="padding: 8px 12px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px;">
+                                        <div>
+                                            <div style="font-size: 12px; font-weight: 700; color: #10b981;">✓ Challenge 1: PE Header Investigation</div>
+                                            <div style="font-size: 11px; color: var(--text-muted);">Identify e_lfanew offset and NT Optional Header characteristics</div>
+                                        </div>
+                                        <span class="badge badge-low">SOLVED</span>
+                                    </div>
+                                    <div class="flex-between" style="padding: 8px 12px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px;">
+                                        <div>
+                                            <div style="font-size: 12px; font-weight: 700; color: #10b981;">✓ Challenge 2: String Intelligence Hunt</div>
+                                            <div style="font-size: 11px; color: var(--text-muted);">Extract classified C2 URLs and base64 payloads from UTF-16LE data</div>
+                                        </div>
+                                        <span class="badge badge-low">SOLVED</span>
+                                    </div>
+                                    <div class="flex-between" style="padding: 8px 12px; background: rgba(14, 165, 233, 0.06); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 6px;">
+                                        <div>
+                                            <div style="font-size: 12px; font-weight: 700; color: var(--accent-cyan);">◉ Challenge 3: Suspicious API Capability Mapping</div>
+                                            <div style="font-size: 11px; color: var(--text-muted);">Discover process injection primitives (VirtualAllocEx + WriteProcessMemory)</div>
+                                        </div>
+                                        <span class="badge badge-rule">IN PROGRESS</span>
+                                    </div>
+                                    <div class="flex-between" style="padding: 8px 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 6px;">
+                                        <div>
+                                            <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">○ Challenge 4: High-Entropy Packing Detection</div>
+                                            <div style="font-size: 11px; color: var(--text-muted);">Detect compressed sections exceeding Shannon entropy threshold 7.0</div>
+                                        </div>
+                                        <span class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-muted);">LOCKED</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Achievement Badges Showcase -->
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-head">
+                                <span class="card-icon">🎖️</span>
+                                <h3 class="card-heading">Cybersecurity Student Achievement Badges</h3>
+                            </div>
+                            <div class="card-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;">
+                                <div style="text-align: center; padding: 14px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px;">
+                                    <div style="font-size: 28px; margin-bottom: 6px;">🛡️</div>
+                                    <div style="font-size: 12px; font-weight: 700; color: #10b981;">PE Header Explorer</div>
+                                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Inspected 5+ PE binaries</div>
+                                </div>
+                                <div style="text-align: center; padding: 14px; background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 8px;">
+                                    <div style="font-size: 28px; margin-bottom: 6px;">🔤</div>
+                                    <div style="font-size: 12px; font-weight: 700; color: var(--accent-cyan);">String Detective</div>
+                                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Extracted C2 & IPs</div>
+                                </div>
+                                <div style="text-align: center; padding: 14px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px;">
+                                    <div style="font-size: 28px; margin-bottom: 6px;">⚠️</div>
+                                    <div style="font-size: 12px; font-weight: 700; color: #f59e0b;">IOC Hunter</div>
+                                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Correlated multi-indicators</div>
+                                </div>
+                                <div style="text-align: center; padding: 14px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px;">
+                                    <div style="font-size: 28px; margin-bottom: 6px;">🤖</div>
+                                    <div style="font-size: 12px; font-weight: 700; color: #a855f7;">AI Tutor Mentee</div>
+                                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Completed 10+ AI quizzes</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Interactive AI Cybersecurity Tutor Panel -->
+                        <div class="soc-card" style="margin-bottom: 20px; background: rgba(14, 28, 56, 0.5); border-left: 3px solid var(--accent-cyan);">
+                            <div class="card-head" style="justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🤖</span>
+                                    <h3 class="card-heading">AI Reverse-Engineering Mentor</h3>
+                                </div>
+                                <span class="badge badge-low">EDUCATIONAL SCAFFOLDING</span>
+                            </div>
+                            <div class="card-body">
+                                <p style="font-size: 13px; color: var(--text-primary); line-height: 1.6; margin-bottom: 12px;">
+                                    <strong>Defensive Mentor Advice:</strong> Always check whether suspicious APIs (like <code>VirtualAlloc</code> or <code>CreateRemoteThread</code>) originate from packed code sections or standard compiler runtimes. Cross-reference section entropy to determine if dynamic unpacking occurs.
+                                </p>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button class="btn-secondary" onclick="switchStudentTab('concepts')">📖 Explore Concept Lessons</button>
+                                    <button class="btn-primary" onclick="switchStudentTab('labs')">🧪 Launch Safe Practice Lab</button>
+                                    <button class="btn-secondary" onclick="switchStudentTab('quizzes')">🧩 Take Knowledge Quiz</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================== -->
                     <!-- SUBTAB 1: CONCEPT ACADEMY                      -->
                     <!-- ============================================== -->
-                    <div id="student-panel-concepts" class="student-subpanel" style="display: block;">
+                    <div id="student-panel-concepts" class="student-subpanel" style="display: none;">
                         <div class="grid-2col" style="margin-bottom: 20px;">
                             <div class="soc-card">
                                 <div class="card-head">
@@ -1207,27 +1711,182 @@
                     <!-- Subpanel 1: SOC Overview                   -->
                     <!-- ========================================== -->
                     <div id="admin-panel-overview">
-                        <!-- Hero Metrics Grid -->
-                        <div class="metrics-grid" style="margin-bottom: 20px;">
-                            <div class="metric-card">
-                                <div class="metric-label">Total Platform Users</div>
+                        <!-- 6 Live Platform KPI Metrics Cards -->
+                        <div class="grid-3col" style="margin-bottom: 20px;">
+                            <div class="soc-metric-card">
+                                <div class="metric-header">
+                                    <span class="metric-title">Total Users</span>
+                                    <span class="metric-icon">👥</span>
+                                </div>
                                 <div class="metric-value" id="admin-overview-users-total">0</div>
-                                <div class="metric-sub" id="admin-overview-users-breakdown">0 Admins • 0 Analysts • 0 Students</div>
+                                <div class="metric-subtext" id="admin-overview-users-breakdown">0 Admins • 0 Analysts • 0 Students</div>
                             </div>
-                            <div class="metric-card">
-                                <div class="metric-label">Analyzed Samples & Threats</div>
-                                <div class="metric-value" id="admin-overview-samples-total" style="color: var(--accent-blue);">0</div>
-                                <div class="metric-sub" id="admin-overview-indicators-total">0 Correlated Indicators</div>
+                            <div class="soc-metric-card">
+                                <div class="metric-header">
+                                    <span class="metric-title">Active Platform Users</span>
+                                    <span class="metric-icon" style="color: var(--sev-low);">●</span>
+                                </div>
+                                <div class="metric-value" id="admin-overview-active-users" style="color: var(--sev-low);">0</div>
+                                <div class="metric-subtext" id="admin-overview-active-sub">Authenticated & Active</div>
                             </div>
-                            <div class="metric-card">
-                                <div class="metric-label">Security Audit Records</div>
-                                <div class="metric-value" id="admin-overview-logs-total" style="color: var(--sev-low);">0</div>
-                                <div class="metric-sub" id="admin-overview-alerts-total">0 Lockouts & Violations</div>
+                            <div class="soc-metric-card">
+                                <div class="metric-header">
+                                    <span class="metric-title">Total Analyses</span>
+                                    <span class="metric-icon" style="color: var(--accent-cyan);">📊</span>
+                                </div>
+                                <div class="metric-value" id="admin-overview-samples-total" style="color: var(--accent-cyan);">0</div>
+                                <div class="metric-subtext" id="admin-overview-indicators-total">0 Correlated Indicators</div>
                             </div>
-                            <div class="metric-card">
-                                <div class="metric-label">Platform Security Health</div>
+                            <div class="soc-metric-card" style="border-top: 2px solid var(--sev-high);">
+                                <div class="metric-header">
+                                    <span class="metric-title">High-Risk Files</span>
+                                    <span class="metric-icon" style="color: var(--sev-high);">⚠️</span>
+                                </div>
+                                <div class="metric-value" id="admin-overview-high-risk" style="color: var(--sev-high);">0</div>
+                                <div class="metric-subtext">Score 70-84 Indicators</div>
+                            </div>
+                            <div class="soc-metric-card" style="border-top: 2px solid var(--sev-crit);">
+                                <div class="metric-header">
+                                    <span class="metric-title">Critical Threats</span>
+                                    <span class="metric-icon" style="color: var(--sev-crit);">🛑</span>
+                                </div>
+                                <div class="metric-value" id="admin-overview-critical" style="color: var(--sev-crit);">0</div>
+                                <div class="metric-subtext">Score 85-100 Criticals</div>
+                            </div>
+                            <div class="soc-metric-card">
+                                <div class="metric-header">
+                                    <span class="metric-title">System Health</span>
+                                    <span class="metric-icon" style="color: var(--sev-low);">🛡️</span>
+                                </div>
                                 <div class="metric-value" id="admin-overview-health" style="color: var(--sev-low); font-size: 20px;">OPTIMAL</div>
-                                <div class="metric-sub">Zero-Execution Sandbox Enforced</div>
+                                <div class="metric-subtext">Zero-Execution Sandbox Enforced</div>
+                            </div>
+                        </div>
+
+                        <!-- System Health Matrix & Risk Distribution Grid -->
+                        <div class="grid-2col" style="margin-bottom: 20px;">
+                            <!-- Real-Time Subsystem Health Matrix -->
+                            <div class="soc-card">
+                                <div class="card-head" style="justify-content: space-between;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span class="card-icon">⚙️</span>
+                                        <h3 class="card-heading">Defensive Engine Subsystems Health</h3>
+                                    </div>
+                                    <button class="btn-secondary" onclick="loadSystemHealth()" style="font-size: 11px; padding: 2px 8px;">🔄 Health Check</button>
+                                </div>
+                                <div class="card-body" id="admin-health-matrix-body" style="display: flex; flex-direction: column; gap: 8px;">
+                                    <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
+                                        <span>🔐 Authentication & RBAC Engine</span>
+                                        <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
+                                    </div>
+                                    <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
+                                        <span>🗄️ SQLite Database Layer</span>
+                                        <span style="color: var(--sev-low); font-weight: 700;" id="admin-health-db-status">● ONLINE</span>
+                                    </div>
+                                    <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
+                                        <span>🧩 PE Structure Analyzer</span>
+                                        <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
+                                    </div>
+                                    <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
+                                        <span>🔑 Cryptographic Hash Engine</span>
+                                        <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
+                                    </div>
+                                    <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
+                                        <span>🔤 Forensic String Intelligence</span>
+                                        <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
+                                    </div>
+                                    <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
+                                        <span>⚠️ IOC & Heuristic Scorer</span>
+                                        <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
+                                    </div>
+                                    <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
+                                        <span>🛡️ YARA Static Signature Engine</span>
+                                        <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
+                                    </div>
+                                    <div class="flex-between" style="font-size: 12px; padding: 6px 0;">
+                                        <span>🤖 AI Security Analyst Gateway</span>
+                                        <span style="color: var(--sev-low); font-weight: 700;">● ONLINE (Grounded)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Real-Time Threat Risk Distribution Chart -->
+                            <div class="soc-card">
+                                <div class="card-head">
+                                    <span class="card-icon">📊</span>
+                                    <h3 class="card-heading">Database Risk Posture Distribution</h3>
+                                </div>
+                                <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--sev-low); font-weight: 600;">LOW RISK (0-39)</span>
+                                            <span id="dist-count-low" style="font-family: var(--font-mono); font-weight: 700;">0</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="dist-bar-low" style="background: var(--sev-low); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--sev-susp); font-weight: 600;">MEDIUM RISK (40-69)</span>
+                                            <span id="dist-count-medium" style="font-family: var(--font-mono); font-weight: 700;">0</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="dist-bar-medium" style="background: var(--sev-susp); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--sev-high); font-weight: 600;">HIGH RISK (70-84)</span>
+                                            <span id="dist-count-high" style="font-family: var(--font-mono); font-weight: 700;">0</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="dist-bar-high" style="background: var(--sev-high); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex-between" style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--sev-crit); font-weight: 600;">CRITICAL (85-100)</span>
+                                            <span id="dist-count-crit" style="font-family: var(--font-mono); font-weight: 700;">0</span>
+                                        </div>
+                                        <div style="background: rgba(16, 28, 52, 0.8); height: 8px; border-radius: 4px; overflow: hidden;">
+                                            <div id="dist-bar-crit" style="background: var(--sev-crit); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Defensive Architecture Data-Flow Diagram -->
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-head">
+                                <span class="card-icon">⚡</span>
+                                <h3 class="card-heading">Defensive Platform Architecture Data-Flow</h3>
+                            </div>
+                            <div class="card-body" style="display: flex; align-items: center; justify-content: space-around; gap: 12px; flex-wrap: wrap; padding: 24px 20px;">
+                                <div class="graph-node">
+                                    <div class="graph-node-title">Authenticated Users</div>
+                                    <div class="graph-node-value">SOC / Students</div>
+                                    <div class="graph-node-count">RBAC Protected</div>
+                                </div>
+                                <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
+                                <div class="graph-node">
+                                    <div class="graph-node-title">Static Analysis Engine</div>
+                                    <div class="graph-node-value">Zero-Execution</div>
+                                    <div class="graph-node-count">DOS/NT/IAT/Strings</div>
+                                </div>
+                                <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
+                                <div class="graph-node">
+                                    <div class="graph-node-title">Threat Intelligence</div>
+                                    <div class="graph-node-value">IOCs & Heuristics</div>
+                                    <div class="graph-node-count">Risk Scored /100</div>
+                                </div>
+                                <div style="font-size: 20px; color: var(--accent-cyan);">➔</div>
+                                <div class="graph-node">
+                                    <div class="graph-node-title">Reporting & SIEM</div>
+                                    <div class="graph-node-value">PDF / JSON / Audit</div>
+                                    <div class="graph-node-count">Encrypted Storage</div>
+                                </div>
                             </div>
                         </div>
 
@@ -1746,6 +2405,70 @@
                     </div>
                 </div>
 
+                <!-- Modal 4: Detailed String Forensic Inspection Modal -->
+                <div id="string-detail-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeStringDetailModal();">
+                    <div class="soc-card" style="max-width: 720px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-blue);">
+                        <div class="card-head flex-between">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="card-icon">🔤</span>
+                                <h3 class="card-heading" style="font-size: 15px;">String Forensic Intelligence Inspection</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closeStringDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body" style="display: flex; flex-direction: column; gap: 16px;">
+                            <!-- Full String Content Box with Copy -->
+                            <div>
+                                <div class="flex-between" style="margin-bottom: 6px;">
+                                    <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Full Extracted String Value:</span>
+                                    <button class="btn-secondary" id="btn-modal-copy-string" onclick="copyModalStringValue()" style="font-size: 11px; padding: 3px 8px; display: flex; align-items: center; gap: 4px;">
+                                        📋 Copy String
+                                    </button>
+                                </div>
+                                <pre id="modal-string-value" style="background: var(--bg-darkest, #0b1120); border: 1px solid var(--border-color); padding: 14px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--accent-blue); word-break: break-all; white-space: pre-wrap; max-height: 180px; overflow-y: auto; margin: 0;"></pre>
+                            </div>
+
+                            <!-- Forensic Attributes Grid -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Category</div>
+                                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="modal-string-category">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Encoding & Length</div>
+                                    <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="modal-string-encoding">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Binary Byte Offset</div>
+                                    <div style="font-size: 13px; font-family: var(--font-mono); font-weight: 700; color: var(--accent-blue); margin-top: 4px;" id="modal-string-offset">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Severity & Confidence</div>
+                                    <div style="font-size: 13px; font-weight: 700; margin-top: 4px;" id="modal-string-severity">-</div>
+                                </div>
+                            </div>
+
+                            <!-- Detection Reason & Context -->
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
+                                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Forensic Detection Reason:</div>
+                                <div id="modal-string-reason" style="font-size: 13px; color: var(--text-primary); line-height: 1.5;">-</div>
+                            </div>
+
+                            <!-- MITRE ATT&CK Mapping Card -->
+                            <div id="modal-string-mitre-box" style="display: none; background: rgba(14, 165, 233, 0.06); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 6px; padding: 12px;">
+                                <div style="font-size: 11px; font-weight: 700; color: var(--accent-blue); text-transform: uppercase; margin-bottom: 4px;">Potential MITRE ATT&CK Association:</div>
+                                <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);" id="modal-string-mitre-name">-</div>
+                                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                                    <em>Note: Potentially associated with this adversary technique. Static string presence alone does not establish confirmed execution.</em>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
+                            <span style="font-size: 11px; color: var(--text-muted);">Defensive Static Binary Inspection</span>
+                            <button class="btn-secondary" onclick="closeStringDetailModal()">Close</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ============================================== -->
                 <!-- 9. UNAUTHORIZED / 403 VIEW                     -->
                 <!-- ============================================== -->
@@ -1763,11 +2486,55 @@
                     </div>
                 </section>
 
+                <!-- Investigation Slide-Over Drawer Overlay & Container -->
+                <div id="investigation-drawer-overlay" class="investigation-drawer-overlay" onclick="closeInvestigationDrawer()"></div>
+                <aside id="investigation-drawer" class="investigation-drawer" aria-label="Forensic Investigation Drawer">
+                    <div class="drawer-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px;">🔬</span>
+                            <span class="drawer-title" id="drawer-title">Forensic Artifact Investigation</span>
+                        </div>
+                        <button class="drawer-close-btn" onclick="closeInvestigationDrawer()" aria-label="Close Investigation Drawer">✕</button>
+                    </div>
+                    <div class="drawer-body" id="drawer-body">
+                        <!-- Dynamically populated by JS openInvestigationDrawer() -->
+                    </div>
+                    <div class="drawer-footer">
+                        <button class="btn-primary" id="btn-drawer-copy" onclick="copyDrawerContent()">📋 Copy Artifact</button>
+                        <button class="btn-secondary" onclick="closeInvestigationDrawer()">Close</button>
+                    </div>
+                </aside>
+
+                <!-- Modal 5: System Subsystems Health Detailed Modal -->
+                <div id="system-health-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeSystemHealthModal();">
+                    <div class="soc-card" style="max-width: 620px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
+                        <div class="card-head flex-between">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">⚙️</span>
+                                <h3 class="card-heading">Platform Defensive Subsystems Health</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closeSystemHealthModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body">
+                            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">
+                                Live operational telemetry and status checks across all ETHIO-AI Defender core engine subsystems:
+                            </p>
+                            <div id="system-health-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                <div class="empty-state-cell">Checking platform engine health...</div>
+                            </div>
+                        </div>
+                        <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
+                            <button class="btn-secondary" onclick="loadSystemHealth()">🔄 Recheck Subsystems</button>
+                            <button class="btn-primary" onclick="closeSystemHealthModal()">Done</button>
+                        </div>
+                    </div>
+                </div>
+
             </main>
         </div>
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=2.4"></script>
+    <script src="/static/js/app.js?v=2.5"></script>
 </body>
 </html>

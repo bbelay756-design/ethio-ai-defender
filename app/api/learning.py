@@ -553,3 +553,122 @@ def evaluate_quiz_submission(
         passed=(score_pct >= 70.0),
         results=results
     )
+
+
+@router.get("/dashboard-stats", summary="Student: Get personalized learning progress, skill matrix, and laboratory activity")
+def get_student_dashboard_stats(
+    current_user: UserModel = Depends(get_current_user),
+):
+    """
+    Returns real student-specific learning metrics, lab completion records, and achievements.
+    """
+    from app.db.session import SessionLocal
+    from app.db.models import SampleModel
+
+    db = SessionLocal()
+    try:
+        student_samples = db.query(SampleModel).filter(SampleModel.user_id == current_user.id).order_by(SampleModel.created_at.desc()).all()
+        completed_analyses = len(student_samples)
+        
+        # Calculate real dynamic skill matrix based on analyses completed
+        pe_score = min(100, 35 + completed_analyses * 15)
+        static_score = min(100, 30 + completed_analyses * 12)
+        ioc_score = min(100, 20 + completed_analyses * 10)
+        yara_score = min(100, 15 + completed_analyses * 8)
+        re_score = min(100, 25 + completed_analyses * 10)
+
+        # Skill Level classification
+        if completed_analyses >= 10:
+            skill_level = "Advanced Apprentice"
+        elif completed_analyses >= 3:
+            skill_level = "Intermediate Student"
+        else:
+            skill_level = "Cyber Novice"
+
+        # Achievements based on real milestones
+        achievements = [
+            {
+                "id": "pe_explorer",
+                "title": "PE Explorer",
+                "description": "Inspected Portable Executable headers and section tables.",
+                "icon": "🧩",
+                "unlocked": completed_analyses >= 1,
+                "date": student_samples[-1].created_at.strftime("%Y-%m-%d") if (completed_analyses >= 1 and student_samples[-1].created_at) else None
+            },
+            {
+                "id": "string_detective",
+                "title": "String Detective",
+                "description": "Extracted and categorized ASCII/Unicode strings from a binary.",
+                "icon": "🔤",
+                "unlocked": completed_analyses >= 1,
+                "date": student_samples[0].created_at.strftime("%Y-%m-%d") if (completed_analyses >= 1 and student_samples[0].created_at) else None
+            },
+            {
+                "id": "ioc_hunter",
+                "title": "IOC Hunter",
+                "description": "Identified suspicious heuristics and indicators of compromise.",
+                "icon": "🎯",
+                "unlocked": completed_analyses >= 2,
+                "date": student_samples[0].created_at.strftime("%Y-%m-%d") if (completed_analyses >= 2 and student_samples[0].created_at) else None
+            },
+            {
+                "id": "threat_analyst",
+                "title": "Threat Analyst",
+                "description": "Evaluated risk scores and MITRE ATT&CK technique classifications.",
+                "icon": "🛡️",
+                "unlocked": completed_analyses >= 3,
+                "date": student_samples[0].created_at.strftime("%Y-%m-%d") if (completed_analyses >= 3 and student_samples[0].created_at) else None
+            },
+            {
+                "id": "master_reverser",
+                "title": "Reverse Engineer",
+                "description": "Completed 5 or more comprehensive binary security investigations.",
+                "icon": "⚡",
+                "unlocked": completed_analyses >= 5,
+                "date": student_samples[0].created_at.strftime("%Y-%m-%d") if (completed_analyses >= 5 and student_samples[0].created_at) else None
+            }
+        ]
+
+        recent_items = [
+            {
+                "id": s.id,
+                "analysis_id": s.analysis_id,
+                "filename": s.filename,
+                "risk_score": s.risk_score or 0,
+                "classification": s.classification or "LOW",
+                "status": s.status or "COMPLETED",
+                "created_at": s.created_at.isoformat() if s.created_at else ""
+            }
+            for s in student_samples[:5]
+        ]
+
+        return {
+            "student_username": current_user.username,
+            "completed_analyses_count": completed_analyses,
+            "labs_completed_count": min(len(PRACTICE_SAMPLE_CATALOG), completed_analyses),
+            "total_available_labs": len(PRACTICE_SAMPLE_CATALOG),
+            "total_topics": len(EDUCATIONAL_TOPICS_DATABASE),
+            "current_course": "Reverse Engineering Fundamentals",
+            "skill_level": skill_level,
+            "recent_analyses": recent_items,
+            "skill_matrix": {
+                "pe_analysis": pe_score,
+                "static_analysis": static_score,
+                "ioc_analysis": ioc_score,
+                "yara_signatures": yara_score,
+                "reverse_engineering": re_score,
+            },
+            "achievements": achievements,
+            "learning_pipeline": [
+                {"id": "pe_basics", "name": "PE Basics", "status": "COMPLETED"},
+                {"id": "pe_headers", "name": "PE Headers", "status": "COMPLETED"},
+                {"id": "imports", "name": "Imports & APIs", "status": "COMPLETED" if completed_analyses >= 1 else "CURRENT"},
+                {"id": "strings", "name": "Strings Intelligence", "status": "CURRENT" if completed_analyses >= 1 else "PENDING"},
+                {"id": "entropy", "name": "Entropy & Packing", "status": "UNLOCKED" if completed_analyses >= 2 else "PENDING"},
+                {"id": "yara", "name": "YARA Signatures", "status": "UNLOCKED" if completed_analyses >= 3 else "LOCKED"},
+                {"id": "malware_triage", "name": "Malware Triage", "status": "UNLOCKED" if completed_analyses >= 4 else "LOCKED"},
+                {"id": "ai_analyst", "name": "AI Security Analyst", "status": "UNLOCKED" if completed_analyses >= 5 else "LOCKED"},
+            ]
+        }
+    finally:
+        db.close()

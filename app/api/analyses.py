@@ -282,12 +282,32 @@ def get_analysis_by_id(
             },
             "strings": {
                 "total_strings": len(sample.strings),
-                "urls": [s.value for s in sample.strings if s.type == "URL"],
-                "ip_addresses": [s.value for s in sample.strings if s.type == "IP_ADDRESS"],
-                "domains": [s.value for s in sample.strings if s.type == "DOMAIN"],
-                "registry_paths": [s.value for s in sample.strings if s.type == "REGISTRY_PATH"],
-                "commands": [s.value for s in sample.strings if s.type == "COMMAND"],
-                "powershell_references": [s.value for s in sample.strings if s.type == "POWERSHELL"],
+                "urls": [s.value for s in sample.strings if s.category == "URL" or s.type == "URL"],
+                "ip_addresses": [s.value for s in sample.strings if s.category == "IP_ADDRESS" or s.type == "IP_ADDRESS"],
+                "domains": [s.value for s in sample.strings if s.category == "DOMAIN" or s.type == "DOMAIN"],
+                "registry_paths": [s.value for s in sample.strings if s.category == "REGISTRY" or s.type == "REGISTRY_PATH"],
+                "commands": [s.value for s in sample.strings if s.category in ("COMMAND", "CMD") or s.type == "COMMAND"],
+                "powershell_references": [s.value for s in sample.strings if s.category == "POWERSHELL" or s.type == "POWERSHELL"],
+                "dlls": [s.value for s in sample.strings if s.category == "DLL" or s.type == "DLL"],
+                "apis": [s.value for s in sample.strings if s.category == "API" or s.type == "API"],
+                "file_paths": [s.value for s in sample.strings if s.category == "FILE_PATH" or s.type == "FILE_PATH"],
+                "emails": [s.value for s in sample.strings if s.category == "EMAIL" or s.type == "EMAIL"],
+                "items": [
+                    {
+                        "id": s.id,
+                        "value": s.value,
+                        "encoding": s.encoding or "ASCII",
+                        "offset": s.offset,
+                        "offset_hex": f"0x{s.offset:08X}" if s.offset is not None else "0x00000000",
+                        "category": s.category or s.type or "GENERAL",
+                        "suspicious": bool(s.suspicious),
+                        "severity": s.severity or "LOW",
+                        "confidence": s.confidence or 1.0,
+                        "reason": s.reason or "Standard string artifact",
+                        "mitre_technique": s.mitre_technique,
+                    }
+                    for s in sample.strings
+                ]
             },
             "indicators": {
                 "total_indicators": len(sample.indicators),
@@ -350,6 +370,141 @@ def get_analysis_by_id(
                 "recommended_investigation": ["Observe runtime behavior in an isolated sandbox."],
                 "limitations": ["Static analysis evaluates capabilities without live execution."],
             }
+        }
+    finally:
+        db.close()
+
+
+@router.get(
+    "/{analysis_id}/strings",
+    summary="Get detailed extracted strings intelligence for analysis",
+    description="Retrieves paginated, filtered, and categorized static strings with offsets, encodings, and detection reasons."
+)
+def get_analysis_strings(
+    analysis_id: str,
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(50, ge=1, le=500, description="Items per page"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    severity: Optional[str] = Query(None, description="Filter by severity"),
+    encoding: Optional[str] = Query(None, description="Filter by encoding (ASCII, UTF-16LE)"),
+    suspicious_only: bool = Query(False, description="Show only suspicious strings"),
+    search: Optional[str] = Query(None, description="Search term for string value, category, or reason"),
+    sort_by: Optional[str] = Query("severity", description="Sort field: severity, offset, value, category"),
+    sort_order: str = Query("desc", description="Sort order: asc or desc"),
+    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+):
+    """
+    Retrieves rich categorized strings intelligence for a specific analysis with full pagination, search, and filtering.
+    """
+    db = SessionLocal()
+    try:
+        sample = SampleRepository.get_by_analysis_id(db, analysis_id)
+        if not sample:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Analysis '{analysis_id}' not found."
+            )
+
+        # IDOR protection:
+        if sample.user_id is not None and current_user is not None:
+            if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: You do not have permission to view strings for this analysis."
+                )
+
+        skip = (page - 1) * page_size
+        total_strings = len(sample.strings)
+        filtered_count = SampleRepository.count_strings_for_sample(
+            db=db,
+            sample_id=sample.id,
+            category=category,
+            severity=severity,
+            encoding=encoding,
+            suspicious_only=suspicious_only,
+            search=search
+        )
+
+        db_strings = SampleRepository.get_strings_for_sample(
+            db=db,
+            sample_id=sample.id,
+            skip=skip,
+            limit=page_size,
+            category=category,
+            severity=severity,
+            encoding=encoding,
+            suspicious_only=suspicious_only,
+            search=search,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+
+        statistics = SampleRepository.get_string_statistics_for_sample(db, sample.id)
+
+        # AI / Heuristic contextual intelligence summary
+        susp_count = statistics.get("suspicious_count", 0)
+        urls_count = statistics.get("urls_count", 0)
+        ips_count = statistics.get("ips_count", 0)
+        ps_count = statistics.get("powershell_count", 0)
+        cmd_count = statistics.get("commands_count", 0)
+        reg_count = statistics.get("registry_count", 0)
+        api_count = statistics.get("apis_count", 0)
+
+        ai_bullets = []
+        if ps_count > 0:
+            ai_bullets.append(f"{ps_count} PowerShell execution / parameter references")
+        if cmd_count > 0:
+            ai_bullets.append(f"{cmd_count} CLI command execution strings")
+        if urls_count > 0 or ips_count > 0:
+            ai_bullets.append(f"{urls_count + ips_count} external network endpoints / IP targets")
+        if reg_count > 0:
+            ai_bullets.append(f"{reg_count} Windows Registry configuration / autorun keys")
+        if api_count > 0:
+            ai_bullets.append(f"{api_count} system APIs")
+
+        if susp_count > 0:
+            ai_summary = (
+                f"Extracted {total_strings:,} strings ({statistics.get('ascii_count', 0):,} ASCII, {statistics.get('unicode_count', 0):,} Unicode). "
+                f"Identified {susp_count} suspicious indicators ({', '.join(ai_bullets[:3])}). "
+                "Defensive Assessment Note: Static strings provide essential forensic clues for threat scoping; however, string presence alone does not establish confirmed runtime malicious execution without dynamic verification."
+            )
+        else:
+            ai_summary = (
+                f"Extracted {total_strings:,} strings ({statistics.get('ascii_count', 0):,} ASCII, {statistics.get('unicode_count', 0):,} Unicode). "
+                "No suspicious commands, autorun registry persistence keys, or known high-risk API identifiers were detected."
+            )
+
+        total_pages = max(1, (filtered_count + page_size - 1) // page_size)
+
+        return {
+            "analysis_id": sample.analysis_id,
+            "filename": sample.filename,
+            "sha256": sample.sha256,
+            "file_size": sample.size,
+            "status": sample.status,
+            "total_strings": total_strings,
+            "filtered_total": filtered_count,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "statistics": statistics,
+            "ai_string_summary": ai_summary,
+            "strings": [
+                {
+                    "id": s.id,
+                    "value": s.value,
+                    "encoding": s.encoding or "ASCII",
+                    "offset": s.offset,
+                    "offset_hex": f"0x{s.offset:08X}" if s.offset is not None else "0x00000000",
+                    "category": s.category or s.type or "GENERAL",
+                    "suspicious": bool(s.suspicious),
+                    "severity": s.severity or "LOW",
+                    "confidence": s.confidence or 1.0,
+                    "reason": s.reason or "Standard string artifact",
+                    "mitre_technique": s.mitre_technique,
+                }
+                for s in db_strings
+            ]
         }
     finally:
         db.close()

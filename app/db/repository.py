@@ -250,7 +250,15 @@ class SampleRepository:
                 db_str = StringModel(
                     sample_id=db_sample.id,
                     value=st.value,
-                    type=st.type,
+                    encoding=getattr(st, "encoding", "ASCII") or "ASCII",
+                    offset=getattr(st, "offset", None),
+                    category=getattr(st, "category", None) or getattr(st, "type", "GENERAL") or "GENERAL",
+                    type=getattr(st, "type", "GENERAL") or "GENERAL",
+                    suspicious=bool(getattr(st, "suspicious", False)),
+                    severity=getattr(st, "severity", "LOW") or "LOW",
+                    confidence=float(getattr(st, "confidence", 1.0) or 1.0),
+                    reason=getattr(st, "reason", None),
+                    mitre_technique=getattr(st, "mitre_technique", None),
                 )
                 db.add(db_str)
 
@@ -320,6 +328,153 @@ class SampleRepository:
             db.rollback()
             logger.error(f"Transaction failed for sample '{sample_in.analysis_id}': {e}. Rolled back.")
             raise
+
+    @staticmethod
+    def get_strings_for_sample(
+        db: Session,
+        sample_id: int,
+        skip: int = 0,
+        limit: int = 50,
+        category: Optional[str] = None,
+        severity: Optional[str] = None,
+        encoding: Optional[str] = None,
+        suspicious_only: bool = False,
+        search: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "desc"
+    ) -> List[StringModel]:
+        """
+        Retrieves paginated, filtered, and sorted extracted strings for a specific sample.
+        """
+        query = db.query(StringModel).filter(StringModel.sample_id == sample_id)
+
+        if category and category.upper() != "ALL":
+            cat_upper = category.upper()
+            if cat_upper in ("COMMAND", "CMD"):
+                query = query.filter((StringModel.category == "COMMAND") | (StringModel.category == "CMD") | (StringModel.type == "COMMAND"))
+            elif cat_upper == "URL":
+                query = query.filter((StringModel.category == "URL") | (StringModel.type == "URL"))
+            elif cat_upper in ("IP", "IP_ADDRESS"):
+                query = query.filter((StringModel.category == "IP_ADDRESS") | (StringModel.type == "IP_ADDRESS"))
+            elif cat_upper in ("REGISTRY", "REGISTRY_PATH"):
+                query = query.filter((StringModel.category == "REGISTRY") | (StringModel.type == "REGISTRY_PATH"))
+            else:
+                query = query.filter((StringModel.category == cat_upper) | (StringModel.type == cat_upper))
+
+        if severity and severity.upper() != "ALL":
+            query = query.filter(StringModel.severity == severity.upper())
+
+        if encoding and encoding.upper() != "ALL":
+            query = query.filter(StringModel.encoding == encoding.upper())
+
+        if suspicious_only:
+            query = query.filter(StringModel.suspicious == True)
+
+        if search:
+            term = f"%{search.strip().lower()}%"
+            query = query.filter(
+                StringModel.value.ilike(term) |
+                StringModel.category.ilike(term) |
+                StringModel.reason.ilike(term)
+            )
+
+        # Ordering
+        if sort_by == "offset":
+            query = query.order_by(StringModel.offset.asc() if sort_order == "asc" else StringModel.offset.desc())
+        elif sort_by == "value":
+            query = query.order_by(StringModel.value.asc() if sort_order == "asc" else StringModel.value.desc())
+        elif sort_by == "category":
+            query = query.order_by(StringModel.category.asc() if sort_order == "asc" else StringModel.category.desc())
+        else:
+            # Default: Suspicious and highest severity first, then offset
+            query = query.order_by(StringModel.suspicious.desc(), StringModel.id.asc())
+
+        return query.offset(skip).limit(limit).all()
+
+    @staticmethod
+    def count_strings_for_sample(
+        db: Session,
+        sample_id: int,
+        category: Optional[str] = None,
+        severity: Optional[str] = None,
+        encoding: Optional[str] = None,
+        suspicious_only: bool = False,
+        search: Optional[str] = None
+    ) -> int:
+        """
+        Counts filtered strings for a specific sample.
+        """
+        query = db.query(StringModel).filter(StringModel.sample_id == sample_id)
+
+        if category and category.upper() != "ALL":
+            cat_upper = category.upper()
+            if cat_upper in ("COMMAND", "CMD"):
+                query = query.filter((StringModel.category == "COMMAND") | (StringModel.category == "CMD") | (StringModel.type == "COMMAND"))
+            elif cat_upper == "URL":
+                query = query.filter((StringModel.category == "URL") | (StringModel.type == "URL"))
+            elif cat_upper in ("IP", "IP_ADDRESS"):
+                query = query.filter((StringModel.category == "IP_ADDRESS") | (StringModel.type == "IP_ADDRESS"))
+            elif cat_upper in ("REGISTRY", "REGISTRY_PATH"):
+                query = query.filter((StringModel.category == "REGISTRY") | (StringModel.type == "REGISTRY_PATH"))
+            else:
+                query = query.filter((StringModel.category == cat_upper) | (StringModel.type == cat_upper))
+
+        if severity and severity.upper() != "ALL":
+            query = query.filter(StringModel.severity == severity.upper())
+
+        if encoding and encoding.upper() != "ALL":
+            query = query.filter(StringModel.encoding == encoding.upper())
+
+        if suspicious_only:
+            query = query.filter(StringModel.suspicious == True)
+
+        if search:
+            term = f"%{search.strip().lower()}%"
+            query = query.filter(
+                StringModel.value.ilike(term) |
+                StringModel.category.ilike(term) |
+                StringModel.reason.ilike(term)
+            )
+
+        return query.count()
+
+    @staticmethod
+    def get_string_statistics_for_sample(db: Session, sample_id: int) -> Dict[str, int]:
+        """
+        Computes aggregated summary statistics for all strings of a sample.
+        """
+        all_strings = db.query(StringModel).filter(StringModel.sample_id == sample_id).all()
+        total = len(all_strings)
+        ascii_count = sum(1 for s in all_strings if (s.encoding or "").upper() == "ASCII")
+        unicode_count = sum(1 for s in all_strings if "UTF" in (s.encoding or "").upper() or "UNI" in (s.encoding or "").upper())
+        suspicious_count = sum(1 for s in all_strings if s.suspicious)
+        urls_count = sum(1 for s in all_strings if s.category == "URL" or s.type == "URL")
+        ips_count = sum(1 for s in all_strings if s.category == "IP_ADDRESS" or s.type == "IP_ADDRESS")
+        domains_count = sum(1 for s in all_strings if s.category == "DOMAIN" or s.type == "DOMAIN")
+        registry_count = sum(1 for s in all_strings if s.category == "REGISTRY" or s.type == "REGISTRY_PATH")
+        commands_count = sum(1 for s in all_strings if s.category in ("COMMAND", "CMD") or s.type == "COMMAND")
+        powershell_count = sum(1 for s in all_strings if s.category == "POWERSHELL" or s.type == "POWERSHELL")
+        file_paths_count = sum(1 for s in all_strings if s.category == "FILE_PATH" or s.type == "FILE_PATH")
+        dlls_count = sum(1 for s in all_strings if s.category == "DLL" or s.type == "DLL")
+        apis_count = sum(1 for s in all_strings if s.category == "API" or s.type == "API")
+        emails_count = sum(1 for s in all_strings if s.category == "EMAIL" or s.type == "EMAIL")
+
+        return {
+            "total": total,
+            "ascii_count": ascii_count,
+            "unicode_count": unicode_count,
+            "suspicious_count": suspicious_count,
+            "urls_count": urls_count,
+            "ips_count": ips_count,
+            "domains_count": domains_count,
+            "registry_count": registry_count,
+            "commands_count": commands_count,
+            "powershell_count": powershell_count,
+            "file_paths_count": file_paths_count,
+            "dlls_count": dlls_count,
+            "apis_count": apis_count,
+            "emails_count": emails_count,
+        }
 
     @staticmethod
     def delete_sample(db: Session, sample_id: int) -> bool:

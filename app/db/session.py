@@ -84,6 +84,29 @@ def init_db() -> None:
                 if "completed_at" not in cols:
                     cursor.execute("ALTER TABLE samples ADD COLUMN completed_at DATETIME")
                 conn.connection.commit()
+
+            cursor.execute("PRAGMA table_info(strings)")
+            str_cols = [row[1] for row in cursor.fetchall()]
+            if str_cols:
+                if "encoding" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN encoding VARCHAR(16) DEFAULT 'ASCII'")
+                if "offset" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN offset INTEGER")
+                if "category" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN category VARCHAR(64) DEFAULT 'GENERAL'")
+                if "suspicious" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN suspicious BOOLEAN DEFAULT 0")
+                if "severity" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN severity VARCHAR(32) DEFAULT 'LOW'")
+                if "confidence" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN confidence FLOAT DEFAULT 1.0")
+                if "reason" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN reason TEXT")
+                if "mitre_technique" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN mitre_technique VARCHAR(255)")
+                if "created_at" not in str_cols:
+                    cursor.execute("ALTER TABLE strings ADD COLUMN created_at DATETIME")
+                conn.connection.commit()
             cursor.close()
 
     logger.info("Database tables initialized successfully.")
