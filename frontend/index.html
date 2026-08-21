@@ -209,16 +209,41 @@
             <header class="app-topbar">
                 <div class="topbar-left">
                     <button class="menu-toggle-btn" id="mobile-menu-toggle" aria-label="Toggle Sidebar">☰</button>
-                    <div class="active-tab-title" id="topbar-active-title">Dashboard</div>
+                    <div class="brand-text-inline" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">🛡️</span>
+                        <div>
+                            <div style="font-size: 13px; font-weight: 800; color: var(--accent-cyan); letter-spacing: 0.5px;">ETHIO-AI DEFENDER</div>
+                            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600;">Defensive Security Platform</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center Tagline -->
+                <div class="topbar-center-tagline" style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-cyan); letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-dim);">●</span>
+                    <span>Secure</span>
+                    <span style="color: var(--text-dim);">•</span>
+                    <span>Detect</span>
+                    <span style="color: var(--text-dim);">•</span>
+                    <span>Analyze</span>
+                    <span style="color: var(--text-dim);">•</span>
+                    <span>Defend</span>
                 </div>
 
                 <div class="topbar-right">
+                    <!-- Engine Online Indicator -->
+                    <div class="engine-status-pill" style="display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 20px; font-size: 11px; font-weight: 700; color: var(--sev-low); cursor: pointer;" onclick="openSystemHealthModal()" title="View Subsystem Health">
+                        <span class="status-pulse-dot"></span>
+                        <span>Engine Online</span>
+                    </div>
+
+                    <!-- Current Sample Badge -->
                     <div class="sample-badge" id="current-sample-badge" style="display: none;">
                         <span class="badge-dot"></span>
                         <span id="current-sample-name">No Sample Loaded</span>
                     </div>
 
-                    <!-- User Profile & Role Info (Only visible in Authenticated Topbar) -->
+                    <!-- User Profile & Role Info -->
                     <div class="user-profile-pill" id="user-profile-pill">
                         <span class="user-avatar">👤</span>
                         <span class="user-name-text" id="user-display-name">User</span>
@@ -248,123 +273,435 @@
                 </div>
 
                 <!-- ============================================== -->
-                <!-- 1. HOME VIEW                                   -->
+                <!-- 1. HOME VIEW (CYBER-DEFENSE COMMAND CENTER)    -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-home">
-                    <div class="hero-card">
-                        <div class="hero-content">
-                            <h2 class="hero-headline" data-i18n="home_title">ETHIO-AI Defender</h2>
-                            <p class="hero-description" data-i18n="home_description">
-                                Defensive static malware analysis and reverse-engineering platform designed for national cybersecurity resilience, SOC analysts, and university research laboratories.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Upload & Security Section -->
-                    <div class="grid-2col">
-                        <!-- Upload Interface -->
-                        <div class="soc-card">
+                    
+                    <!-- 3-Column Futuristic Hero Section -->
+                    <div class="cyber-hero-grid">
+                        
+                        <!-- Column 1: Brand Hero & Intake Dropzone -->
+                        <div class="soc-card" style="display: flex; flex-direction: column; justify-content: space-between;">
                             <div class="card-head">
-                                <span class="card-icon">📤</span>
-                                <h3 class="card-heading" data-i18n="upload_heading">Upload Binary for Static Analysis</h3>
+                                <span class="card-icon">⚡</span>
+                                <div>
+                                    <h2 class="card-heading" style="font-size: 15px; color: var(--accent-cyan); margin: 0;">ETHIO-AI DEFENDER</h2>
+                                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">AI-Powered Malware Analysis & Reverse Engineering</span>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div id="upload-error-box" class="auth-error-box" style="display: none; margin-bottom: 14px;"></div>
+                            <div class="card-body" style="padding-top: 10px;">
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
+                                    Your digital shield against modern threats. Upload Windows executables for deterministic, non-executing static triage, deep string extraction, and heuristic scoring.
+                                </p>
+
+                                <div id="upload-error-box" class="auth-error-box" style="display: none; margin-bottom: 12px;"></div>
 
                                 <!-- Default Dropzone -->
-                                <div class="dropzone" id="upload-dropzone">
-                                    <div class="dropzone-icon">📁</div>
-                                    <div class="dropzone-title" data-i18n="dropzone_title">Drag and drop Windows PE executable here</div>
-                                    <div class="dropzone-subtitle" data-i18n="dropzone_subtitle">or click to browse local files</div>
+                                <div class="dropzone" id="upload-dropzone" style="padding: 20px 14px;">
+                                    <div class="dropzone-icon" style="font-size: 26px; margin-bottom: 6px;">📥</div>
+                                    <div class="dropzone-title" style="font-size: 13px; font-weight: 700;" data-i18n="dropzone_title">Drag & drop .exe or .dll here</div>
+                                    <div class="dropzone-subtitle" style="font-size: 11px; margin-bottom: 10px;" data-i18n="dropzone_subtitle">or click to browse local files</div>
                                     <input type="file" id="file-upload-input" class="hidden-input" accept=".exe,.dll">
-                                    <button class="btn-primary" id="btn-browse-file" data-i18n="btn_choose_file">Select .exe / .dll</button>
+                                    <button class="btn-primary" id="btn-browse-file" style="font-size: 12px; padding: 6px 14px;" data-i18n="btn_choose_file">Select File</button>
                                 </div>
 
                                 <!-- File Selected State (Before Analysis) -->
-                                <div id="upload-selected-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-blue); margin-bottom: 12px;">
-                                    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                                        <div style="display: flex; align-items: center; gap: 12px;">
-                                            <div style="font-size: 24px;">📦</div>
+                                <div id="upload-selected-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-blue); margin-bottom: 10px;">
+                                    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="font-size: 20px;">📦</div>
                                             <div>
-                                                <div style="font-weight: 700; color: var(--text-primary);" id="selected-file-name">sample.exe</div>
-                                                <div style="font-size: 11px; color: var(--text-muted);">
-                                                    <span id="selected-file-size">0 KB</span> • <span class="badge badge-low" id="selected-file-ext">.EXE</span> • <span style="color: var(--sev-low);">Zero-Execution Enforced</span>
+                                                <div style="font-weight: 700; color: var(--text-primary); font-size: 12px;" id="selected-file-name">sample.exe</div>
+                                                <div style="font-size: 10px; color: var(--text-muted);">
+                                                    <span id="selected-file-size">0 KB</span> • <span class="badge badge-low" id="selected-file-ext">.EXE</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style="display: flex; gap: 8px;">
-                                            <button class="btn-secondary" onclick="clearSelectedFile()">✕ Cancel</button>
-                                            <button class="btn-primary" id="btn-start-analysis" onclick="startSelectedFileAnalysis()">🚀 Analyze Binary</button>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button class="btn-secondary" onclick="clearSelectedFile()" style="font-size: 11px; padding: 4px 8px;">✕ Cancel</button>
+                                            <button class="btn-primary" id="btn-start-analysis" onclick="startSelectedFileAnalysis()" style="font-size: 11px; padding: 4px 12px;">🚀 Analyze</button>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Analysis In-Progress Staged Feedback -->
-                                <div id="upload-progress-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-cyan); margin-bottom: 16px;">
-                                    <div class="card-body">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                            <div style="display: flex; align-items: center; gap: 10px;">
-                                                <span class="auth-loading-spinner" style="width: 16px; height: 16px; border-width: 2px;"></span>
-                                                <span style="font-weight: 700; font-size: 13px; color: var(--accent-cyan);" id="upload-progress-current-text">Executing Zero-Execution Analysis Pipeline...</span>
+                                <div id="upload-progress-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-cyan); margin-bottom: 12px;">
+                                    <div class="card-body" style="padding: 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span class="auth-loading-spinner" style="width: 14px; height: 14px; border-width: 2px;"></span>
+                                                <span style="font-weight: 700; font-size: 12px; color: var(--accent-cyan);" id="upload-progress-current-text">Executing Zero-Execution Analysis Pipeline...</span>
                                             </div>
-                                            <span class="badge badge-low" style="font-size: 10px;">STATIC INTAKE</span>
+                                            <span class="badge badge-low" style="font-size: 9px;">STATIC INTAKE</span>
                                         </div>
                                         <div class="pipeline-stages-flow" id="upload-pipeline-flow">
                                             <div class="pipeline-stage active" id="intake-stage-1"><div class="stage-node">1</div><div class="stage-label">File</div></div>
                                             <div class="pipeline-stage waiting" id="intake-stage-2"><div class="stage-node">2</div><div class="stage-label">Hash</div></div>
-                                            <div class="pipeline-stage waiting" id="intake-stage-3"><div class="stage-node">3</div><div class="stage-label">PE Struct</div></div>
-                                            <div class="pipeline-stage waiting" id="intake-stage-4"><div class="stage-node">4</div><div class="stage-label">Sections</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-3"><div class="stage-node">3</div><div class="stage-label">PE</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-4"><div class="stage-node">4</div><div class="stage-label">Sect</div></div>
                                             <div class="pipeline-stage waiting" id="intake-stage-5"><div class="stage-node">5</div><div class="stage-label">Imports</div></div>
                                             <div class="pipeline-stage waiting" id="intake-stage-6"><div class="stage-node">6</div><div class="stage-label">Strings</div></div>
                                             <div class="pipeline-stage waiting" id="intake-stage-7"><div class="stage-node">7</div><div class="stage-label">IOCs</div></div>
                                             <div class="pipeline-stage waiting" id="intake-stage-8"><div class="stage-node">8</div><div class="stage-label">Risk</div></div>
-                                            <div class="pipeline-stage waiting" id="intake-stage-9"><div class="stage-node">9</div><div class="stage-label">AI Review</div></div>
+                                            <div class="pipeline-stage waiting" id="intake-stage-9"><div class="stage-node">9</div><div class="stage-label">AI</div></div>
                                             <div class="pipeline-stage waiting" id="intake-stage-10"><div class="stage-node">10</div><div class="stage-label">Report</div></div>
-                                        </div>
-                                        <div id="upload-progress-subtext" style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 8px; text-align: center;">
-                                            Validating DOS header signature & calculating cryptographic hashes...
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="quick-demo-row">
+                                <div class="quick-demo-row" style="margin-top: 10px; font-size: 11px;">
                                     <span data-i18n="or_try_demo">Or test with safe synthetic sample:</span>
-                                    <button class="btn-secondary" id="btn-load-demo" onclick="loadDemoSample()">🧪 <span data-i18n="btn_load_demo">Load Safe Synthetic Sample</span></button>
+                                    <button class="btn-secondary" id="btn-load-demo" onclick="loadDemoSample()" style="font-size: 11px; padding: 4px 10px;">🧪 Load Demo</button>
                                 </div>
+                            </div>
+                            <div class="card-foot" style="padding: 10px 16px; font-size: 10px; color: var(--text-dim); display: flex; justify-content: space-between;">
+                                <span>Windows PE (.exe, .dll) • x86/x64</span>
+                                <span style="color: var(--sev-low);">Max: 50 MB • Static Only</span>
                             </div>
                         </div>
 
-                        <!-- System Parameters & Security Warning -->
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">🔒</span>
-                                <h3 class="card-heading" data-i18n="security_heading">Perimeter & Security Policy</h3>
+                        <!-- Column 2: Central Cyber Lock & Shield HUD Visualization -->
+                        <div class="cyber-lock-column">
+                            <div class="cyber-lock-hud">
+                                <!-- Layered Concentric HUD Rings -->
+                                <svg class="hud-ring-svg" viewBox="0 0 240 240">
+                                    <!-- Outer Technical Track & Tick Marks -->
+                                    <circle class="hud-ring-outer" cx="120" cy="120" r="108" fill="none" stroke="rgba(0, 240, 255, 0.2)" stroke-width="1.5" stroke-dasharray="6 8 14 8" />
+                                    <!-- Mid Segmented Arcs -->
+                                    <circle class="hud-ring-mid" cx="120" cy="120" r="88" fill="none" stroke="rgba(14, 165, 233, 0.35)" stroke-width="2" stroke-dasharray="32 14 18 14" />
+                                    <!-- Inner Glowing Boundary -->
+                                    <circle class="hud-ring-inner" cx="120" cy="120" r="66" fill="none" stroke="rgba(0, 240, 255, 0.5)" stroke-width="1.5" stroke-dasharray="4 6" />
+                                </svg>
+
+                                <!-- Central Glowing Cyber Core -->
+                                <div class="cyber-lock-core">
+                                    <div class="center-shield-icon">🛡️</div>
+                                </div>
+                            </div>
+
+                            <!-- Central HUD Telemetry Badges -->
+                            <div class="hud-status-badges">
+                                <span class="hud-badge">🛡️ SHIELD: ACTIVE</span>
+                                <span class="hud-badge">⚡ ZERO-EXECUTION</span>
+                                <span class="hud-badge">🔍 HEURISTIC ENGINE</span>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Real Threat Overview Posture -->
+                        <div class="soc-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">📊</span>
+                                    <h3 class="card-heading" style="font-size: 14px;">THREAT OVERVIEW</h3>
+                                </div>
+                                <span class="badge badge-low" style="font-size: 10px; display: flex; align-items: center; gap: 4px;">
+                                    <span class="status-pulse-dot" style="width: 6px; height: 6px;"></span> LIVE
+                                </span>
                             </div>
                             <div class="card-body">
-                                <div class="warning-box">
-                                    <div class="warning-title">⚠️ <span data-i18n="warning_title">Strict Non-Execution Policy</span></div>
-                                    <div class="warning-body" data-i18n="warning_body">
-                                        Uploaded files are analyzed statically without runtime execution. Files are isolated in memory and quarantined on disk. Never execute untrusted binaries on host machines.
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                                    <div class="stat-card" style="padding: 12px; background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2);">
+                                        <div class="stat-label" style="font-size: 10px;">Total Analyses</div>
+                                        <div class="stat-val" id="dash-total-analyses" style="font-size: 24px; color: var(--accent-cyan);">0</div>
+                                    </div>
+                                    <div class="stat-card" style="padding: 12px; background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.2);">
+                                        <div class="stat-label" style="font-size: 10px;">High & Critical</div>
+                                        <div class="stat-val" id="dash-high-critical" style="font-size: 24px; color: var(--sev-crit);">0</div>
                                     </div>
                                 </div>
 
-                                <div class="info-list">
-                                    <div class="info-list-item">
-                                        <span class="info-list-label" data-i18n="supported_formats">Supported File Types:</span>
-                                        <span class="info-list-val">Windows PE (.exe, .dll) [x86, x64]</span>
+                                <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">Risk Distribution:</div>
+                                <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+                                    <div style="flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 6px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--sev-low);">LOW</div>
+                                        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);" id="dash-count-low">0</div>
                                     </div>
-                                    <div class="info-list-item">
-                                        <span class="info-list-label" data-i18n="max_size">Max File Size:</span>
-                                        <span class="info-list-val">50 MB</span>
+                                    <div style="flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 6px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--sev-susp);">SUSP</div>
+                                        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);" id="dash-count-med">0</div>
                                     </div>
-                                    <div class="info-list-item">
-                                        <span class="info-list-label" data-i18n="analysis_scope">Analysis Scope:</span>
-                                        <span class="info-list-val">Headers, Sections, Entropy, Strings, APIs, Threat Scoring</span>
+                                    <div style="flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 6px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--sev-high);">HIGH</div>
+                                        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);" id="dash-count-high">0</div>
+                                    </div>
+                                    <div style="flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 6px; text-align: center;">
+                                        <div style="font-size: 9px; color: var(--sev-crit);">CRIT</div>
+                                        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);" id="dash-count-crit">0</div>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="card-foot flex-between" style="padding: 10px 16px;">
+                                <span style="font-size: 10px; color: var(--text-muted);">Database: Persistent SQLite</span>
+                                <button class="btn-secondary" onclick="loadDashboardOverviewStats()" style="font-size: 10px; padding: 2px 8px;">🔄 Refresh</button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Full-Width Defensive Analysis Pipeline Flowchart -->
+                    <div class="soc-card" style="margin-bottom: 24px;">
+                        <div class="card-head flex-between">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">🔄</span>
+                                <h3 class="card-heading" style="font-size: 13px;">DEFENSIVE STATIC ANALYSIS PIPELINE</h3>
+                            </div>
+                            <span class="badge badge-low" style="font-size: 10px;">10 DETERMINISTIC STAGES</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="analysis-pipeline-container" id="dash-main-pipeline">
+                                <div class="pipeline-stage active" id="main-pipe-1"><div class="stage-node">1</div><div class="stage-label">Upload</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-2"><div class="stage-node">2</div><div class="stage-label">Hashing</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-3"><div class="stage-node">3</div><div class="stage-label">PE Structure</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-4"><div class="stage-node">4</div><div class="stage-label">Sections</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-5"><div class="stage-node">5</div><div class="stage-label">Imports</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-6"><div class="stage-node">6</div><div class="stage-label">Strings</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-7"><div class="stage-node">7</div><div class="stage-label">IOC Scan</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-8"><div class="stage-node">8</div><div class="stage-label">Risk Engine</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-9"><div class="stage-node">9</div><div class="stage-label">AI Analysis</div></div>
+                                <div class="pipeline-stage waiting" id="main-pipe-10"><div class="stage-node">10</div><div class="stage-label">Report</div></div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- 2-Column Grid 1: Risk Distribution & Top Threat Indicators -->
+                    <div class="grid-2col" style="margin-bottom: 24px;">
+                        
+                        <!-- Card 1: Risk Distribution Donut Chart -->
+                        <div class="soc-card">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🎯</span>
+                                    <h3 class="card-heading" style="font-size: 13px;">RISK POSTURE DISTRIBUTION</h3>
+                                </div>
+                                <span class="badge badge-low" id="dash-overall-risk-badge">CALCULATED</span>
+                            </div>
+                            <div class="card-body" style="display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 16px;">
+                                <!-- SVG Donut Chart -->
+                                <div class="donut-chart-container">
+                                    <svg class="donut-svg" viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(16, 28, 52, 0.8)" stroke-width="12" />
+                                        <circle id="donut-segment-low" cx="50" cy="50" r="40" fill="none" stroke="var(--sev-low)" stroke-width="12" stroke-dasharray="0 251.2" stroke-dashoffset="0" />
+                                        <circle id="donut-segment-med" cx="50" cy="50" r="40" fill="none" stroke="var(--sev-susp)" stroke-width="12" stroke-dasharray="0 251.2" stroke-dashoffset="0" />
+                                        <circle id="donut-segment-high" cx="50" cy="50" r="40" fill="none" stroke="var(--sev-high)" stroke-width="12" stroke-dasharray="0 251.2" stroke-dashoffset="0" />
+                                        <circle id="donut-segment-crit" cx="50" cy="50" r="40" fill="none" stroke="var(--sev-crit)" stroke-width="12" stroke-dasharray="0 251.2" stroke-dashoffset="0" />
+                                    </svg>
+                                    <div class="donut-center-text">
+                                        <div class="donut-center-val" id="dash-donut-avg-score">0</div>
+                                        <div class="donut-center-sub" id="dash-donut-avg-label">AVG RISK</div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="display: inline-block; width: 10px; height: 10px; background: var(--sev-low); border-radius: 2px;"></span>
+                                        <span style="color: var(--text-secondary);">Low Risk (0-39)</span>
+                                        <strong style="color: var(--text-primary); margin-left: auto;" id="dash-legend-low">0%</strong>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="display: inline-block; width: 10px; height: 10px; background: var(--sev-susp); border-radius: 2px;"></span>
+                                        <span style="color: var(--text-secondary);">Suspicious (40-69)</span>
+                                        <strong style="color: var(--text-primary); margin-left: auto;" id="dash-legend-med">0%</strong>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="display: inline-block; width: 10px; height: 10px; background: var(--sev-high); border-radius: 2px;"></span>
+                                        <span style="color: var(--text-secondary);">High Risk (70-84)</span>
+                                        <strong style="color: var(--text-primary); margin-left: auto;" id="dash-legend-high">0%</strong>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="display: inline-block; width: 10px; height: 10px; background: var(--sev-crit); border-radius: 2px;"></span>
+                                        <span style="color: var(--text-secondary);">Critical (85-100)</span>
+                                        <strong style="color: var(--text-primary); margin-left: auto;" id="dash-legend-crit">0%</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Top Threat Indicators -->
+                        <div class="soc-card">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">⚠️</span>
+                                    <h3 class="card-heading" style="font-size: 13px;">TOP THREAT INDICATORS</h3>
+                                </div>
+                                <span class="badge badge-susp" style="font-size: 10px;">HEURISTIC CORRELATION</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="threat-meter-list">
+                                    <div class="threat-meter-item">
+                                        <div class="threat-meter-header">
+                                            <span class="threat-meter-label">Suspicious Windows APIs</span>
+                                            <span class="threat-meter-val" id="meter-apis-val">0</span>
+                                        </div>
+                                        <div class="threat-meter-track"><div class="threat-meter-bar" id="meter-apis-bar" style="width: 0%;"></div></div>
+                                    </div>
+                                    <div class="threat-meter-item">
+                                        <div class="threat-meter-header">
+                                            <span class="threat-meter-label">High-Risk Classified Strings</span>
+                                            <span class="threat-meter-val" id="meter-strings-val">0</span>
+                                        </div>
+                                        <div class="threat-meter-track"><div class="threat-meter-bar" id="meter-strings-bar" style="width: 0%; background: linear-gradient(90deg, #f59e0b, #ef4444);"></div></div>
+                                    </div>
+                                    <div class="threat-meter-item">
+                                        <div class="threat-meter-header">
+                                            <span class="threat-meter-label">Network Indicators (C2 / Domains)</span>
+                                            <span class="threat-meter-val" id="meter-net-val">0</span>
+                                        </div>
+                                        <div class="threat-meter-track"><div class="threat-meter-bar" id="meter-net-bar" style="width: 0%;"></div></div>
+                                    </div>
+                                    <div class="threat-meter-item">
+                                        <div class="threat-meter-header">
+                                            <span class="threat-meter-label">Registry Persistence Indicators</span>
+                                            <span class="threat-meter-val" id="meter-reg-val">0</span>
+                                        </div>
+                                        <div class="threat-meter-track"><div class="threat-meter-bar" id="meter-reg-bar" style="width: 0%;"></div></div>
+                                    </div>
+                                    <div class="threat-meter-item">
+                                        <div class="threat-meter-header">
+                                            <span class="threat-meter-label">High Section Entropy (Packers)</span>
+                                            <span class="threat-meter-val" id="meter-entropy-val">0</span>
+                                        </div>
+                                        <div class="threat-meter-track"><div class="threat-meter-bar" id="meter-entropy-bar" style="width: 0%;"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- 2-Column Grid 2: IOC Intelligence & Recent Activity -->
+                    <div class="grid-2col" style="margin-bottom: 24px;">
+                        
+                        <!-- Card 3: IOC Intelligence -->
+                        <div class="soc-card">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🌐</span>
+                                    <h3 class="card-heading" style="font-size: 13px;">IOC INTELLIGENCE</h3>
+                                </div>
+                                <span class="badge badge-low" style="font-size: 10px;" id="dash-ioc-total-badge">0 ARTIFACTS</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;">
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 10px; border-radius: 6px; text-align: center;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Domains</div>
+                                        <div style="font-size: 18px; font-weight: 800; color: var(--accent-cyan);" id="dash-ioc-domains">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 10px; border-radius: 6px; text-align: center;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">IPs</div>
+                                        <div style="font-size: 18px; font-weight: 800; color: var(--accent-blue);" id="dash-ioc-ips">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 10px; border-radius: 6px; text-align: center;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">URLs</div>
+                                        <div style="font-size: 18px; font-weight: 800; color: var(--accent-cyan);" id="dash-ioc-urls">0</div>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 10px; border-radius: 6px; text-align: center;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Cryptographic Hashes</div>
+                                        <div style="font-size: 16px; font-weight: 800; color: var(--text-primary);" id="dash-ioc-hashes">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); padding: 10px; border-radius: 6px; text-align: center;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Registry Keys</div>
+                                        <div style="font-size: 16px; font-weight: 800; color: var(--text-primary);" id="dash-ioc-registry">0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: Recent Activity Feed -->
+                        <div class="soc-card">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">⚡</span>
+                                    <h3 class="card-heading" style="font-size: 13px;">RECENT ACTIVITY</h3>
+                                </div>
+                                <span class="badge badge-low" style="font-size: 10px;">● REAL-TIME</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="recent-activity-list" id="dash-recent-activity-list">
+                                    <div class="empty-state-cell">No recent binary analyses recorded.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- 2-Column Grid 3: AI Security Analyst & System Status -->
+                    <div class="grid-2col">
+                        
+                        <!-- Card 5: AI Security Analyst -->
+                        <div class="soc-card" style="border-color: rgba(0, 240, 255, 0.3);">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🤖</span>
+                                    <h3 class="card-heading" style="font-size: 13px; color: var(--accent-cyan);">AI SECURITY ANALYST</h3>
+                                </div>
+                                <span class="badge badge-low" style="font-size: 10px;">● READY</span>
+                            </div>
+                            <div class="card-body">
+                                <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px;">
+                                    Provides grounded interpretation, contextual reasoning, and defensive recommendations mapped against MITRE ATT&CK techniques based strictly on static binary evidence.
+                                </p>
+                                <div style="background: rgba(0, 240, 255, 0.04); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; font-size: 11px; color: var(--text-muted);">
+                                    🛡️ <strong>Defensive Safeguard:</strong> Static presence alone does not establish confirmed runtime compromise. AI insights are accompanied by explicit confidence levels.
+                                </div>
+                                <button class="btn-primary" onclick="switchTab('ai-analyst')" style="font-size: 12px; padding: 8px 16px;">
+                                    ⚡ Ask Analysis Insight
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Card 6: System Operational Status -->
+                        <div class="soc-card">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🛡️</span>
+                                    <h3 class="card-heading" style="font-size: 13px;">PLATFORM SYSTEM STATUS</h3>
+                                </div>
+                                <span class="badge badge-low" style="font-size: 10px;">● OPERATIONAL</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
+                                        <span>PE Parser</span> <span style="color: var(--sev-low); font-weight: 700;">✓ ONLINE</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
+                                        <span>Hash Engine</span> <span style="color: var(--sev-low); font-weight: 700;">✓ ONLINE</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
+                                        <span>IOC Scorer</span> <span style="color: var(--sev-low); font-weight: 700;">✓ ONLINE</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
+                                        <span>YARA Engine</span> <span style="color: var(--sev-low); font-weight: 700;">✓ ONLINE</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
+                                        <span>AI Gateway</span> <span style="color: var(--sev-low); font-weight: 700;">✓ ONLINE</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
+                                        <span>Database</span> <span style="color: var(--sev-low); font-weight: 700;">✓ ONLINE</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Technical Footer with Ethiopian Identity -->
+                    <footer class="app-footer">
+                        <div class="footer-brand">
+                            <span>🛡️</span>
+                            <strong>ETHIO-AI Defender</strong>
+                            <span style="color: var(--text-dim);">•</span>
+                            <span style="font-style: italic;">"A Safer Digital Ethiopia"</span>
+                        </div>
+                        <div class="footer-tagline">
+                            SECURE • DETECT • ANALYZE • DEFEND
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-dim);">
+                            Zero-Execution Guarantee • Static Triage & Intelligence
+                        </div>
+                    </footer>
+
                 </section>
 
                 <!-- ============================================== -->

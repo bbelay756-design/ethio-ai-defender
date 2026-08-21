@@ -690,6 +690,135 @@ function closeSystemHealthModal() {
     if (modal) modal.style.display = 'none';
 }
 
+// =========================================================
+// 9. LIVE DEFENSIVE DASHBOARD TELEMETRY & HUD OVERVIEW
+// =========================================================
+async function loadDashboardOverviewStats() {
+    try {
+        const res = await fetchWithAuth('/api/analyses/overview-stats');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+
+        // 1. Animate Hero Counters
+        animateCounter('dash-total-analyses', data.total_analyses || 0);
+        animateCounter('dash-high-critical', (data.high_risk_count || 0) + (data.critical_risk_count || 0));
+
+        animateCounter('dash-count-low', data.low_risk_count || 0);
+        animateCounter('dash-count-med', data.medium_risk_count || 0);
+        animateCounter('dash-count-high', data.high_risk_count || 0);
+        animateCounter('dash-count-crit', data.critical_risk_count || 0);
+
+        // 2. Risk Distribution Donut Chart
+        const total = Math.max(1, data.total_analyses || 0);
+        const lowPct = Math.round(((data.low_risk_count || 0) / total) * 100);
+        const medPct = Math.round(((data.medium_risk_count || 0) / total) * 100);
+        const highPct = Math.round(((data.high_risk_count || 0) / total) * 100);
+        const critPct = Math.round(((data.critical_risk_count || 0) / total) * 100);
+
+        const legendLow = document.getElementById('dash-legend-low');
+        const legendMed = document.getElementById('dash-legend-med');
+        const legendHigh = document.getElementById('dash-legend-high');
+        const legendCrit = document.getElementById('dash-legend-crit');
+        if (legendLow) legendLow.textContent = `${lowPct}%`;
+        if (legendMed) legendMed.textContent = `${medPct}%`;
+        if (legendHigh) legendHigh.textContent = `${highPct}%`;
+        if (legendCrit) legendCrit.textContent = `${critPct}%`;
+
+        // SVG Donut circumference = 2 * PI * 40 ≈ 251.327
+        const C = 251.327;
+        const segLow = document.getElementById('donut-segment-low');
+        const segMed = document.getElementById('donut-segment-med');
+        const segHigh = document.getElementById('donut-segment-high');
+        const segCrit = document.getElementById('donut-segment-crit');
+
+        const lowLen = (lowPct / 100) * C;
+        const medLen = (medPct / 100) * C;
+        const highLen = (highPct / 100) * C;
+        const critLen = (critPct / 100) * C;
+
+        if (segLow) {
+            segLow.style.strokeDasharray = `${lowLen} ${C}`;
+            segLow.style.strokeDashoffset = '0';
+        }
+        if (segMed) {
+            segMed.style.strokeDasharray = `${medLen} ${C}`;
+            segMed.style.strokeDashoffset = `-${lowLen}`;
+        }
+        if (segHigh) {
+            segHigh.style.strokeDasharray = `${highLen} ${C}`;
+            segHigh.style.strokeDashoffset = `-${lowLen + medLen}`;
+        }
+        if (segCrit) {
+            segCrit.style.strokeDasharray = `${critLen} ${C}`;
+            segCrit.style.strokeDashoffset = `-${lowLen + medLen + highLen}`;
+        }
+
+        // Center Avg Score
+        const avgScore = total > 0 ? Math.round(((data.low_risk_count * 15) + (data.medium_risk_count * 55) + (data.high_risk_count * 78) + (data.critical_risk_count * 92)) / total) : 0;
+        const avgEl = document.getElementById('dash-donut-avg-score');
+        if (avgEl) animateCounter('dash-donut-avg-score', avgScore);
+
+        const avgBadge = document.getElementById('dash-overall-risk-badge');
+        if (avgBadge) {
+            const lvl = avgScore >= 85 ? 'CRITICAL' : (avgScore >= 70 ? 'HIGH' : (avgScore >= 40 ? 'SUSPICIOUS' : 'LOW'));
+            avgBadge.textContent = lvl;
+            avgBadge.className = 'badge ' + getRiskBadgeClass(lvl);
+        }
+
+        // 3. Top Threat Indicators Meters
+        const ind = data.top_threat_indicators || {};
+        const maxInd = Math.max(1, (ind.suspicious_apis || 0) + (ind.malicious_strings || 0) + (ind.network_indicators || 0) + (ind.registry_indicators || 0) + (ind.high_entropy || 0));
+
+        const setMeter = (valId, barId, count) => {
+            const v = document.getElementById(valId);
+            const b = document.getElementById(barId);
+            const pct = Math.min(100, Math.round((count / maxInd) * 100));
+            if (v) animateCounter(valId, count);
+            if (b) b.style.width = `${pct}%`;
+        };
+
+        setMeter('meter-apis-val', 'meter-apis-bar', ind.suspicious_apis || 0);
+        setMeter('meter-strings-val', 'meter-strings-bar', ind.malicious_strings || 0);
+        setMeter('meter-net-val', 'meter-net-bar', ind.network_indicators || 0);
+        setMeter('meter-reg-val', 'meter-reg-bar', ind.registry_indicators || 0);
+        setMeter('meter-entropy-val', 'meter-entropy-bar', ind.high_entropy || 0);
+
+        // 4. IOC Intelligence Counts
+        const ioc = data.ioc_counts || {};
+        const totalIocBadge = document.getElementById('dash-ioc-total-badge');
+        if (totalIocBadge) totalIocBadge.textContent = `${ioc.total || 0} ARTIFACTS`;
+
+        animateCounter('dash-ioc-domains', ioc.domains || 0);
+        animateCounter('dash-ioc-ips', ioc.ips || 0);
+        animateCounter('dash-ioc-urls', ioc.urls || 0);
+        animateCounter('dash-ioc-hashes', ioc.hashes || 0);
+        animateCounter('dash-ioc-registry', ioc.registry || 0);
+
+        // 5. Recent Activity List
+        const actList = document.getElementById('dash-recent-activity-list');
+        if (actList) {
+            if (!data.recent_activity || data.recent_activity.length === 0) {
+                actList.innerHTML = '<div class="empty-state-cell">No recent binary analyses recorded.</div>';
+            } else {
+                actList.innerHTML = data.recent_activity.map(item => `
+                    <div class="recent-activity-item" onclick="loadAnalysisById('${escapeHtml(item.analysis_id)}')">
+                        <div class="recent-activity-info">
+                            <span class="recent-activity-name">${escapeHtml(item.filename)}</span>
+                            <span class="recent-activity-meta">ID: ${escapeHtml(item.analysis_id)} • SHA: ${escapeHtml(item.sha256_short)}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="badge ${getRiskBadgeClass(item.classification)}">${escapeHtml(item.classification)} (${item.risk_score})</span>
+                            <div style="font-size: 9px; color: var(--text-dim); margin-top: 2px;">${item.created_at ? item.created_at.substring(0, 10) : ''}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (err) {
+        console.warn('Error loading dashboard overview stats:', err);
+    }
+}
+
 // Initialization on DOM Loaded
 document.addEventListener('DOMContentLoaded', () => {
     initCyberGrid();
@@ -698,6 +827,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initLanguage();
     initAuth();
     renderSelectedConcept();
+    loadDashboardOverviewStats();
 });
 
 /**
@@ -770,7 +900,9 @@ function switchTab(tabId, updateUrl = true) {
         document.getElementById('topbar-active-title').textContent = activeBtn.textContent;
     }
 
-    if (tabId === 'admin') {
+    if (tabId === 'home') {
+        loadDashboardOverviewStats();
+    } else if (tabId === 'admin') {
         switchAdminTab(state.adminCurrentSubtab || 'overview');
     } else if (tabId === 'history') {
         loadAnalysisHistory();

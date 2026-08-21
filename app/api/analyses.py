@@ -200,6 +200,81 @@ def list_analyses(
 
 
 @router.get(
+    "/overview-stats",
+    summary="Get aggregated threat posture & analysis statistics",
+    description="Returns real platform-wide counts, risk distribution, top indicator categories, IOC totals, and recent activity."
+)
+def get_analysis_overview_stats(
+    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+):
+    """Computes real aggregated threat overview metrics for dashboard HUD."""
+    from app.db.models import IOCModel, IndicatorModel, ImportModel, StringModel
+
+    db = SessionLocal()
+    try:
+        total_samples = db.query(SampleModel).count()
+        low_count = db.query(SampleModel).filter(SampleModel.risk_score < 40).count()
+        med_count = db.query(SampleModel).filter(SampleModel.risk_score >= 40, SampleModel.risk_score < 70).count()
+        high_count = db.query(SampleModel).filter(SampleModel.risk_score >= 70, SampleModel.risk_score < 85).count()
+        crit_count = db.query(SampleModel).filter(SampleModel.risk_score >= 85).count()
+
+        # IOC counts
+        ioc_total = db.query(IOCModel).count()
+        ioc_domains = db.query(IOCModel).filter(IOCModel.type.ilike("%domain%")).count()
+        ioc_ips = db.query(IOCModel).filter(IOCModel.type.ilike("%ip%")).count()
+        ioc_urls = db.query(IOCModel).filter(IOCModel.type.ilike("%url%")).count()
+        ioc_hashes = db.query(IOCModel).filter(IOCModel.type.ilike("%hash%")).count()
+        ioc_registry = db.query(IOCModel).filter(IOCModel.type.ilike("%registry%")).count()
+
+        # Indicator categories counts
+        susp_apis = db.query(ImportModel).filter(ImportModel.risk_relevance.in_(["HIGH", "CRITICAL"])).count()
+        susp_strings = db.query(StringModel).filter(StringModel.severity.in_(["HIGH", "CRITICAL"])).count()
+        net_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "NETWORK").count()
+        reg_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "REGISTRY").count()
+        entropy_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "ENTROPY").count()
+
+        # Recent 6 analyses
+        recent_samples = db.query(SampleModel).order_by(SampleModel.created_at.desc()).limit(6).all()
+        recent_activity = [
+            {
+                "analysis_id": s.analysis_id,
+                "filename": s.filename,
+                "sha256_short": s.sha256[:12] if s.sha256 else "N/A",
+                "risk_score": s.risk_score or 0,
+                "classification": s.classification or "LOW",
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+            }
+            for s in recent_samples
+        ]
+
+        return {
+            "total_analyses": total_samples,
+            "low_risk_count": low_count,
+            "medium_risk_count": med_count,
+            "high_risk_count": high_count,
+            "critical_risk_count": crit_count,
+            "top_threat_indicators": {
+                "suspicious_apis": susp_apis,
+                "malicious_strings": susp_strings,
+                "network_indicators": net_indicators,
+                "registry_indicators": reg_indicators,
+                "high_entropy": entropy_indicators,
+            },
+            "ioc_counts": {
+                "total": ioc_total,
+                "domains": ioc_domains,
+                "ips": ioc_ips,
+                "urls": ioc_urls,
+                "hashes": ioc_hashes,
+                "registry": ioc_registry,
+            },
+            "recent_activity": recent_activity,
+        }
+    finally:
+        db.close()
+
+
+@router.get(
     "/{analysis_id}",
     summary="Get full analysis results by ID",
     description="Fetches full multi-section evidence, PE headers, imports, strings, IOCs, risk factors, and AI interpretation."
