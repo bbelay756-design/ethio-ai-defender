@@ -20,6 +20,9 @@ from app.db.models import (
     RiskFactorModel,
     AnalysisResultModel,
     AnalystNoteModel,
+    GhidraAnalysisModel,
+    GhidraFunctionModel,
+    GhidraRelationshipModel,
 )
 from app.db.schemas import (
     SampleCreate,
@@ -31,6 +34,9 @@ from app.db.schemas import (
     YaraMatchCreate,
     RiskFactorCreate,
     AnalysisResultCreate,
+    GhidraAnalysisCreate,
+    GhidraFunctionCreate,
+    GhidraRelationshipCreate,
 )
 
 
@@ -76,6 +82,9 @@ class SampleRepository:
                 joinedload(SampleModel.yara_matches),
                 joinedload(SampleModel.risk_factors),
                 joinedload(SampleModel.analysis_results),
+                joinedload(SampleModel.ghidra_analysis),
+                joinedload(SampleModel.ghidra_functions),
+                joinedload(SampleModel.ghidra_relationships),
             )
             .filter(SampleModel.id == sample_id)
             .first()
@@ -95,6 +104,9 @@ class SampleRepository:
                 joinedload(SampleModel.yara_matches),
                 joinedload(SampleModel.risk_factors),
                 joinedload(SampleModel.analysis_results),
+                joinedload(SampleModel.ghidra_analysis),
+                joinedload(SampleModel.ghidra_functions),
+                joinedload(SampleModel.ghidra_relationships),
             )
             .filter(SampleModel.analysis_id == analysis_id)
             .first()
@@ -189,6 +201,9 @@ class SampleRepository:
         yara_matches_in: List[YaraMatchCreate] = None,
         risk_factors_in: List[RiskFactorCreate] = None,
         result_in: Optional[AnalysisResultCreate] = None,
+        ghidra_analysis_in: Optional[GhidraAnalysisCreate] = None,
+        ghidra_functions_in: List[GhidraFunctionCreate] = None,
+        ghidra_relationships_in: List[GhidraRelationshipCreate] = None,
     ) -> SampleModel:
         """
         Saves a full multi-table analysis record inside a single atomic database transaction.
@@ -201,6 +216,8 @@ class SampleRepository:
         iocs_in = iocs_in or []
         yara_matches_in = yara_matches_in or []
         risk_factors_in = risk_factors_in or []
+        ghidra_functions_in = ghidra_functions_in or []
+        ghidra_relationships_in = ghidra_relationships_in or []
 
         try:
             # 1. Create parent Sample
@@ -319,6 +336,47 @@ class SampleRepository:
                     ai_confidence=result_in.ai_confidence,
                 )
                 db.add(db_res)
+
+            # 10. Add Ghidra reverse-engineering summary and functions
+            if ghidra_analysis_in:
+                db_ghidra = GhidraAnalysisModel(
+                    sample_id=db_sample.id,
+                    status=ghidra_analysis_in.status,
+                    message=ghidra_analysis_in.message,
+                    program_name=ghidra_analysis_in.program_name,
+                    language_id=ghidra_analysis_in.language_id,
+                    processor=ghidra_analysis_in.processor,
+                    compiler=ghidra_analysis_in.compiler,
+                    image_base=ghidra_analysis_in.image_base,
+                    entry_point=ghidra_analysis_in.entry_point,
+                    function_count=ghidra_analysis_in.function_count,
+                    import_count=ghidra_analysis_in.import_count,
+                    export_count=ghidra_analysis_in.export_count,
+                    string_count=ghidra_analysis_in.string_count,
+                    relationship_count=ghidra_analysis_in.relationship_count,
+                )
+                db.add(db_ghidra)
+
+            for fn in ghidra_functions_in:
+                db_fn = GhidraFunctionModel(
+                    sample_id=db_sample.id,
+                    name=fn.name,
+                    address=fn.address,
+                    size=fn.size,
+                    is_thunk=bool(fn.is_thunk),
+                    calling_convention=fn.calling_convention,
+                )
+                db.add(db_fn)
+
+            for rel in ghidra_relationships_in:
+                db_rel = GhidraRelationshipModel(
+                    sample_id=db_sample.id,
+                    from_address=rel.from_address,
+                    from_name=rel.from_name,
+                    to_address=rel.to_address,
+                    to_name=rel.to_name,
+                )
+                db.add(db_rel)
 
             db.commit()
             db.refresh(db_sample)

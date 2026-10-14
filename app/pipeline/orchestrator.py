@@ -9,6 +9,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 from app.core.logger import logger
+from app.core.config import settings
 from app.analyzers.file_intake import secure_intake_service, IntakeResult, IntakeStatus
 from app.analyzers.hash_analyzer import hash_analyzer_service
 from app.analyzers.pe_analyzer import pe_static_analyzer_service, PEAnalysisResult
@@ -411,6 +412,33 @@ class UnifiedPipelineOrchestrator:
                 "evidence": contrib.reason
             })
 
+        # =========================================================================
+        # Stage 11d: Ghidra Headless Static Reverse-Engineering (Module 20)
+        # =========================================================================
+        ghidra_data = {
+            "available": False,
+            "status": "UNAVAILABLE",
+            "message": "Ghidra analysis was not executed.",
+            "function_count": 0,
+            "functions": [],
+        }
+        try:
+            from app.analyzers.ghidra_analyzer import ghidra_analyzer_service
+            ghidra_res = ghidra_analyzer_service.analyze_file(
+                intake_res.secure_storage_path,
+                analysis_id=analysis_id,
+            )
+            ghidra_data = ghidra_res.to_dict()
+        except Exception as e:
+            logger.warning(f"Ghidra Analyzer warning: {e}")
+            ghidra_data = {
+                "available": False,
+                "status": "FAILED",
+                "message": f"Ghidra analysis fallback: {e}",
+                "function_count": 0,
+                "functions": [],
+            }
+
         # Build Observed Static Evidence (Strictly Distinguishes Observed vs Rule vs AI)
         file_info = {
             "filename": safe_filename,
@@ -435,6 +463,7 @@ class UnifiedPipelineOrchestrator:
             "risk_factors": risk_factors_list,
             "threat_score": score_data,
             "ethiopian_context": ethio_data,
+            "ghidra": ghidra_data,
         }
 
         # =========================================================================
@@ -498,7 +527,7 @@ class UnifiedPipelineOrchestrator:
         # =========================================================================
         db = SessionLocal()
         try:
-            from app.db.schemas import IOCCreate, YaraMatchCreate, RiskFactorCreate
+            from app.db.schemas import IOCCreate, YaraMatchCreate, RiskFactorCreate, GhidraAnalysisCreate, GhidraFunctionCreate, GhidraRelationshipCreate
             sample_in = SampleCreate(
                 analysis_id=analysis_id,
                 filename=safe_filename,
@@ -616,6 +645,41 @@ class UnifiedPipelineOrchestrator:
                 ai_confidence=ai_data.get("confidence", "MEDIUM")
             )
 
+            ghidra_analysis_in = GhidraAnalysisCreate(
+                status=ghidra_data.get("status", "UNAVAILABLE"),
+                message=ghidra_data.get("message"),
+                program_name=ghidra_data.get("program_name"),
+                language_id=ghidra_data.get("language_id"),
+                processor=ghidra_data.get("processor"),
+                compiler=ghidra_data.get("compiler"),
+                image_base=ghidra_data.get("image_base"),
+                entry_point=ghidra_data.get("entry_point"),
+                function_count=int(ghidra_data.get("function_count", 0) or 0),
+                import_count=int(ghidra_data.get("import_count", 0) or 0),
+                export_count=int(ghidra_data.get("export_count", 0) or 0),
+                string_count=int(ghidra_data.get("string_count", 0) or 0),
+                relationship_count=int(ghidra_data.get("relationship_count", 0) or 0),
+            )
+            ghidra_functions_in = [
+                GhidraFunctionCreate(
+                    name=fn.get("name", "FUN_unknown"),
+                    address=fn.get("address"),
+                    size=int(fn.get("size", 0) or 0),
+                    is_thunk=bool(fn.get("is_thunk", False)),
+                    calling_convention=fn.get("calling_convention"),
+                )
+                for fn in (ghidra_data.get("functions") or [])[:settings.GHIDRA_MAX_FUNCTIONS]
+            ]
+            ghidra_relationships_in = [
+                GhidraRelationshipCreate(
+                    from_address=rel.get("from_address"),
+                    from_name=rel.get("from_name"),
+                    to_address=rel.get("to_address"),
+                    to_name=rel.get("to_name"),
+                )
+                for rel in (ghidra_data.get("relationships") or [])
+            ]
+
             SampleRepository.save_full_analysis_transaction(
                 db=db,
                 sample_in=sample_in,
@@ -626,7 +690,10 @@ class UnifiedPipelineOrchestrator:
                 iocs_in=iocs_in,
                 yara_matches_in=yara_matches_in,
                 risk_factors_in=risk_factors_in,
-                result_in=result_in
+                result_in=result_in,
+                ghidra_analysis_in=ghidra_analysis_in,
+                ghidra_functions_in=ghidra_functions_in,
+                ghidra_relationships_in=ghidra_relationships_in,
             )
         except Exception as db_err:
             logger.warning(f"Database save warning: {db_err}")
@@ -667,6 +734,7 @@ class UnifiedPipelineOrchestrator:
             "risk": score_data,
             "risk_score": score_data,
             "ethiopian_context": ethio_data,
+            "ghidra": ghidra_data,
             "ai_assessment": ai_data,
             "report": report_dict,
             "errors": errors,

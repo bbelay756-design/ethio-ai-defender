@@ -59,8 +59,8 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
         self.assertFalse(verify_password("WrongPassword123", salt1, hash1))
 
     def test_user_registration_and_roles(self):
-        """Verify registering users with ADMIN, ANALYST, and STUDENT roles."""
-        # 1. Register Student
+        """SEC-01: public self-registration assigns STUDENT and rejects privileged roles."""
+        # 1. Register Student (allowed)
         student_res = self.client.post("/api/auth/register", json={
             "username": f"{self.prefix}_student",
             "email": f"{self.prefix}_student@university.edu.et",
@@ -74,26 +74,32 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
         self.assertIn("use_learning_mode", data["permissions"])
         self.assertNotIn("manage_users", data["permissions"])
 
-        # 2. Register Analyst
+        # 2. Omitting the role still yields STUDENT (server-decided)
+        default_res = self.client.post("/api/auth/register", json={
+            "username": f"{self.prefix}_default",
+            "email": f"{self.prefix}_default@university.edu.et",
+            "password": "DefaultSecurePass2026!"
+        })
+        self.assertEqual(default_res.status_code, 201)
+        self.assertEqual(default_res.json()["role"], "STUDENT")
+
+        # 3. Self-registering as ANALYST is rejected
         analyst_res = self.client.post("/api/auth/register", json={
             "username": f"{self.prefix}_analyst",
             "email": f"{self.prefix}_analyst@soc.gov.et",
             "password": "AnalystSecurePass2026!",
             "role": "ANALYST"
         })
-        self.assertEqual(analyst_res.status_code, 201)
-        self.assertEqual(analyst_res.json()["role"], "ANALYST")
+        self.assertEqual(analyst_res.status_code, 400)
 
-        # 3. Register Admin
+        # 4. Self-registering as ADMIN is rejected (privilege escalation blocked)
         admin_res = self.client.post("/api/auth/register", json={
             "username": f"{self.prefix}_admin",
             "email": f"{self.prefix}_admin@insa.gov.et",
             "password": "AdminMasterPass2026!",
             "role": "ADMIN"
         })
-        self.assertEqual(admin_res.status_code, 201)
-        self.assertEqual(admin_res.json()["role"], "ADMIN")
-        self.assertIn("manage_users", admin_res.json()["permissions"])
+        self.assertEqual(admin_res.status_code, 400)
 
     def test_duplicate_user_registration_rejected(self):
         """Verify registration rejects duplicate username or email."""
@@ -180,12 +186,14 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
             "password": "StudentPass2026!",
             "role": "STUDENT"
         })
-        self.client.post("/api/auth/register", json={
-            "username": admin_uname,
-            "email": f"{admin_uname}@insa.gov.et",
-            "password": "AdminPass2026!",
-            "role": "ADMIN"
-        })
+        # SEC-01: ADMIN cannot be self-registered; provision directly via the service layer.
+        AuthService.register_user(
+            db=self.db,
+            username=admin_uname,
+            email=f"{admin_uname}@insa.gov.et",
+            password="AdminPass2026!",
+            role="ADMIN"
+        )
 
         # Student login
         student_token = self.client.post("/api/auth/login", json={

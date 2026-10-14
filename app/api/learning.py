@@ -645,8 +645,8 @@ def get_student_dashboard_stats(
         return {
             "student_username": current_user.username,
             "completed_analyses_count": completed_analyses,
-            "labs_completed_count": min(len(PRACTICE_SAMPLE_CATALOG), completed_analyses),
-            "total_available_labs": len(PRACTICE_SAMPLE_CATALOG),
+            "labs_completed_count": min(len(PRACTICE_SAMPLES_CATALOG), completed_analyses),
+            "total_available_labs": len(PRACTICE_SAMPLES_CATALOG),
             "total_topics": len(EDUCATIONAL_TOPICS_DATABASE),
             "current_course": "Reverse Engineering Fundamentals",
             "skill_level": skill_level,

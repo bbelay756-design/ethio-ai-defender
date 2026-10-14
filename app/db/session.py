@@ -113,6 +113,13 @@ def init_db() -> None:
                 if "created_at" not in str_cols:
                     cursor.execute("ALTER TABLE strings ADD COLUMN created_at DATETIME")
                 conn.connection.commit()
+
+            cursor.execute("PRAGMA table_info(ghidra_analysis)")
+            ghidra_cols = [row[1] for row in cursor.fetchall()]
+            if ghidra_cols:
+                if "relationship_count" not in ghidra_cols:
+                    cursor.execute("ALTER TABLE ghidra_analysis ADD COLUMN relationship_count INTEGER DEFAULT 0")
+                conn.connection.commit()
             cursor.close()
 
     logger.info("Database tables initialized successfully.")

@@ -2,6 +2,7 @@
 ETHIO-AI Defender - FastAPI Main Application Entry Point.
 """
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -17,12 +18,27 @@ from app.api.auth import router as auth_router
 from app.api.audit import router as audit_router
 from app.api.learning import router as learning_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application startup/shutdown hooks.
+
+    SEC-02: refuse to start if the token-signing secret is missing or weak
+    (fail closed). The error message never contains the secret value.
+    """
+    settings.validate_security()
+    logger.info("Security configuration validated: signing secret present and strong.")
+    yield
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description=settings.PROJECT_FULL_NAME,
     version=settings.VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS configuration for web dashboard integration
@@ -152,5 +168,6 @@ async def unauthorized_page():
 
 if __name__ == "__main__":
     import uvicorn
+    settings.validate_security()
     logger.info("Starting ETHIO-AI Defender development server...")
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

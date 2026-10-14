@@ -91,12 +91,11 @@
                             <input type="password" id="reg-password" class="form-control" placeholder="Minimum 8 characters" required minlength="8" autocomplete="new-password">
                         </div>
                         <div class="form-group">
-                            <label for="reg-role" class="form-label" data-i18n="lbl_desired_role">Role</label>
-                            <select id="reg-role" class="form-control">
-                                <option value="STUDENT">Student / Apprentice (Educational & Reports)</option>
-                                <option value="ANALYST">Analyst (Uploads & Threat Triage)</option>
-                                <option value="ADMIN">Administrator (Full Access & User Management)</option>
-                            </select>
+                            <label class="form-label" data-i18n="lbl_desired_role">Account Type</label>
+                            <p class="form-help" style="margin: 0; color: var(--text-secondary, #94a3b8); font-size: 0.85rem;">
+                                New accounts are created as <strong>Student / Apprentice</strong>.
+                                Analyst and Administrator access is assigned by an administrator.
+                            </p>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn-primary btn-block" id="btn-submit-register" data-i18n="btn_register_submit">Create Account</button>
@@ -176,6 +175,12 @@
                         <button class="nav-link" data-tab="ai-analyst" id="nav-ai-analyst">
                             <span class="nav-icon">🤖</span>
                             <span class="nav-label" id="nav-label-ai" data-i18n="nav_ai">AI Security Analyst</span>
+                        </button>
+                    </li>
+                    <li id="nav-item-reports" style="display: none;">
+                        <button class="nav-link" data-tab="reports" id="nav-reports">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-label" id="nav-label-reports" data-i18n="nav_reports">Security Reports</span>
                         </button>
                     </li>
                     <li id="nav-item-learning" style="display: none;">
@@ -1457,62 +1462,166 @@
                 <!-- 3. PE ANALYSIS VIEW                            -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-pe-analysis">
-                    <div class="view-header">
-                        <h2 data-i18n="pe_analysis_title">Portable Executable (PE) Structure</h2>
-                        <p data-i18n="pe_analysis_subtitle">DOS headers, NT optional headers, entry point, and memory section mapping.</p>
-                    </div>
-
-                    <!-- Header Details Grid -->
-                    <div class="grid-2col">
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">📄</span>
-                                <h3 class="card-heading" data-i18n="lbl_pe_headers">PE Header Parameters</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="key-val-row"><span class="kv-key">Subsystem:</span><span class="kv-val" id="pe-subsystem">Windows GUI</span></div>
-                                <div class="key-val-row"><span class="kv-key">Entry Point (RVA):</span><span class="kv-val font-mono" id="pe-entry-point">0x00001000</span></div>
-                                <div class="key-val-row"><span class="kv-key">Image Base:</span><span class="kv-val font-mono" id="pe-image-base">0x00400000</span></div>
-                                <div class="key-val-row"><span class="kv-key">Compilation Time:</span><span class="kv-val" id="pe-compile-time">N/A</span></div>
-                            </div>
+                    <div class="view-header flex-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                        <div>
+                            <h2 data-i18n="pe_analysis_title">Portable Executable (PE) Structure</h2>
+                            <p data-i18n="pe_analysis_subtitle">DOS headers, NT optional headers, entry point, section alignment, Shannon entropy & memory mapping.</p>
                         </div>
-
-                        <div class="soc-card">
-                            <div class="card-head">
-                                <span class="card-icon">📊</span>
-                                <h3 class="card-heading" data-i18n="lbl_entropy_summary">Entropy & Anomaly Summary</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="key-val-row"><span class="kv-key">File Entropy:</span><span class="kv-val font-mono" id="pe-file-entropy">0.0 / 8.0</span></div>
-                                <div class="key-val-row"><span class="kv-key">Entropy Classification:</span><span class="kv-val" id="pe-entropy-class"><span class="badge badge-low">NORMAL</span></span></div>
-                                <div class="key-val-row"><span class="kv-key">W+X Sections:</span><span class="kv-val" id="pe-wx-status">None Detected</span></div>
-                                <div class="key-val-row"><span class="kv-key">Total Sections:</span><span class="kv-val" id="pe-total-sections">0</span></div>
-                            </div>
+                        <div id="pe-header-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn-secondary" onclick="openStringsSelectAnalysisModal()" style="display: flex; align-items: center; gap: 6px;">
+                                <span>📂</span> Select Analysis
+                            </button>
+                            <button class="btn-secondary" onclick="exportPeSectionsCSV()" style="display: flex; align-items: center; gap: 6px;" title="Export sections as CSV">
+                                <span>📥</span> Export CSV
+                            </button>
+                            <button class="btn-secondary" onclick="reloadCurrentPeAnalysis()" title="Reload PE data" style="display: flex; align-items: center; gap: 6px;">
+                                <span>🔄</span> Refresh
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Sections Table -->
-                    <div class="soc-card" style="margin-top: 20px;">
-                        <div class="card-head">
-                            <span class="card-icon">📑</span>
-                            <h3 class="card-heading" data-i18n="lbl_sections_table">PE Memory Sections Table</h3>
+                    <!-- No Analysis Selected State -->
+                    <div id="pe-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-cyan);">
+                        <div style="font-size: 48px; margin-bottom: 14px;">🧩</div>
+                        <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
+                        <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
+                            Please select a completed analysis from history or upload a binary to inspect its Portable Executable headers, memory sections, and Shannon entropy.
+                        </p>
+                        <button class="btn-primary" onclick="openStringsSelectAnalysisModal()" style="font-size: 13px; padding: 8px 18px;">
+                            📂 Select Analysis
+                        </button>
+                    </div>
+
+                    <!-- Active Analysis Content Container -->
+                    <div id="pe-content-container">
+                        <!-- Active Analysis Info Ribbon -->
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid var(--accent-cyan); background: rgba(11, 25, 44, 0.65);">
+                            <div class="flex-between" style="flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <span style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="pe-active-filename">-</span>
+                                        <span class="badge badge-rule" id="pe-active-analysis-id" style="cursor: pointer;" onclick="copyActiveAnalysisId()" title="Click to copy Analysis ID">ANL-UNKNOWN</span>
+                                        <span class="badge badge-low" id="pe-active-status-badge">COMPLETED</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); flex-wrap: wrap;">
+                                        <span>SHA-256: <code id="pe-active-sha256" style="color: var(--accent-cyan);">-</code></span>
+                                        <button class="btn-icon-copy" onclick="copyActiveSha256()" title="Copy SHA-256">📋</button>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total Memory Sections</div>
+                                        <div style="font-size: 22px; font-weight: 800; color: var(--accent-cyan);" id="pe-active-sections-counter">0</div>
+                                    </div>
+                                    <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="openStringsSelectAnalysisModal()" title="Switch to another analysis record">
+                                        ⇄ Change Analysis
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Contextual Cross-View Navigation Bar -->
+                            <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap;">
+                                <span style="font-size: 11px; color: var(--text-muted); align-self: center; margin-right: 4px;">Jump to:</span>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('analysis')" style="font-size: 11px; padding: 3px 8px;">📊 Overview</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('imports')" style="font-size: 11px; padding: 3px 8px;">⚙️ Imports & APIs</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('strings')" style="font-size: 11px; padding: 3px 8px;">🔤 String Intelligence</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('indicators')" style="font-size: 11px; padding: 3px 8px;">🎯 Threat IOCs</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('ai-analyst')" style="font-size: 11px; padding: 3px 8px;">🤖 AI Analyst</button>
+                                <button class="btn-secondary" onclick="exportCurrentReport('html')" style="font-size: 11px; padding: 3px 8px;">📄 Forensic Report</button>
+                            </div>
                         </div>
-                        <div class="card-body no-padding table-scroll">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Virtual Address</th>
-                                        <th>Virtual Size</th>
-                                        <th>Raw Size</th>
-                                        <th>Entropy</th>
-                                        <th>Permissions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="pe-sections-tbody">
-                                    <tr><td colspan="6" class="empty-table-msg" data-i18n="msg_no_sections">No sections data available.</td></tr>
-                                </tbody>
-                            </table>
+
+                        <!-- 4 Summary Metric Cards -->
+                        <div class="grid-4col" style="margin-bottom: 20px;">
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Architecture</span>
+                                <span class="metric-val" id="pe-metric-arch">x86_64</span>
+                                <span class="metric-sub" id="pe-metric-subsystem">Windows GUI</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Entry Point</span>
+                                <span class="metric-val font-mono" style="font-size: 16px; color: var(--accent-cyan);" id="pe-metric-entrypoint">0x00001000</span>
+                                <span class="metric-sub" id="pe-metric-imagebase">Image Base: 0x00400000</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">File Shannon Entropy</span>
+                                <span class="metric-val" id="pe-metric-entropy">0.00</span>
+                                <span class="metric-sub" id="pe-metric-entropy-class">Normal Dispersion</span>
+                            </div>
+                            <div class="soc-metric-card" id="pe-metric-wx-card">
+                                <span class="metric-label">W+X / RWX Sections</span>
+                                <span class="metric-val" id="pe-metric-wx-val" style="color: #10b981;">0 Detected</span>
+                                <span class="metric-sub" id="pe-metric-wx-sub">Safe Memory Permissions</span>
+                            </div>
+                        </div>
+
+                        <!-- Header Details & Entropy Grids -->
+                        <div class="grid-2col" style="margin-bottom: 20px;">
+                            <!-- Card 1: PE Header Parameters -->
+                            <div class="soc-card">
+                                <div class="card-head">
+                                    <span class="card-icon">📄</span>
+                                    <h3 class="card-heading" data-i18n="lbl_pe_headers">PE Header Parameters</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="key-val-row"><span class="kv-key">Target Subsystem:</span><span class="kv-val" id="pe-subsystem">Windows GUI</span></div>
+                                    <div class="key-val-row"><span class="kv-key">Entry Point (RVA):</span><span class="kv-val font-mono" id="pe-entry-point" style="color: var(--accent-cyan);">0x00001000</span></div>
+                                    <div class="key-val-row"><span class="kv-key">Image Base Address:</span><span class="kv-val font-mono" id="pe-image-base" style="color: var(--accent-cyan);">0x00400000</span></div>
+                                    <div class="key-val-row"><span class="kv-key">Compilation Timestamp:</span><span class="kv-val" id="pe-compile-time">N/A</span></div>
+                                    <div class="key-val-row"><span class="kv-key">Binary File Format:</span><span class="kv-val font-mono" id="pe-file-format">PE32+ (Executable)</span></div>
+                                    <div class="key-val-row"><span class="kv-key">Total Section Count:</span><span class="kv-val" id="pe-total-sections">0 sections</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: Entropy & Packing Anomaly Summary -->
+                            <div class="soc-card">
+                                <div class="card-head">
+                                    <span class="card-icon">📊</span>
+                                    <h3 class="card-heading" data-i18n="lbl_entropy_summary">Entropy & Anomaly Summary</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="key-val-row"><span class="kv-key">Average Section Entropy:</span><span class="kv-val font-mono" id="pe-file-entropy">0.00 / 8.00</span></div>
+                                    <div class="key-val-row"><span class="kv-key">Maximum Section Entropy:</span><span class="kv-val font-mono" id="pe-max-entropy">0.00 / 8.00</span></div>
+                                    <div class="key-val-row"><span class="kv-key">Entropy Risk Tier:</span><span class="kv-val" id="pe-entropy-class"><span class="badge badge-low">NORMAL</span></span></div>
+                                    <div class="key-val-row"><span class="kv-key">Dangerous RWX Memory:</span><span class="kv-val" id="pe-wx-status"><span class="badge badge-low">Clean</span></span></div>
+                                    <div style="margin-top: 10px; padding: 8px 10px; background: rgba(0, 240, 255, 0.03); border-radius: 4px; border: 1px solid rgba(0, 240, 255, 0.15); font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+                                        <em>Entropy measures byte randomness (0.0–8.0). Values &gt; 7.0 indicate high randomness, typical of compressed or packed sections. Entropy is an indicator, not definitive proof of malice.</em>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sections Table -->
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">📑</span>
+                                    <h3 class="card-heading" data-i18n="lbl_sections_table">PE Memory Sections Table</h3>
+                                </div>
+                                <span class="badge badge-rule" id="pe-sections-count-badge">0 SECTIONS</span>
+                            </div>
+                            <div class="card-body" style="padding: 0;">
+                                <div class="table-responsive">
+                                    <table class="soc-table" id="pe-sections-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40px; text-align: center;">#</th>
+                                                <th>Section Name</th>
+                                                <th>Virtual Address</th>
+                                                <th>Virtual Size</th>
+                                                <th>Raw Size</th>
+                                                <th style="width: 160px;">Shannon Entropy</th>
+                                                <th>Permissions</th>
+                                                <th>Status</th>
+                                                <th style="width: 90px; text-align: center;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pe-sections-tbody">
+                                            <tr><td colspan="9" class="empty-state-cell">Loading PE sections...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -1521,31 +1630,227 @@
                 <!-- 4. IMPORTS VIEW                                -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-imports">
-                    <div class="view-header">
-                        <div class="flex-between">
-                            <div>
-                                <h2 data-i18n="imports_title">Windows API & DLL Imports</h2>
-                                <p data-i18n="imports_subtitle">Categorized external functions and technical capability primitives.</p>
-                            </div>
-                            <input type="text" id="imports-search-input" class="search-input" placeholder="Search API or DLL..." onkeyup="filterImportsTable()">
+                    <div class="view-header flex-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                        <div>
+                            <h2 data-i18n="imports_title">Windows API & DLL Imports</h2>
+                            <p data-i18n="imports_subtitle">Categorized external functions, execution primitives, process injection APIs, and capability mapping.</p>
+                        </div>
+                        <div id="imports-header-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn-secondary" onclick="openStringsSelectAnalysisModal()" style="display: flex; align-items: center; gap: 6px;">
+                                <span>📂</span> Select Analysis
+                            </button>
+                            <button class="btn-secondary" onclick="exportImportsCSV()" style="display: flex; align-items: center; gap: 6px;" title="Export imports as CSV">
+                                <span>📥</span> Export CSV
+                            </button>
+                            <button class="btn-secondary" onclick="exportImportsJSON()" style="display: flex; align-items: center; gap: 6px;" title="Export imports as JSON">
+                                <span>📥</span> Export JSON
+                            </button>
+                            <button class="btn-secondary" onclick="reloadCurrentImports()" title="Reload imports data" style="display: flex; align-items: center; gap: 6px;">
+                                <span>🔄</span> Refresh
+                            </button>
                         </div>
                     </div>
 
-                    <div class="soc-card">
-                        <div class="card-body no-padding table-scroll">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>DLL Name</th>
-                                        <th>API Function</th>
-                                        <th>Category</th>
-                                        <th>Risk Relevance</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="imports-tbody">
-                                    <tr><td colspan="4" class="empty-table-msg" data-i18n="msg_no_imports">No imported APIs detected.</td></tr>
-                                </tbody>
-                            </table>
+                    <!-- No Analysis Selected State -->
+                    <div id="imports-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-cyan);">
+                        <div style="font-size: 48px; margin-bottom: 14px;">🔌</div>
+                        <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
+                        <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
+                            Please select a completed analysis from history or upload a binary to inspect its imported Windows APIs and DLL capabilities.
+                        </p>
+                        <button class="btn-primary" onclick="openStringsSelectAnalysisModal()" style="font-size: 13px; padding: 8px 18px;">
+                            📂 Select Analysis
+                        </button>
+                    </div>
+
+                    <!-- Active Analysis Content Container -->
+                    <div id="imports-content-container">
+                        <!-- Active Analysis Info Ribbon -->
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid var(--accent-cyan); background: rgba(11, 25, 44, 0.65);">
+                            <div class="flex-between" style="flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <span style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="imports-active-filename">-</span>
+                                        <span class="badge badge-rule" id="imports-active-analysis-id" style="cursor: pointer;" onclick="copyActiveAnalysisId()" title="Click to copy Analysis ID">ANL-UNKNOWN</span>
+                                        <span class="badge badge-low" id="imports-active-status-badge">COMPLETED</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); flex-wrap: wrap;">
+                                        <span>SHA-256: <code id="imports-active-sha256" style="color: var(--accent-cyan);">-</code></span>
+                                        <button class="btn-icon-copy" onclick="copyActiveSha256()" title="Copy SHA-256">📋</button>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total Imported Functions</div>
+                                        <div style="font-size: 22px; font-weight: 800; color: var(--accent-cyan);" id="imports-active-total-counter">0</div>
+                                    </div>
+                                    <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="openStringsSelectAnalysisModal()" title="Switch to another analysis record">
+                                        ⇄ Change Analysis
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Contextual Cross-View Navigation Bar -->
+                            <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap;">
+                                <span style="font-size: 11px; color: var(--text-muted); align-self: center; margin-right: 4px;">Jump to:</span>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('analysis')" style="font-size: 11px; padding: 3px 8px;">📊 Overview</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('pe-analysis')" style="font-size: 11px; padding: 3px 8px;">🧩 PE Structure</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('strings')" style="font-size: 11px; padding: 3px 8px;">🔤 String Intelligence</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('indicators')" style="font-size: 11px; padding: 3px 8px;">🎯 Threat IOCs</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('ai-analyst')" style="font-size: 11px; padding: 3px 8px;">🤖 AI Analyst</button>
+                                <button class="btn-secondary" onclick="exportCurrentReport('html')" style="font-size: 11px; padding: 3px 8px;">📄 Forensic Report</button>
+                            </div>
+                        </div>
+
+                        <!-- 4 Summary Metric Cards -->
+                        <div class="grid-4col" style="margin-bottom: 20px;">
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Total Imported APIs</span>
+                                <span class="metric-val" id="stat-imports-total">0</span>
+                                <span class="metric-sub" id="stat-imports-sub">Resolved Functions</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Unique DLL Modules</span>
+                                <span class="metric-val" style="color: #38bdf8;" id="stat-imports-dlls">0</span>
+                                <span class="metric-sub">Dynamic Libraries</span>
+                            </div>
+                            <div class="soc-metric-card" style="border-top: 2px solid var(--sev-high);">
+                                <span class="metric-label">Suspicious APIs</span>
+                                <span class="metric-val" style="color: var(--sev-high);" id="stat-imports-suspicious">0</span>
+                                <span class="metric-sub" id="stat-imports-susp-sub">Process / Injection / Network</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Capability Categories</span>
+                                <span class="metric-val" style="color: #a855f7;" id="stat-imports-categories">0</span>
+                                <span class="metric-sub">Functional Primitives</span>
+                            </div>
+                        </div>
+
+                        <!-- Category Quick-Triage Chips -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+                            <button class="btn-secondary quick-import-pill active" id="import-pill-all" onclick="applyImportQuickFilter('ALL')" style="font-size: 11px; padding: 4px 10px;">
+                                🔌 All APIs (<span id="pill-import-all-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-import-pill" id="import-pill-susp" onclick="applyImportQuickFilter('SUSPICIOUS')" style="font-size: 11px; padding: 4px 10px; color: var(--sev-high); border-color: rgba(239, 68, 68, 0.3);">
+                                ⚠️ Suspicious APIs (<span id="pill-import-susp-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-import-pill" id="import-pill-proc" onclick="applyImportQuickFilter('PROCESS')" style="font-size: 11px; padding: 4px 10px; color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);">
+                                🔄 Process & Thread (<span id="pill-import-proc-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-import-pill" id="import-pill-mem" onclick="applyImportQuickFilter('MEMORY')" style="font-size: 11px; padding: 4px 10px; color: #ec4899; border-color: rgba(236, 72, 153, 0.3);">
+                                🧠 Memory & Injection (<span id="pill-import-mem-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-import-pill" id="import-pill-net" onclick="applyImportQuickFilter('NETWORK')" style="font-size: 11px; padding: 4px 10px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">
+                                🌐 Network & Web (<span id="pill-import-net-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-import-pill" id="import-pill-reg" onclick="applyImportQuickFilter('REGISTRY')" style="font-size: 11px; padding: 4px 10px; color: #a855f7; border-color: rgba(168, 85, 247, 0.3);">
+                                🗝️ Registry & Config (<span id="pill-import-reg-count">0</span>)
+                            </button>
+                            <button class="btn-secondary quick-import-pill" id="import-pill-crypto" onclick="applyImportQuickFilter('CRYPTO')" style="font-size: 11px; padding: 4px 10px; color: #fb923c; border-color: rgba(251, 146, 60, 0.3);">
+                                🔐 Crypto & Security (<span id="pill-import-crypto-count">0</span>)
+                            </button>
+                        </div>
+
+                        <!-- Search, Filter & Action Toolbar -->
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 16px;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; flex: 1; min-width: 280px;">
+                                    <div style="position: relative; min-width: 220px; flex: 1;">
+                                        <input type="text" id="imports-search-input" class="soc-input" placeholder="Search function (e.g. VirtualAlloc, WinExec) or DLL..." oninput="onImportsFilterChange()" style="width: 100%; padding-left: 32px; font-size: 12px;">
+                                        <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px;">🔍</span>
+                                    </div>
+                                    <select id="imports-filter-category" class="soc-select" onchange="onImportsFilterChange()" style="font-size: 12px; padding: 6px 10px;">
+                                        <option value="ALL">All Categories</option>
+                                        <option value="PROCESS">Process / Execution</option>
+                                        <option value="MEMORY">Memory / Injection</option>
+                                        <option value="NETWORK">Network / C2</option>
+                                        <option value="REGISTRY">Registry / Persistence</option>
+                                        <option value="CRYPTO">Cryptography</option>
+                                        <option value="FILE_SYSTEM">File System</option>
+                                        <option value="ANTI_ANALYSIS">Anti-Analysis / Debug</option>
+                                        <option value="GENERAL">General System APIs</option>
+                                    </select>
+                                    <select id="imports-filter-risk" class="soc-select" onchange="onImportsFilterChange()" style="font-size: 12px; padding: 6px 10px;">
+                                        <option value="ALL">All Risk Levels</option>
+                                        <option value="CRITICAL">Critical</option>
+                                        <option value="HIGH">High</option>
+                                        <option value="MEDIUM">Medium</option>
+                                        <option value="LOW">Low</option>
+                                    </select>
+                                    <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="imports-filter-suspicious" onchange="onImportsFilterChange()" style="cursor: pointer;">
+                                        <span style="font-weight: 600; color: var(--sev-high);">⚠️ Suspicious only</span>
+                                    </label>
+                                    <button class="btn-secondary" onclick="clearImportsFilters()" style="font-size: 11px; padding: 4px 8px;" title="Reset filters">
+                                        ✕ Clear
+                                    </button>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <select id="imports-sort-by" class="soc-select" onchange="onImportsFilterChange()" style="font-size: 12px; padding: 6px 10px;">
+                                        <option value="risk">Sort: Risk Relevance First</option>
+                                        <option value="api_asc">Sort: API Function (A-Z)</option>
+                                        <option value="dll_asc">Sort: DLL Module (A-Z)</option>
+                                        <option value="category">Sort: Category (A-Z)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Imports Table -->
+                        <div class="soc-card" style="margin-bottom: 20px;">
+                            <div class="card-head flex-between" style="padding-bottom: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🔌</span>
+                                    <h3 class="card-heading">Imported API Functions</h3>
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-muted);" id="imports-filter-match-count">
+                                    Showing 0 functions
+                                </div>
+                            </div>
+                            <div class="card-body" style="padding: 0;">
+                                <div class="table-responsive">
+                                    <table class="soc-table" id="imports-main-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40px; text-align: center;">#</th>
+                                                <th style="width: 90px;">Risk Level</th>
+                                                <th>API Function Name</th>
+                                                <th style="width: 140px;">DLL Module</th>
+                                                <th style="width: 130px;">Capability Category</th>
+                                                <th>Forensic Capability Note</th>
+                                                <th style="width: 80px; text-align: center;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="imports-tbody">
+                                            <tr><td colspan="7" class="empty-state-cell">Loading imported APIs...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Pagination Controls Bar -->
+                            <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-secondary);">
+                                    <span id="imports-pagination-summary">Showing 0-0 of 0 functions</span>
+                                    <span style="color: var(--border-color);">|</span>
+                                    <label style="display: flex; align-items: center; gap: 6px;">
+                                        <span>Per page:</span>
+                                        <select id="imports-page-size-select" class="soc-select" onchange="onImportsPageSizeChange()" style="font-size: 11px; padding: 2px 6px;">
+                                            <option value="25">25</option>
+                                            <option value="50" selected>50</option>
+                                            <option value="100">100</option>
+                                            <option value="250">250</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;" id="imports-pagination-controls">
+                                    <button class="btn-secondary" id="btn-imports-first" onclick="goToImportsPage(1)" style="font-size: 11px; padding: 4px 8px;" title="First Page">⏮️</button>
+                                    <button class="btn-secondary" id="btn-imports-prev" onclick="goToImportsPage(state.importsCurrentPage - 1)" style="font-size: 11px; padding: 4px 8px;" title="Previous Page">◀️</button>
+                                    <div id="imports-page-numbers" style="display: flex; gap: 4px;"></div>
+                                    <button class="btn-secondary" id="btn-imports-next" onclick="goToImportsPage(state.importsCurrentPage + 1)" style="font-size: 11px; padding: 4px 8px;" title="Next Page">▶️</button>
+                                    <button class="btn-secondary" id="btn-imports-last" onclick="goToImportsPage(state.importsTotalPages)" style="font-size: 11px; padding: 4px 8px;" title="Last Page">⏭️</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -1843,71 +2148,185 @@
                 <!-- 6. INDICATORS VIEW                             -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-indicators">
-                    <div class="view-header">
+                    <div class="view-header flex-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
                         <div>
                             <h2 data-i18n="indicators_title">Correlated Suspicious Indicators & IOCs</h2>
-                            <p data-i18n="indicators_subtitle">Multi-feature heuristic correlations evaluated across headers, sections, YARA rules, and APIs.</p>
+                            <p data-i18n="indicators_subtitle">Multi-feature heuristic correlations evaluated across headers, sections, YARA rules, APIs, and Threat Intelligence.</p>
+                        </div>
+                        <div id="indicators-header-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn-secondary" onclick="openStringsSelectAnalysisModal()" style="display: flex; align-items: center; gap: 6px;">
+                                <span>📂</span> Select Analysis
+                            </button>
+                            <button class="btn-secondary" onclick="copyAllIOCs()" style="display: flex; align-items: center; gap: 6px;" title="Copy all IOCs to clipboard">
+                                <span>📋</span> Copy All IOCs
+                            </button>
+                            <button class="btn-secondary" onclick="exportIOCsAsCSV()" style="display: flex; align-items: center; gap: 6px;" title="Export IOCs as CSV">
+                                <span>📥</span> Export CSV
+                            </button>
+                            <button class="btn-secondary" onclick="reloadCurrentIndicators()" title="Reload indicators and IOCs" style="display: flex; align-items: center; gap: 6px;">
+                                <span>🔄</span> Refresh
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Suspicious Indicators Cards -->
-                    <div id="indicators-container" class="indicators-grid" style="margin-bottom: 24px;">
+                    <!-- No Analysis Selected State -->
+                    <div id="indicators-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-cyan);">
+                        <div style="font-size: 48px; margin-bottom: 14px;">🎯</div>
+                        <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
+                        <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
+                            Please select a completed analysis from history or upload a binary to inspect its correlated suspicious indicators, extracted IOCs, and YARA signatures.
+                        </p>
+                        <button class="btn-primary" onclick="openStringsSelectAnalysisModal()" style="font-size: 13px; padding: 8px 18px;">
+                            📂 Select Analysis
+                        </button>
+                    </div>
+
+                    <!-- Active Analysis Content Container -->
+                    <div id="indicators-content-container">
+                        <!-- Active Analysis Info Ribbon -->
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid var(--accent-cyan); background: rgba(11, 25, 44, 0.65);">
+                            <div class="flex-between" style="flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <span style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="indicators-active-filename">-</span>
+                                        <span class="badge badge-rule" id="indicators-active-analysis-id" style="cursor: pointer;" onclick="copyActiveAnalysisId()" title="Click to copy Analysis ID">ANL-UNKNOWN</span>
+                                        <span class="badge badge-low" id="indicators-active-status-badge">COMPLETED</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); flex-wrap: wrap;">
+                                        <span>SHA-256: <code id="indicators-active-sha256" style="color: var(--accent-cyan);">-</code></span>
+                                        <button class="btn-icon-copy" onclick="copyActiveSha256()" title="Copy SHA-256">📋</button>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total Extracted IOCs</div>
+                                        <div style="font-size: 22px; font-weight: 800; color: var(--accent-cyan);" id="indicators-active-total-counter">0</div>
+                                    </div>
+                                    <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="openStringsSelectAnalysisModal()" title="Switch to another analysis record">
+                                        ⇄ Change Analysis
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Contextual Cross-View Navigation Bar -->
+                            <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap;">
+                                <span style="font-size: 11px; color: var(--text-muted); align-self: center; margin-right: 4px;">Jump to:</span>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('analysis')" style="font-size: 11px; padding: 3px 8px;">📊 Overview</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('pe-analysis')" style="font-size: 11px; padding: 3px 8px;">🧩 PE Structure</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('imports')" style="font-size: 11px; padding: 3px 8px;">⚙️ Imports & APIs</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('strings')" style="font-size: 11px; padding: 3px 8px;">🔤 String Intelligence</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('ai-analyst')" style="font-size: 11px; padding: 3px 8px;">🤖 AI Analyst</button>
+                                <button class="btn-secondary" onclick="exportCurrentReport('html')" style="font-size: 11px; padding: 3px 8px;">📄 Forensic Report</button>
+                            </div>
+                        </div>
+
+                        <!-- 4 Summary Metric Cards -->
+                        <div class="grid-4col" style="margin-bottom: 20px;">
+                            <div class="soc-metric-card" style="border-top: 2px solid var(--sev-high);">
+                                <span class="metric-label">Suspicious Indicators</span>
+                                <span class="metric-val" style="color: var(--sev-high);" id="stat-ioc-indicators-count">0</span>
+                                <span class="metric-sub">Multi-stage Correlations</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Extracted IOC Artifacts</span>
+                                <span class="metric-val" id="stat-ioc-total-count">0</span>
+                                <span class="metric-sub">Threat Evidence Records</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">Network Endpoints</span>
+                                <span class="metric-val" style="color: #38bdf8;" id="stat-ioc-network-count">0</span>
+                                <span class="metric-sub">URLs, IPs & Domains</span>
+                            </div>
+                            <div class="soc-metric-card">
+                                <span class="metric-label">YARA Signatures</span>
+                                <span class="metric-val" style="color: #10b981;" id="stat-ioc-yara-count">0</span>
+                                <span class="metric-sub">Rule Pattern Matches</span>
+                            </div>
+                        </div>
+
+                        <!-- Correlated Suspicious Indicators Cards Container -->
+                        <div class="soc-card" style="margin-bottom: 24px;">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">⚠️</span>
+                                    <h3 class="card-heading">Correlated Threat Indicators</h3>
+                                </div>
+                                <span class="badge badge-high" id="indicators-count-badge">0 DETECTED</span>
+                            </div>
+                            <div class="card-body">
+                                <div id="indicators-container" class="indicators-grid">
+                                    <div class="empty-table-msg" data-i18n="msg_no_indicators">
+                                        No suspicious indicators detected for the current sample.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Extracted IOCs Table Card -->
+                        <div class="soc-card" style="margin-bottom: 24px;">
+                            <div class="card-head flex-between" style="flex-wrap: wrap; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🎯</span>
+                                    <h3 class="card-heading">Extracted Indicators of Compromise (IOCs)</h3>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <input type="text" id="iocs-search-input" class="soc-input" placeholder="Search IOC value or type..." oninput="onIocsFilterChange()" style="font-size: 11px; padding: 4px 8px; width: 180px;">
+                                    <select id="iocs-filter-type" class="soc-select" onchange="onIocsFilterChange()" style="font-size: 11px; padding: 4px 8px;">
+                                        <option value="ALL">All IOC Types</option>
+                                        <option value="URL">URLs</option>
+                                        <option value="IP">IP Addresses</option>
+                                        <option value="DOMAIN">Domains</option>
+                                        <option value="REGISTRY">Registry Keys</option>
+                                        <option value="HASH">Hashes</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="card-body" style="padding: 0;">
+                                <div class="table-responsive">
+                                    <table class="soc-table" id="iocs-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 40px; text-align: center;">#</th>
+                                                <th style="width: 130px;">IOC Type</th>
+                                                <th>Extracted Value / Artifact</th>
+                                                <th style="width: 140px;">Extraction Source</th>
+                                                <th style="width: 90px;">Confidence</th>
+                                                <th style="width: 160px; text-align: center;">Threat Intel Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="iocs-tbody">
+                                            <tr><td colspan="6" class="empty-state-cell">No IOCs extracted yet.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- YARA Rule Detection Signatures Card -->
                         <div class="soc-card">
-                            <div class="card-body empty-table-msg" data-i18n="msg_no_indicators">
-                                No suspicious indicators detected for the current sample.
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🛡️</span>
+                                    <h3 class="card-heading">YARA Rule Matches</h3>
+                                </div>
+                                <span id="yara-status-badge" class="badge badge-low">YARA Engine: Active</span>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Extracted IOCs Table -->
-                    <div class="soc-card" style="margin-bottom: 24px;">
-                        <div class="card-head">
-                            <span class="card-icon">🎯</span>
-                            <h3 class="card-heading">Extracted Indicators of Compromise (IOCs)</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="soc-table">
-                                    <thead>
-                                        <tr>
-                                            <th>IOC Type</th>
-                                            <th>Extracted Value / Artifact</th>
-                                            <th>Extraction Source</th>
-                                            <th>Confidence</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="iocs-tbody">
-                                        <tr><td colspan="4" class="empty-state-cell">No IOCs extracted yet.</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- YARA Rule Detection Signatures -->
-                    <div class="soc-card">
-                        <div class="card-head" style="justify-content: space-between;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">🛡️</span>
-                                <h3 class="card-heading">YARA Rule Matches</h3>
-                            </div>
-                            <span id="yara-status-badge" class="badge badge-low">YARA Engine: Initializing</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="soc-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Rule Name</th>
-                                            <th>Namespace</th>
-                                            <th>Tags</th>
-                                            <th>Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="yara-matches-tbody">
-                                        <tr><td colspan="4" class="empty-state-cell">No YARA signatures matched.</td></tr>
-                                    </tbody>
-                                </table>
+                            <div class="card-body" style="padding: 0;">
+                                <div class="table-responsive">
+                                    <table class="soc-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 200px;">Rule Name</th>
+                                                <th style="width: 120px;">Namespace</th>
+                                                <th>Description / Matched Strings</th>
+                                                <th style="width: 120px;">Rule Tags</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="yara-matches-tbody">
+                                            <tr><td colspan="4" class="empty-state-cell">No YARA signatures matched. Clean static scan.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1917,69 +2336,192 @@
                 <!-- 7. AI ANALYST VIEW                             -->
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-ai-analyst">
-                    <div class="view-header">
+                    <div class="view-header flex-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
                         <div>
                             <h2 data-i18n="ai_analyst_title">AI Security Analyst Assessment & MITRE ATT&CK</h2>
-                            <p data-i18n="ai_analyst_subtitle">Grounded interpretation of deterministic static findings with MITRE technique alignment.</p>
+                            <p data-i18n="ai_analyst_subtitle">Grounded interpretation of deterministic static findings with MITRE ATT&CK alignment and interactive consultation.</p>
+                        </div>
+                        <div id="ai-header-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn-secondary" onclick="openStringsSelectAnalysisModal()" style="display: flex; align-items: center; gap: 6px;">
+                                <span>📂</span> Select Analysis
+                            </button>
+                            <button class="btn-secondary" onclick="reloadCurrentAiAssessment()" title="Reload AI assessment" style="display: flex; align-items: center; gap: 6px;">
+                                <span>🔄</span> Refresh
+                            </button>
                         </div>
                     </div>
 
-                    <div class="soc-card ai-report-card" style="margin-bottom: 24px;">
-                        <div class="card-head">
-                            <div class="flex-between" style="width: 100%;">
+                    <!-- No Analysis Selected State -->
+                    <div id="ai-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-cyan);">
+                        <div style="font-size: 48px; margin-bottom: 14px;">🤖</div>
+                        <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
+                        <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
+                            Please select a completed analysis from history or upload a binary to view its grounded AI security assessment and MITRE ATT&CK technique mapping.
+                        </p>
+                        <button class="btn-primary" onclick="openStringsSelectAnalysisModal()" style="font-size: 13px; padding: 8px 18px;">
+                            📂 Select Analysis
+                        </button>
+                    </div>
+
+                    <!-- Active Analysis Content Container -->
+                    <div id="ai-content-container">
+                        <!-- Active Analysis Info Ribbon -->
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid var(--accent-cyan); background: rgba(11, 25, 44, 0.65);">
+                            <div class="flex-between" style="flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <span style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="ai-active-filename">-</span>
+                                        <span class="badge badge-rule" id="ai-active-analysis-id" style="cursor: pointer;" onclick="copyActiveAnalysisId()" title="Click to copy Analysis ID">ANL-UNKNOWN</span>
+                                        <span class="badge badge-low" id="ai-active-status-badge">COMPLETED</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); flex-wrap: wrap;">
+                                        <span>SHA-256: <code id="ai-active-sha256" style="color: var(--accent-cyan);">-</code></span>
+                                        <button class="btn-icon-copy" onclick="copyActiveSha256()" title="Copy SHA-256">📋</button>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Heuristic Risk Score</div>
+                                        <div style="font-size: 22px; font-weight: 800; color: var(--accent-cyan);" id="ai-active-risk-score">0 / 100</div>
+                                    </div>
+                                    <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="openStringsSelectAnalysisModal()" title="Switch to another analysis record">
+                                        ⇄ Change Analysis
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Contextual Cross-View Navigation Bar -->
+                            <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap;">
+                                <span style="font-size: 11px; color: var(--text-muted); align-self: center; margin-right: 4px;">Jump to:</span>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('analysis')" style="font-size: 11px; padding: 3px 8px;">📊 Overview</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('pe-analysis')" style="font-size: 11px; padding: 3px 8px;">🧩 PE Structure</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('imports')" style="font-size: 11px; padding: 3px 8px;">⚙️ Imports & APIs</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('strings')" style="font-size: 11px; padding: 3px 8px;">🔤 String Intelligence</button>
+                                <button class="btn-secondary" onclick="navigateToAnalysisTab('indicators')" style="font-size: 11px; padding: 3px 8px;">🎯 Threat IOCs</button>
+                                <button class="btn-secondary" onclick="exportCurrentReport('html')" style="font-size: 11px; padding: 3px 8px;">📄 Forensic Report</button>
+                            </div>
+                        </div>
+
+                        <!-- Executive Security Summary Card -->
+                        <div class="soc-card ai-report-card" style="margin-bottom: 24px;">
+                            <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="card-icon">🤖</span>
                                     <h3 class="card-heading" data-i18n="ai_summary_head">Executive Security Summary</h3>
                                 </div>
                                 <span class="badge badge-rule" id="ai-confidence-badge">Confidence: HIGH</span>
                             </div>
-                        </div>
-                        <div class="card-body">
-                            <p class="ai-summary-text" id="ai-summary-display">No AI assessment generated yet.</p>
+                            <div class="card-body">
+                                <p class="ai-summary-text" id="ai-summary-display" style="font-size: 14px; line-height: 1.6; color: var(--text-primary); margin-bottom: 20px;">
+                                    No AI assessment generated yet.
+                                </p>
 
-                            <h4 class="sub-head" data-i18n="ai_key_findings">Key Findings</h4>
-                            <ul class="clean-bullet-list" id="ai-key-findings-list">
-                                <li>Heuristic score awaiting binary analysis.</li>
-                            </ul>
+                                <div class="grid-3col" style="gap: 16px; margin-bottom: 20px;">
+                                    <!-- Key Findings -->
+                                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
+                                        <h4 class="sub-head" style="color: var(--accent-cyan); margin-bottom: 10px; font-size: 13px;" data-i18n="ai_key_findings">🔍 Key Technical Findings</h4>
+                                        <ul class="clean-bullet-list" id="ai-key-findings-list" style="margin: 0; padding-left: 16px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                                            <li>Heuristic score awaiting binary analysis.</li>
+                                        </ul>
+                                    </div>
 
-                            <h4 class="sub-head" data-i18n="ai_benign_explanations">Possible Benign Explanations</h4>
-                            <ul class="clean-bullet-list" id="ai-benign-list">
-                                <li>Legitimate administrative and diagnostic tools use similar system APIs.</li>
-                            </ul>
+                                    <!-- Possible Benign Explanations -->
+                                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
+                                        <h4 class="sub-head" style="color: #10b981; margin-bottom: 10px; font-size: 13px;" data-i18n="ai_benign_explanations">⚖️ Possible Benign Explanations</h4>
+                                        <ul class="clean-bullet-list" id="ai-benign-list" style="margin: 0; padding-left: 16px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                                            <li>Legitimate administrative and diagnostic tools use similar system APIs.</li>
+                                        </ul>
+                                    </div>
 
-                            <h4 class="sub-head" data-i18n="ai_recommended_investigation">Recommended Investigation Steps</h4>
-                            <ul class="clean-bullet-list" id="ai-recommendations-list">
-                                <li>Execute in an isolated sandbox environment to observe dynamic runtime activity.</li>
-                            </ul>
+                                    <!-- Recommended Investigation Steps -->
+                                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px;">
+                                        <h4 class="sub-head" style="color: #f59e0b; margin-bottom: 10px; font-size: 13px;" data-i18n="ai_recommended_investigation">🛡️ Recommended Next Steps</h4>
+                                        <ul class="clean-bullet-list" id="ai-recommendations-list" style="margin: 0; padding-left: 16px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                                            <li>Execute in an isolated sandbox environment to observe dynamic runtime activity.</li>
+                                        </ul>
+                                    </div>
+                                </div>
 
-                            <div class="disclaimer-callout" id="ai-limitations-display">
-                                <strong>Scientific Disclaimer:</strong> Static analysis evaluates structural binary capabilities without live code execution. Heuristic scores do not constitute confirmed malicious intent.
+                                <div class="disclaimer-callout" id="ai-limitations-display" style="padding: 10px 14px; background: rgba(0, 240, 255, 0.03); border-left: 3px solid var(--accent-cyan); font-size: 11px; color: var(--text-muted);">
+                                    <strong>Scientific Disclaimer:</strong> Static analysis evaluates structural binary capabilities without live code execution. Heuristic scores and AI interpretations do not constitute confirmed malicious intent.
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- MITRE ATT&CK Technique Mapping -->
-                    <div class="soc-card">
-                        <div class="card-head">
-                            <span class="card-icon">🗺️</span>
-                            <h3 class="card-heading">MITRE ATT&CK Technique Alignment (Heuristic)</h3>
+                        <!-- Interactive Grounded AI Security Consultation -->
+                        <div class="soc-card" style="margin-bottom: 24px;">
+                            <div class="card-head">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">💬</span>
+                                    <h3 class="card-heading">Grounded AI Security Consultation</h3>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+                                    Ask specific questions regarding this binary's static indicators, capability risks, or defense mitigations:
+                                </p>
+
+                                <!-- Prompt Chips -->
+                                <div style="display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;">
+                                    <button class="btn-secondary" onclick="executeAiAnalystQuestion('Explain why this binary received its specific heuristic risk score.')" style="font-size: 11px; padding: 4px 8px;">
+                                        ❓ Explain Risk Score
+                                    </button>
+                                    <button class="btn-secondary" onclick="executeAiAnalystQuestion('Evaluate the observed process injection and memory allocation APIs.')" style="font-size: 11px; padding: 4px 8px;">
+                                        🧠 Evaluate Injection APIs
+                                    </button>
+                                    <button class="btn-secondary" onclick="executeAiAnalystQuestion('What specific dynamic sandbox monitoring steps are recommended for this sample?')" style="font-size: 11px; padding: 4px 8px;">
+                                        🧪 Recommended Sandbox Tests
+                                    </button>
+                                    <button class="btn-secondary" onclick="executeAiAnalystQuestion('Analyze persistence and autostart capabilities found in the strings.')" style="font-size: 11px; padding: 4px 8px;">
+                                        🗝️ Check Persistence Vectors
+                                    </button>
+                                </div>
+
+                                <!-- Input Bar -->
+                                <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                                    <input type="text" id="ai-analyst-view-input" class="soc-input" placeholder="Type a technical investigation question about this binary..." onkeydown="if(event.key==='Enter') executeAiAnalystViewQuestion();" style="flex: 1; font-size: 12px;">
+                                    <button class="btn-primary" id="btn-ai-analyst-ask" onclick="executeAiAnalystViewQuestion()" style="font-size: 12px; padding: 6px 16px; white-space: nowrap;">
+                                        🤖 Ask AI
+                                    </button>
+                                </div>
+
+                                <!-- AI Response Box -->
+                                <div id="ai-analyst-view-response-box" style="display: none; background: rgba(0, 240, 255, 0.04); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 6px; padding: 14px;">
+                                    <div class="flex-between" style="margin-bottom: 8px;">
+                                        <strong style="color: var(--accent-cyan); font-size: 12px;">AI Security Analyst Response:</strong>
+                                        <button class="btn-secondary" onclick="copyAiAnalystResponse()" style="font-size: 10px; padding: 2px 6px;">📋 Copy</button>
+                                    </div>
+                                    <div id="ai-analyst-view-response-text" style="font-size: 13px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap;"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="soc-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Technique ID</th>
-                                            <th>Technique Name</th>
-                                            <th>Tactical Category</th>
-                                            <th>Correlated Technical Evidence</th>
-                                            <th>Confidence</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="mitre-attack-tbody">
-                                        <tr><td colspan="5" class="empty-state-cell">No MITRE ATT&CK alignments identified.</td></tr>
-                                    </tbody>
-                                </table>
+
+                        <!-- MITRE ATT&CK Technique Alignment Table -->
+                        <div class="soc-card">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🗺️</span>
+                                    <h3 class="card-heading">MITRE ATT&CK Technique Alignment (Heuristic)</h3>
+                                </div>
+                                <span class="badge badge-rule" id="ai-mitre-count-badge">0 TECHNIQUES</span>
+                            </div>
+                            <div class="card-body" style="padding: 0;">
+                                <div class="table-responsive">
+                                    <table class="soc-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 120px;">Technique ID</th>
+                                                <th>Technique Name</th>
+                                                <th style="width: 150px;">Tactical Category</th>
+                                                <th>Correlated Technical Evidence</th>
+                                                <th style="width: 100px;">Confidence</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mitre-attack-tbody">
+                                            <tr><td colspan="5" class="empty-state-cell">No MITRE ATT&CK alignments identified.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2515,6 +3057,136 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================== -->
+                <!-- 8.5. SECURITY REPORTS VIEW                     -->
+                <!-- ============================================== -->
+                <section class="view-panel" id="view-reports">
+                    <div class="view-header flex-between" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                        <div>
+                            <h2 data-i18n="reports_title">Security Reports & Forensic Export</h2>
+                            <p data-i18n="reports_subtitle">Generate, configure institutional context, preview, and export comprehensive defensive static malware analysis reports.</p>
+                        </div>
+                        <div id="reports-header-actions" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <button class="btn-secondary" onclick="openStringsSelectAnalysisModal()" style="display: flex; align-items: center; gap: 6px;">
+                                <span>📂</span> Select Analysis
+                            </button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('html')" style="display: flex; align-items: center; gap: 6px;" title="Export as standalone HTML">
+                                <span>🌐</span> HTML Report
+                            </button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('json')" style="display: flex; align-items: center; gap: 6px;" title="Export as structured JSON">
+                                <span>📥</span> JSON (SIEM)
+                            </button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('text')" style="display: flex; align-items: center; gap: 6px;" title="Export as plain text">
+                                <span>📝</span> Plain Text
+                            </button>
+                            <button class="btn-primary" onclick="window.print()" style="display: flex; align-items: center; gap: 6px;" title="Print or Save as PDF">
+                                <span>🖨️</span> Print / PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- No Analysis Selected State -->
+                    <div id="reports-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-cyan);">
+                        <div style="font-size: 48px; margin-bottom: 14px;">📄</div>
+                        <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
+                        <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
+                            Please select a completed analysis from history or upload a binary to customize and export its formal security analysis report.
+                        </p>
+                        <button class="btn-primary" onclick="openStringsSelectAnalysisModal()" style="font-size: 13px; padding: 8px 18px;">
+                            📂 Select Analysis
+                        </button>
+                    </div>
+
+                    <!-- Active Analysis Content Container -->
+                    <div id="reports-content-container">
+                        <!-- Active Analysis Info Ribbon -->
+                        <div class="soc-card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid var(--accent-cyan); background: rgba(11, 25, 44, 0.65);">
+                            <div class="flex-between" style="flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <span style="font-size: 16px; font-weight: 700; color: var(--text-primary);" id="reports-active-filename">-</span>
+                                        <span class="badge badge-rule" id="reports-active-analysis-id" style="cursor: pointer;" onclick="copyActiveAnalysisId()" title="Click to copy Analysis ID">ANL-UNKNOWN</span>
+                                        <span class="badge badge-low" id="reports-active-status-badge">COMPLETED</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); flex-wrap: wrap;">
+                                        <span>SHA-256: <code id="reports-active-sha256" style="color: var(--accent-cyan);">-</code></span>
+                                        <button class="btn-icon-copy" onclick="copyActiveSha256()" title="Copy SHA-256">📋</button>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Threat Posture</div>
+                                        <div style="font-size: 20px; font-weight: 800; color: var(--accent-cyan);" id="reports-active-risk-tier">LOW (0/100)</div>
+                                    </div>
+                                    <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="openStringsSelectAnalysisModal()" title="Switch to another analysis record">
+                                        ⇄ Change Analysis
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Institutional Case Metadata Configuration Card -->
+                        <div class="soc-card" style="margin-bottom: 24px;">
+                            <div class="card-head">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🏛️</span>
+                                    <h3 class="card-heading">Institutional & Case Information (Custom Report Header)</h3>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">
+                                    Customize institutional attribution for Ethiopian universities, banks, telecommunications, government agencies, or private SOCs:
+                                </p>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px;">Organization / Institution:</label>
+                                        <input type="text" id="report-meta-org" class="soc-input" value="Cyber Defense Security Operations Center" style="width: 100%; font-size: 12px;" oninput="updateReportLivePreview()">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px;">Department / Unit:</label>
+                                        <input type="text" id="report-meta-dept" class="soc-input" value="Static Reverse-Engineering & Triage Lab" style="width: 100%; font-size: 12px;" oninput="updateReportLivePreview()">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px;">Case ID / Incident Ref:</label>
+                                        <input type="text" id="report-meta-case-id" class="soc-input" value="CASE-2026-001" style="width: 100%; font-size: 12px;" oninput="updateReportLivePreview()">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px;">Lead Security Analyst:</label>
+                                        <input type="text" id="report-meta-analyst" class="soc-input" value="Lead Malware Investigator" style="width: 100%; font-size: 12px;" oninput="updateReportLivePreview()">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px;">Report Classification:</label>
+                                        <select id="report-meta-class" class="soc-select" style="width: 100%; font-size: 12px; padding: 6px 10px;" onchange="updateReportLivePreview()">
+                                            <option value="RESTRICTED // ETHIO-SOC" selected>RESTRICTED // ETHIO-SOC</option>
+                                            <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+                                            <option value="INTERNAL USE ONLY">INTERNAL USE ONLY</option>
+                                            <option value="TLP:AMBER">TLP:AMBER</option>
+                                            <option value="TLP:CLEAR">TLP:CLEAR</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Report Forensic Preview Frame -->
+                        <div class="soc-card" style="margin-bottom: 24px;">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">👁️</span>
+                                    <h3 class="card-heading">Live Forensic Report Document Preview</h3>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn-secondary" onclick="exportCurrentReport('html')" style="font-size: 11px; padding: 4px 8px;">Download HTML</button>
+                                    <button class="btn-secondary" onclick="exportCurrentReport('json')" style="font-size: 11px; padding: 4px 8px;">Download JSON</button>
+                                </div>
+                            </div>
+                            <div class="card-body" style="padding: 24px; background: #0b1120; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;" id="report-preview-frame">
+                                <!-- Dynamically populated by JS renderReportLivePreview() -->
                             </div>
                         </div>
                     </div>
@@ -3446,6 +4118,177 @@
                         <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
                             <button class="btn-secondary" onclick="loadSystemHealth()">🔄 Recheck Subsystems</button>
                             <button class="btn-primary" onclick="closeSystemHealthModal()">Done</button>
+                        </div>
+                    </div>
+                <!-- Modal 6: PE Memory Section Forensic Inspection Modal -->
+                <div id="pe-section-detail-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closePeSectionDetailModal();">
+                    <div class="soc-card" style="max-width: 680px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
+                        <div class="card-head flex-between">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">📑</span>
+                                <h3 class="card-heading">PE Section Forensic Inspection</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closePeSectionDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px; max-height: 75vh; overflow-y: auto;">
+                            <!-- Header Grid -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Section Name</div>
+                                    <div style="font-size: 14px; font-weight: 800; font-family: var(--font-mono); color: var(--accent-cyan); margin-top: 4px;" id="pe-modal-sec-name">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Virtual Address</div>
+                                    <div style="font-size: 13px; font-family: var(--font-mono); color: var(--text-primary); margin-top: 4px;" id="pe-modal-sec-va">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Virtual Size</div>
+                                    <div style="font-size: 13px; color: var(--text-primary); margin-top: 4px;" id="pe-modal-sec-vsize">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Raw Size on Disk</div>
+                                    <div style="font-size: 13px; color: var(--text-primary); margin-top: 4px;" id="pe-modal-sec-rawsize">-</div>
+                                </div>
+                            </div>
+
+                            <!-- Entropy Meter Box -->
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
+                                <div class="flex-between" style="margin-bottom: 6px;">
+                                    <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Shannon Entropy:</span>
+                                    <span id="pe-modal-sec-entropy-badge" class="badge badge-low">0.00 / 8.00</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin-bottom: 6px;">
+                                    <div id="pe-modal-sec-entropy-bar" style="width: 0%; height: 100%; background: var(--accent-cyan); transition: width 0.3s ease;"></div>
+                                </div>
+                                <div id="pe-modal-sec-entropy-explanation" style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">-</div>
+                            </div>
+
+                            <!-- Permissions and Characteristics -->
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
+                                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Memory Permissions & Characteristics:</div>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;" id="pe-modal-sec-perms-tags"></div>
+                                <div id="pe-modal-sec-flags" style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-cyan);">-</div>
+                            </div>
+
+                            <!-- RWX Anomaly Warning Box -->
+                            <div id="pe-modal-sec-rwx-warning" style="display: none; background: rgba(239, 68, 68, 0.08); border-left: 3px solid var(--sev-crit); padding: 10px 14px; border-radius: 4px;">
+                                <strong style="color: var(--sev-crit); font-size: 12px;">⚠️ Critical Security Warning: Executable & Writable (W+X / RWX) Memory</strong>
+                                <p style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
+                                    This memory section is flagged with both write and execute permissions. Legitimate compiled binaries rarely produce RWX sections due to Data Execution Prevention (DEP/NX). RWX memory strongly indicates packed payloads, self-modifying code, or dynamic in-memory decryptor stubs.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
+                            <button class="btn-secondary" onclick="copyPeSectionDetails()">📋 Copy Section Details</button>
+                            <button class="btn-primary" onclick="closePeSectionDetailModal()">Close</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal 7: Imported Windows API Capability Inspection Modal -->
+                <div id="import-api-detail-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeImportApiDetailModal();">
+                    <div class="soc-card" style="max-width: 680px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
+                        <div class="card-head flex-between">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">🔌</span>
+                                <h3 class="card-heading">Windows API Forensic Inspection</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closeImportApiDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px; max-height: 75vh; overflow-y: auto;">
+                            <!-- Header Grid -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">API Function</div>
+                                    <div style="font-size: 14px; font-weight: 800; font-family: var(--font-mono); color: var(--accent-cyan); margin-top: 4px;" id="import-modal-api-name">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">DLL Module</div>
+                                    <div style="font-size: 13px; font-family: var(--font-mono); color: var(--text-primary); margin-top: 4px;" id="import-modal-dll-name">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Capability Category</div>
+                                    <div style="font-size: 13px; font-weight: 700; color: #a855f7; margin-top: 4px;" id="import-modal-category">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Risk Relevance</div>
+                                    <div style="margin-top: 4px;" id="import-modal-risk-badge">-</div>
+                                </div>
+                            </div>
+
+                            <!-- Technical Capability Explanation -->
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
+                                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Forensic Capability Analysis:</div>
+                                <div id="import-modal-desc" style="font-size: 13px; color: var(--text-primary); line-height: 1.5;">-</div>
+                            </div>
+
+                            <!-- Grounded Ask AI for this specific API -->
+                            <div style="border-top: 1px solid var(--border-subtle); padding-top: 12px;">
+                                <div class="flex-between" style="margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span>🤖</span>
+                                        <span style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase;">Ask AI Analyst About This API</span>
+                                    </div>
+                                    <button class="btn-secondary" onclick="askAiAboutCurrentApi()" style="font-size: 10px; padding: 2px 8px;">Explain Risk</button>
+                                </div>
+                                <div id="import-modal-ai-response" style="display: none; background: rgba(0, 240, 255, 0.04); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 6px; padding: 10px; font-size: 12px; color: var(--text-primary); line-height: 1.5; white-space: pre-wrap;"></div>
+                            </div>
+                        </div>
+                        <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
+                            <button class="btn-secondary" onclick="copyImportApiName()">📋 Copy API Name</button>
+                            <button class="btn-primary" onclick="closeImportApiDetailModal()">Close</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal 8: Live External Threat Intelligence Lookup Modal -->
+                <div id="threat-intel-lookup-modal" class="modal-backdrop" style="display: none;" onclick="if(event.target===this) closeThreatIntelLookupModal();">
+                    <div class="soc-card" style="max-width: 650px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
+                        <div class="card-head flex-between">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="card-icon">🌐</span>
+                                <h3 class="card-heading">Threat Intelligence Indicator Lookup</h3>
+                            </div>
+                            <button class="btn-secondary" onclick="closeThreatIntelLookupModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
+                        </div>
+                        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px; max-height: 75vh; overflow-y: auto;">
+                            <!-- Indicator Banner -->
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px;">
+                                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Evaluated Indicator Artifact:</div>
+                                <div style="font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--accent-cyan); word-break: break-all; margin-top: 4px;" id="threat-intel-modal-indicator">-</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Type: <span id="threat-intel-modal-type" style="color: var(--text-primary); font-weight: 600;">-</span></div>
+                            </div>
+
+                            <!-- Provider Status & Reputation -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Provider</div>
+                                    <div style="font-size: 12px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="threat-intel-modal-provider">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Reputation Status</div>
+                                    <div style="margin-top: 4px;" id="threat-intel-modal-rep-badge">-</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 10px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Malicious Detections</div>
+                                    <div style="font-size: 14px; font-weight: 800; color: var(--sev-crit); margin-top: 4px;" id="threat-intel-modal-malicious">0</div>
+                                </div>
+                            </div>
+
+                            <!-- Message & Instructions Box -->
+                            <div id="threat-intel-modal-message-box" style="background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 6px; padding: 12px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                                -
+                            </div>
+
+                            <!-- Raw Details Output (if available) -->
+                            <div id="threat-intel-modal-details-container" style="display: none;">
+                                <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Telemetry Attributes:</div>
+                                <pre id="threat-intel-modal-details-json" style="background: var(--bg-darkest, #0b1120); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--accent-cyan); overflow-x: auto; max-height: 180px; margin: 0;"></pre>
+                            </div>
+                        </div>
+                        <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
+                            <button class="btn-secondary" onclick="copyThreatIntelIndicator()">📋 Copy Indicator</button>
+                            <button class="btn-primary" onclick="closeThreatIntelLookupModal()">Close</button>
                         </div>
                     </div>
                 </div>

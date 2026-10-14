@@ -172,6 +172,59 @@ class RiskFactorRead(RiskFactorCreate):
 
 
 # ----------------------------------------------------
+# 6b. Ghidra Headless Reverse-Engineering Schemas
+# ----------------------------------------------------
+class GhidraFunctionCreate(BaseModel):
+    name: str = Field(..., max_length=255)
+    address: Optional[str] = Field(None, max_length=32)
+    size: int = 0
+    is_thunk: bool = False
+    calling_convention: Optional[str] = Field(None, max_length=64)
+
+
+class GhidraFunctionRead(GhidraFunctionCreate):
+    id: int
+    sample_id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GhidraRelationshipCreate(BaseModel):
+    from_address: Optional[str] = Field(None, max_length=32)
+    from_name: Optional[str] = Field(None, max_length=255)
+    to_address: Optional[str] = Field(None, max_length=32)
+    to_name: Optional[str] = Field(None, max_length=255)
+
+
+class GhidraRelationshipRead(GhidraRelationshipCreate):
+    id: int
+    sample_id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GhidraAnalysisCreate(BaseModel):
+    status: str = Field("SUCCESS", max_length=32)
+    message: Optional[str] = None
+    program_name: Optional[str] = Field(None, max_length=255)
+    language_id: Optional[str] = Field(None, max_length=64)
+    processor: Optional[str] = Field(None, max_length=64)
+    compiler: Optional[str] = Field(None, max_length=64)
+    image_base: Optional[str] = Field(None, max_length=32)
+    entry_point: Optional[str] = Field(None, max_length=32)
+    function_count: int = 0
+    import_count: int = 0
+    export_count: int = 0
+    string_count: int = 0
+    relationship_count: int = 0
+
+
+class GhidraAnalysisRead(GhidraAnalysisCreate):
+    id: int
+    sample_id: int
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ----------------------------------------------------
 # 7. Sample Schemas
 # ----------------------------------------------------
 class SampleBase(BaseModel):
@@ -228,5 +281,8 @@ class SampleWithRelations(SampleRead):
     yara_matches: List[YaraMatchRead] = []
     risk_factors: List[RiskFactorRead] = []
     analysis_results: Optional[AnalysisResultRead] = None
+    ghidra_analysis: Optional[GhidraAnalysisRead] = None
+    ghidra_functions: List[GhidraFunctionRead] = []
+    ghidra_relationships: List[GhidraRelationshipRead] = []
 
     model_config = ConfigDict(from_attributes=True)

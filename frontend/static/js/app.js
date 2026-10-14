@@ -876,7 +876,7 @@ function switchTab(tabId, updateUrl = true) {
         if (updateUrl && state.user && state.user.role === 'STUDENT') {
             updateUrlPath('/student/dashboard');
         }
-    } else if (['home', 'history', 'analysis', 'pe', 'imports', 'strings', 'indicators', 'ai-analyst'].includes(tabId)) {
+    } else if (['home', 'history', 'analysis', 'pe-analysis', 'imports', 'strings', 'indicators', 'ai-analyst', 'reports'].includes(tabId)) {
         if (updateUrl && state.user && state.user.role === 'ANALYST') {
             updateUrlPath(tabId === 'home' ? '/analyst/dashboard' : `/${tabId === 'ai-analyst' ? 'ai-analysis' : tabId}`);
         }
@@ -910,6 +910,16 @@ function switchTab(tabId, updateUrl = true) {
         switchStudentTab(state.studentCurrentSubtab || 'concepts');
     } else if (tabId === 'strings') {
         loadStringsIntelligence();
+    } else if (tabId === 'pe-analysis') {
+        loadPeStructureAnalysis();
+    } else if (tabId === 'imports') {
+        loadImportsIntelligence();
+    } else if (tabId === 'indicators') {
+        loadIndicatorsAndIocs();
+    } else if (tabId === 'ai-analyst') {
+        loadAiAnalystView();
+    } else if (tabId === 'reports') {
+        loadReportsView();
     }
 
     // Close sidebar on mobile
@@ -2350,8 +2360,27 @@ function renderStringsModalAnalysesList() {
 
 function selectAnalysisForStrings(analysisId) {
     closeStringsSelectAnalysisModal();
-    loadStringsIntelligence(analysisId, true);
-    showSocNotification('Analysis Selected', `Loaded static strings for ${analysisId}`, 'success');
+    state.activeAnalysisId = analysisId;
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set('analysis_id', analysisId);
+    window.history.replaceState(null, '', newUrl.toString());
+
+    if (state.currentTab === 'pe-analysis') {
+        loadPeStructureAnalysis(analysisId);
+    } else if (state.currentTab === 'imports') {
+        loadImportsIntelligence(analysisId, true);
+    } else if (state.currentTab === 'indicators') {
+        loadIndicatorsAndIocs(analysisId);
+    } else if (state.currentTab === 'ai-analyst') {
+        loadAiAnalystView(analysisId);
+    } else if (state.currentTab === 'reports') {
+        loadReportsView(analysisId);
+    } else if (state.currentTab === 'analysis') {
+        loadSpecificAnalysis(analysisId);
+    } else {
+        loadStringsIntelligence(analysisId, true);
+    }
+    showSocNotification('Analysis Selected', `Loaded analysis record ${analysisId}`, 'success');
 }
 
 /**
@@ -3592,11 +3621,12 @@ function renderNavigationForRole() {
     const navStrings = document.getElementById('nav-item-strings');
     const navIndicators = document.getElementById('nav-item-indicators');
     const navAI = document.getElementById('nav-item-ai');
+    const navReports = document.getElementById('nav-item-reports');
     const navLearning = document.getElementById('nav-item-learning');
     const navAdmin = document.getElementById('nav-item-admin');
 
     // Hide all navigation elements initially
-    [navHome, navHistory, navAnalysis, navPE, navImports, navStrings, navIndicators, navAI, navLearning, navAdmin].forEach(el => {
+    [navHome, navHistory, navAnalysis, navPE, navImports, navStrings, navIndicators, navAI, navReports, navLearning, navAdmin].forEach(el => {
         if (el) el.style.display = 'none';
     });
 
@@ -3608,39 +3638,12 @@ function renderNavigationForRole() {
     const isAm = state.currentLanguage === 'am';
 
     if (role === 'ADMIN') {
-        // ADMIN sees: Dashboard, Users, All Analyses, Threat Intelligence, Reports, Audit Logs, Settings
+        // ADMIN sees full SOC suite
         if (navAdmin) {
             navAdmin.style.display = 'block';
             const label = document.getElementById('nav-label-admin');
             if (label) label.textContent = isAm ? 'የአስተዳዳሪ ማዕከል' : 'Admin & Users';
         }
-        if (navHistory) {
-            navHistory.style.display = 'block';
-            const label = document.getElementById('nav-label-history');
-            if (label) label.textContent = isAm ? 'የትንተና ታሪክ' : 'Analysis History';
-        }
-        if (navAnalysis) {
-            navAnalysis.style.display = 'block';
-            const label = document.getElementById('nav-label-analysis');
-            if (label) label.textContent = isAm ? 'ትንተና እይታ' : 'Analysis Overview';
-        }
-        if (navIndicators) {
-            navIndicators.style.display = 'block';
-            const label = document.getElementById('nav-label-indicators');
-            if (label) label.textContent = isAm ? 'የስጋት መረጃዎች' : 'Threat Intelligence';
-        }
-        if (navAI) {
-            navAI.style.display = 'block';
-            const label = document.getElementById('nav-label-ai');
-            if (label) label.textContent = isAm ? 'የደህንነት ሪፖርቶች' : 'Security Reports';
-        }
-        if (navHome) {
-            navHome.style.display = 'block';
-            const label = document.getElementById('nav-label-home');
-            if (label) label.textContent = isAm ? 'አዲስ ትንተና' : 'New Analysis / Intake';
-        }
-    } else if (role === 'ANALYST') {
-        // ANALYST sees: Dashboard, New Analysis, Analysis History, Threat Intelligence, Reports, Learning Center
         if (navHome) {
             navHome.style.display = 'block';
             const label = document.getElementById('nav-label-home');
@@ -3667,6 +3670,51 @@ function renderNavigationForRole() {
         if (navAI) {
             navAI.style.display = 'block';
             const label = document.getElementById('nav-label-ai');
+            if (label) label.textContent = isAm ? 'አይአይ ተንታኝ' : 'AI Security Analyst';
+        }
+        if (navReports) {
+            navReports.style.display = 'block';
+            const label = document.getElementById('nav-label-reports');
+            if (label) label.textContent = isAm ? 'የደህንነት ሪፖርቶች' : 'Security Reports';
+        }
+        if (navLearning) {
+            navLearning.style.display = 'block';
+            const label = document.getElementById('nav-label-learning');
+            if (label) label.textContent = isAm ? 'የሳይበር ደህንነት ትምህርት' : 'Learning Center';
+        }
+    } else if (role === 'ANALYST') {
+        // ANALYST sees complete malware analysis suite
+        if (navHome) {
+            navHome.style.display = 'block';
+            const label = document.getElementById('nav-label-home');
+            if (label) label.textContent = isAm ? 'አዲስ ትንተና' : 'Dashboard / Intake';
+        }
+        if (navHistory) {
+            navHistory.style.display = 'block';
+            const label = document.getElementById('nav-label-history');
+            if (label) label.textContent = isAm ? 'የትንተና ታሪክ' : 'Analysis History';
+        }
+        if (navAnalysis) {
+            navAnalysis.style.display = 'block';
+            const label = document.getElementById('nav-label-analysis');
+            if (label) label.textContent = isAm ? 'ትንተና እይታ' : 'Analysis Overview';
+        }
+        if (navPE) navPE.style.display = 'block';
+        if (navImports) navImports.style.display = 'block';
+        if (navStrings) navStrings.style.display = 'block';
+        if (navIndicators) {
+            navIndicators.style.display = 'block';
+            const label = document.getElementById('nav-label-indicators');
+            if (label) label.textContent = isAm ? 'የስጋት መረጃዎች' : 'Threat Intelligence';
+        }
+        if (navAI) {
+            navAI.style.display = 'block';
+            const label = document.getElementById('nav-label-ai');
+            if (label) label.textContent = isAm ? 'አይአይ ተንታኝ' : 'AI Security Analyst';
+        }
+        if (navReports) {
+            navReports.style.display = 'block';
+            const label = document.getElementById('nav-label-reports');
             if (label) label.textContent = isAm ? 'የደህንነት ሪፖርቶች' : 'Security Reports';
         }
         if (navLearning) {
@@ -3675,7 +3723,7 @@ function renderNavigationForRole() {
             if (label) label.textContent = isAm ? 'የሳይበር ደህንነት ትምህርት' : 'Learning Center';
         }
     } else if (role === 'STUDENT') {
-        // STUDENT sees: Dashboard, Learning Center, Safe Analysis, My Reports
+        // STUDENT sees: Learning Center, Safe Sample Analysis, Analysis Overview, Reports, History
         if (navLearning) {
             navLearning.style.display = 'block';
             const label = document.getElementById('nav-label-learning');
@@ -3689,7 +3737,17 @@ function renderNavigationForRole() {
         if (navAnalysis) {
             navAnalysis.style.display = 'block';
             const label = document.getElementById('nav-label-analysis');
-            if (label) label.textContent = isAm ? 'የእኔ ሪፖርቶች' : 'My Reports';
+            if (label) label.textContent = isAm ? 'ትንተና እይታ' : 'Analysis Overview';
+        }
+        if (navPE) navPE.style.display = 'block';
+        if (navImports) navImports.style.display = 'block';
+        if (navStrings) navStrings.style.display = 'block';
+        if (navIndicators) navIndicators.style.display = 'block';
+        if (navAI) navAI.style.display = 'block';
+        if (navReports) {
+            navReports.style.display = 'block';
+            const label = document.getElementById('nav-label-reports');
+            if (label) label.textContent = isAm ? 'የደህንነት ሪፖርቶች' : 'Security Reports';
         }
         if (navHistory) {
             navHistory.style.display = 'block';
@@ -3849,7 +3907,6 @@ async function handleRegisterForm(event) {
     const username = document.getElementById('reg-username').value.trim();
     const email = document.getElementById('reg-email').value.trim();
     const password = document.getElementById('reg-password').value;
-    const role = document.getElementById('reg-role').value;
 
     if (errBox) errBox.style.display = 'none';
     clearConnectionError();
@@ -3858,7 +3915,7 @@ async function handleRegisterForm(event) {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password, role })
+            body: JSON.stringify({ username, email, password })
         });
         const data = await res.json();
 
@@ -4019,7 +4076,7 @@ function handleUrlRouting() {
             '/strings': 'strings',
             '/indicators': 'indicators',
             '/ai-analysis': 'ai-analyst',
-            '/reports': 'ai-analyst',
+            '/reports': 'reports',
             '/settings': role === 'ADMIN' ? 'admin' : null,
         };
 
@@ -4811,5 +4868,1270 @@ async function exportAuditLogsJson() {
         alert('Error exporting SIEM JSON: ' + err.message);
     }
 }
+
+/* ==========================================================================
+   MODULE WORKSPACES: PE, IMPORTS, INDICATORS, AI ANALYST, AND REPORTS
+   ========================================================================== */
+
+/**
+ * Universal Analysis ID Resolver
+ * Tier 1: Explicit parameter
+ * Tier 2: URL search param (?analysis_id=...)
+ * Tier 3: state.activeAnalysisId
+ * Tier 4: Most recent analysis from DB (/api/analyses?limit=1)
+ */
+async function resolveTargetAnalysisId(explicitId) {
+    if (explicitId) return explicitId;
+
+    const urlParam = new URLSearchParams(window.location.search).get('analysis_id');
+    if (urlParam) return urlParam;
+
+    if (state.activeAnalysisId) return state.activeAnalysisId;
+
+    try {
+        const res = await fetchWithAuth('/api/analyses?limit=1');
+        if (res && res.ok) {
+            const data = await res.json();
+            if (data && data.items && data.items.length > 0) {
+                return data.items[0].analysis_id;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not auto-resolve latest analysis ID:', e);
+    }
+
+    return null;
+}
+
+/* --------------------------------------------------------------------------
+   1. PORTABLE EXECUTABLE (PE) STRUCTURE WORKSPACE
+   -------------------------------------------------------------------------- */
+
+async function loadPeStructureAnalysis(analysisId) {
+    const banner = document.getElementById('pe-no-analysis-banner');
+    const container = document.getElementById('pe-content-container');
+    const tbody = document.getElementById('pe-sections-tbody');
+
+    const targetId = await resolveTargetAnalysisId(analysisId);
+    if (!targetId) {
+        if (banner) banner.style.display = 'block';
+        if (container) container.style.display = 'none';
+        return;
+    }
+
+    state.activeAnalysisId = targetId;
+    if (banner) banner.style.display = 'none';
+    if (container) container.style.display = 'block';
+    if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell">Loading PE headers and memory sections for ${escapeHtml(targetId)}...</td></tr>`;
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(targetId)}/pe`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch PE structure`);
+        const data = await res.json();
+
+        state.peCurrentData = data;
+        state.peCurrentSections = data.sections || [];
+
+        // Update Ribbon
+        const fnEl = document.getElementById('pe-active-filename');
+        if (fnEl) fnEl.textContent = data.filename || 'sample.exe';
+        const anlIdEl = document.getElementById('pe-active-analysis-id');
+        if (anlIdEl) anlIdEl.textContent = data.analysis_id || targetId;
+        const shaEl = document.getElementById('pe-active-sha256');
+        if (shaEl) shaEl.textContent = data.sha256 || 'N/A';
+        const cntEl = document.getElementById('pe-active-sections-counter');
+        if (cntEl) cntEl.textContent = data.section_count || state.peCurrentSections.length;
+
+        // Update Metrics Cards
+        const archEl = document.getElementById('pe-metric-arch');
+        if (archEl) archEl.textContent = data.architecture || 'x86_64';
+        const subsysEl = document.getElementById('pe-metric-subsystem');
+        if (subsysEl) subsysEl.textContent = data.subsystem || 'Windows GUI';
+        const epEl = document.getElementById('pe-metric-entrypoint');
+        if (epEl) epEl.textContent = data.entry_point || '0x00001000';
+        const ibEl = document.getElementById('pe-metric-imagebase');
+        if (ibEl) ibEl.textContent = `Image Base: ${data.image_base || '0x00400000'}`;
+
+        const entValEl = document.getElementById('pe-metric-entropy');
+        if (entValEl) entValEl.textContent = `${(data.file_entropy || 0).toFixed(2)} / 8.00`;
+        const entSubEl = document.getElementById('pe-metric-entropy-class');
+        if (entSubEl) entSubEl.textContent = data.entropy_classification || 'Normal';
+
+        const wxValEl = document.getElementById('pe-metric-wx-val');
+        const wxSubEl = document.getElementById('pe-metric-wx-sub');
+        const wxCard = document.getElementById('pe-metric-wx-card');
+        if (data.has_wx_sections) {
+            if (wxValEl) { wxValEl.textContent = 'DANGER: RWX Detected'; wxValEl.style.color = 'var(--sev-crit)'; }
+            if (wxSubEl) wxSubEl.textContent = 'Executable & Writable Memory';
+            if (wxCard) wxCard.style.borderTop = '2px solid var(--sev-crit)';
+        } else {
+            if (wxValEl) { wxValEl.textContent = '0 Detected'; wxValEl.style.color = '#10b981'; }
+            if (wxSubEl) wxSubEl.textContent = 'Safe Memory Permissions';
+            if (wxCard) wxCard.style.borderTop = 'none';
+        }
+
+        // Update Grids
+        const pSub = document.getElementById('pe-subsystem');
+        if (pSub) pSub.textContent = data.subsystem || 'Windows GUI';
+        const pEp = document.getElementById('pe-entry-point');
+        if (pEp) pEp.textContent = data.entry_point || '0x00001000';
+        const pIb = document.getElementById('pe-image-base');
+        if (pIb) pIb.textContent = data.image_base || '0x00400000';
+        const pCt = document.getElementById('pe-compile-time');
+        if (pCt) pCt.textContent = data.compilation_time ? data.compilation_time.replace('T', ' ').substring(0, 19) : 'N/A';
+        const pFmt = document.getElementById('pe-file-format');
+        if (pFmt) pFmt.textContent = `${data.file_type || 'PE32+'} (${data.architecture || 'x64'})`;
+        const pTot = document.getElementById('pe-total-sections');
+        if (pTot) pTot.textContent = `${data.section_count || state.peCurrentSections.length} sections`;
+
+        const pFe = document.getElementById('pe-file-entropy');
+        if (pFe) pFe.textContent = `${(data.file_entropy || 0).toFixed(2)} / 8.00`;
+        const pMe = document.getElementById('pe-max-entropy');
+        if (pMe) pMe.textContent = `${(data.max_section_entropy || 0).toFixed(2)} / 8.00`;
+        const pEc = document.getElementById('pe-entropy-class');
+        if (pEc) {
+            const isHigh = (data.file_entropy || 0) >= 7.0;
+            pEc.innerHTML = `<span class="badge ${isHigh ? 'badge-high' : 'badge-low'}">${escapeHtml(data.entropy_classification || 'NORMAL')}</span>`;
+        }
+        const pWx = document.getElementById('pe-wx-status');
+        if (pWx) {
+            pWx.innerHTML = data.has_wx_sections
+                ? `<span class="badge badge-crit">RWX Present</span>`
+                : `<span class="badge badge-low">Clean</span>`;
+        }
+
+        const badgeCount = document.getElementById('pe-sections-count-badge');
+        if (badgeCount) badgeCount.textContent = `${state.peCurrentSections.length} SECTIONS`;
+
+        renderPeSectionsTable(state.peCurrentSections);
+    } catch (err) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell" style="color: var(--sev-high);">Failed to load PE data: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+function renderPeSectionsTable(sections) {
+    const tbody = document.getElementById('pe-sections-tbody');
+    if (!tbody) return;
+
+    if (!sections || sections.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-state-cell">No memory sections found for this binary.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = sections.map((sec, idx) => {
+        const ent = sec.entropy || 0;
+        const entPct = Math.min(100, Math.max(0, (ent / 8.0) * 100));
+        let entColor = '#10b981';
+        if (ent >= 7.2) entColor = '#ef4444';
+        else if (ent >= 6.5) entColor = '#f59e0b';
+
+        let permBadges = '';
+        if (sec.is_rwx) {
+            permBadges = `<span class="badge badge-crit" title="Executable & Writable Memory">RWX</span>`;
+        } else {
+            const flags = [];
+            if (sec.is_executable) flags.push('<span class="badge badge-high" style="padding: 2px 4px; font-size: 10px;">X</span>');
+            if (sec.is_writable) flags.push('<span class="badge badge-mod" style="padding: 2px 4px; font-size: 10px;">W</span>');
+            if (sec.characteristics && sec.characteristics.includes('READ')) flags.push('<span class="badge badge-low" style="padding: 2px 4px; font-size: 10px;">R</span>');
+            permBadges = flags.join(' ') || '<span class="badge badge-rule">R</span>';
+        }
+
+        const statusBadge = (sec.entropy_status === 'SUSPICIOUS' || sec.is_rwx)
+            ? `<span class="badge badge-crit">SUSPICIOUS</span>`
+            : (sec.entropy_status === 'ELEVATED' ? `<span class="badge badge-high">ELEVATED</span>` : `<span class="badge badge-low">NORMAL</span>`);
+
+        return `
+            <tr>
+                <td style="text-align: center; color: var(--text-muted); font-size: 11px;">${idx + 1}</td>
+                <td><code style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan);">${escapeHtml(sec.name || '.sec')}</code></td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">${escapeHtml(sec.virtual_address || '0x00000000')}</td>
+                <td style="font-size: 11px;">${escapeHtml(sec.virtual_size_formatted || `${sec.virtual_size || 0} bytes`)}</td>
+                <td style="font-size: 11px;">${escapeHtml(sec.raw_size_formatted || `${sec.raw_size || 0} bytes`)}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-family: var(--font-mono); font-size: 11px; width: 34px;">${ent.toFixed(2)}</span>
+                        <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
+                            <div style="width: ${entPct}%; height: 100%; background: ${entColor}; border-radius: 3px;"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>${permBadges}</td>
+                <td>${statusBadge}</td>
+                <td style="text-align: center;">
+                    <button class="btn-secondary" onclick="openPeSectionDetailModal(${idx})" style="font-size: 11px; padding: 2px 8px;" title="Inspect section forensic details">
+                        🔍 Inspect
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openPeSectionDetailModal(idx) {
+    const sec = (state.peCurrentSections || [])[idx];
+    if (!sec) return;
+
+    state.activeInspectedSection = sec;
+    const modal = document.getElementById('pe-section-detail-modal');
+    if (!modal) return;
+
+    document.getElementById('pe-modal-sec-name').textContent = sec.name || '-';
+    document.getElementById('pe-modal-sec-va').textContent = sec.virtual_address || '0x00000000';
+    document.getElementById('pe-modal-sec-vsize').textContent = sec.virtual_size_formatted || `${sec.virtual_size} bytes`;
+    document.getElementById('pe-modal-sec-rawsize').textContent = sec.raw_size_formatted || `${sec.raw_size} bytes`;
+
+    const ent = sec.entropy || 0;
+    const badge = document.getElementById('pe-modal-sec-entropy-badge');
+    const bar = document.getElementById('pe-modal-sec-entropy-bar');
+    const expl = document.getElementById('pe-modal-sec-entropy-explanation');
+
+    if (badge) {
+        badge.textContent = `${ent.toFixed(2)} / 8.00 (${sec.entropy_status || 'NORMAL'})`;
+        badge.className = `badge ${ent >= 7.2 ? 'badge-crit' : (ent >= 6.5 ? 'badge-high' : 'badge-low')}`;
+    }
+    if (bar) {
+        bar.style.width = `${Math.min(100, Math.max(0, (ent / 8.0) * 100))}%`;
+        bar.style.background = ent >= 7.2 ? 'var(--sev-crit)' : (ent >= 6.5 ? '#f59e0b' : '#10b981');
+    }
+    if (expl) {
+        if (ent >= 7.2) {
+            expl.textContent = `High Shannon entropy (${ent.toFixed(2)}) indicates highly randomized byte frequency, typical of cryptographic payloads, compressed archives, or packed executables.`;
+        } else if (ent >= 6.5) {
+            expl.textContent = `Elevated Shannon entropy (${ent.toFixed(2)}) indicates mild compression or dense executable machine instructions.`;
+        } else {
+            expl.textContent = `Normal Shannon entropy (${ent.toFixed(2)}) corresponds to standard uncompressed PE structures and ASCII strings.`;
+        }
+    }
+
+    const tagsContainer = document.getElementById('pe-modal-sec-perms-tags');
+    if (tagsContainer) {
+        tagsContainer.innerHTML = `
+            <span class="badge ${sec.is_executable ? 'badge-high' : 'badge-rule'}">EXECUTE: ${sec.is_executable ? 'YES' : 'NO'}</span>
+            <span class="badge ${sec.is_writable ? 'badge-mod' : 'badge-rule'}">WRITE: ${sec.is_writable ? 'YES' : 'NO'}</span>
+            <span class="badge badge-low">READ: YES</span>
+        `;
+    }
+
+    const flagsEl = document.getElementById('pe-modal-sec-flags');
+    if (flagsEl) flagsEl.textContent = sec.characteristics || 'IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_EXECUTE';
+
+    const rwxWarn = document.getElementById('pe-modal-sec-rwx-warning');
+    if (rwxWarn) rwxWarn.style.display = sec.is_rwx ? 'block' : 'none';
+
+    modal.style.display = 'flex';
+}
+
+function closePeSectionDetailModal() {
+    const modal = document.getElementById('pe-section-detail-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function copyPeSectionDetails() {
+    if (!state.activeInspectedSection) return;
+    const s = state.activeInspectedSection;
+    const text = `Section: ${s.name}\nVirtual Address: ${s.virtual_address}\nVirtual Size: ${s.virtual_size}\nRaw Size: ${s.raw_size}\nEntropy: ${s.entropy}\nCharacteristics: ${s.characteristics}`;
+    navigator.clipboard.writeText(text);
+    showSocNotification('Copied', 'Section parameters copied to clipboard.', 'success');
+}
+
+function exportPeSectionsCSV() {
+    const sections = state.peCurrentSections || [];
+    if (sections.length === 0) {
+        alert('No sections data available to export.');
+        return;
+    }
+    let csv = 'Section_Name,Virtual_Address,Virtual_Size,Raw_Size,Entropy,Permissions,Status\n';
+    sections.forEach(s => {
+        csv += `"${s.name}","${s.virtual_address}","${s.virtual_size}","${s.raw_size}","${s.entropy}","${(s.characteristics || '').replace(/"/g, '""')}","${s.entropy_status || 'NORMAL'}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `PE_Sections_${state.activeAnalysisId || 'analysis'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function reloadCurrentPeAnalysis() {
+    if (state.activeAnalysisId) {
+        loadPeStructureAnalysis(state.activeAnalysisId);
+        showSocNotification('Refreshed', 'PE analysis structure reloaded.', 'success');
+    }
+}
+
+
+/* --------------------------------------------------------------------------
+   2. IMPORTS & WINDOWS APIS FORENSIC WORKSPACE
+   -------------------------------------------------------------------------- */
+
+async function loadImportsIntelligence(analysisId, resetFilters) {
+    const banner = document.getElementById('imports-no-analysis-banner');
+    const container = document.getElementById('imports-content-container');
+    const tbody = document.getElementById('imports-tbody');
+
+    const targetId = await resolveTargetAnalysisId(analysisId);
+    if (!targetId) {
+        if (banner) banner.style.display = 'block';
+        if (container) container.style.display = 'none';
+        return;
+    }
+
+    state.activeAnalysisId = targetId;
+    if (banner) banner.style.display = 'none';
+    if (container) container.style.display = 'block';
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell">Loading imported APIs for ${escapeHtml(targetId)}...</td></tr>`;
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(targetId)}/imports?limit=1000`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch imports`);
+        const data = await res.json();
+
+        state.activeImportsData = data;
+        state.importsAllItems = data.imports || [];
+
+        // Update Ribbon
+        const fnEl = document.getElementById('imports-active-filename');
+        if (fnEl) fnEl.textContent = data.filename || 'sample.exe';
+        const anlIdEl = document.getElementById('imports-active-analysis-id');
+        if (anlIdEl) anlIdEl.textContent = data.analysis_id || targetId;
+        const shaEl = document.getElementById('imports-active-sha256');
+        if (shaEl) shaEl.textContent = data.sha256 || 'N/A';
+        const totEl = document.getElementById('imports-active-total-counter');
+        if (totEl) totEl.textContent = data.total_imports || state.importsAllItems.length;
+
+        // Update Metrics Cards
+        const stats = data.statistics || {};
+        const stTot = document.getElementById('stat-imports-total');
+        if (stTot) stTot.textContent = stats.total_apis || state.importsAllItems.length;
+        const stDlls = document.getElementById('stat-imports-dlls');
+        if (stDlls) stDlls.textContent = stats.unique_dlls || 0;
+        const stSusp = document.getElementById('stat-imports-suspicious');
+        if (stSusp) stSusp.textContent = stats.suspicious_apis || 0;
+        const stCats = document.getElementById('stat-imports-categories');
+        if (stCats) stCats.textContent = Object.keys(stats.categories || {}).length;
+
+        // Update Category Quick Pills Counts
+        const catMap = stats.categories || {};
+        const pAll = document.getElementById('pill-import-all-count');
+        if (pAll) pAll.textContent = state.importsAllItems.length;
+        const pSusp = document.getElementById('pill-import-susp-count');
+        if (pSusp) pSusp.textContent = stats.suspicious_apis || 0;
+        const pProc = document.getElementById('pill-import-proc-count');
+        if (pProc) pProc.textContent = catMap['PROCESS'] || 0;
+        const pMem = document.getElementById('pill-import-mem-count');
+        if (pMem) pMem.textContent = catMap['MEMORY'] || 0;
+        const pNet = document.getElementById('pill-import-net-count');
+        if (pNet) pNet.textContent = catMap['NETWORK'] || 0;
+        const pReg = document.getElementById('pill-import-reg-count');
+        if (pReg) pReg.textContent = catMap['REGISTRY'] || 0;
+        const pCryp = document.getElementById('pill-import-crypto-count');
+        if (pCryp) pCryp.textContent = catMap['CRYPTO'] || 0;
+
+        if (resetFilters) {
+            clearImportsFilters(false);
+        } else {
+            filterAndRenderImports();
+        }
+    } catch (err) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell" style="color: var(--sev-high);">Failed to load imports: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+function applyImportQuickFilter(category) {
+    state.importsActiveQuickFilter = category;
+
+    // Update pill highlight
+    document.querySelectorAll('.quick-import-pill').forEach(btn => btn.classList.remove('active'));
+    const mapPill = {
+        'ALL': 'import-pill-all',
+        'SUSPICIOUS': 'import-pill-susp',
+        'PROCESS': 'import-pill-proc',
+        'MEMORY': 'import-pill-mem',
+        'NETWORK': 'import-pill-net',
+        'REGISTRY': 'import-pill-reg',
+        'CRYPTO': 'import-pill-crypto',
+    };
+    const pill = document.getElementById(mapPill[category] || 'import-pill-all');
+    if (pill) pill.classList.add('active');
+
+    const suspCheck = document.getElementById('imports-filter-suspicious');
+    const catSelect = document.getElementById('imports-filter-category');
+
+    if (category === 'SUSPICIOUS') {
+        if (suspCheck) suspCheck.checked = true;
+        if (catSelect) catSelect.value = 'ALL';
+    } else {
+        if (suspCheck) suspCheck.checked = false;
+        if (catSelect) catSelect.value = category;
+    }
+
+    state.importsCurrentPage = 1;
+    filterAndRenderImports();
+}
+
+function onImportsFilterChange() {
+    state.importsCurrentPage = 1;
+    filterAndRenderImports();
+}
+
+function clearImportsFilters(rerender = true) {
+    const sInput = document.getElementById('imports-search-input');
+    if (sInput) sInput.value = '';
+    const catSelect = document.getElementById('imports-filter-category');
+    if (catSelect) catSelect.value = 'ALL';
+    const riskSelect = document.getElementById('imports-filter-risk');
+    if (riskSelect) riskSelect.value = 'ALL';
+    const suspCheck = document.getElementById('imports-filter-suspicious');
+    if (suspCheck) suspCheck.checked = false;
+    const sortSelect = document.getElementById('imports-sort-by');
+    if (sortSelect) sortSelect.value = 'risk';
+
+    document.querySelectorAll('.quick-import-pill').forEach(btn => btn.classList.remove('active'));
+    const allPill = document.getElementById('import-pill-all');
+    if (allPill) allPill.classList.add('active');
+
+    state.importsCurrentPage = 1;
+    if (rerender) filterAndRenderImports();
+}
+
+function filterAndRenderImports() {
+    const all = state.importsAllItems || [];
+    const term = (document.getElementById('imports-search-input')?.value || '').toLowerCase().trim();
+    const cat = (document.getElementById('imports-filter-category')?.value || 'ALL').toUpperCase();
+    const risk = (document.getElementById('imports-filter-risk')?.value || 'ALL').toUpperCase();
+    const suspOnly = document.getElementById('imports-filter-suspicious')?.checked || false;
+    const sortBy = document.getElementById('imports-sort-by')?.value || 'risk';
+
+    let filtered = all.filter(item => {
+        if (suspOnly && !item.is_suspicious) return false;
+        if (cat !== 'ALL' && (item.category || '').toUpperCase() !== cat) return false;
+        if (risk !== 'ALL' && (item.risk_relevance || '').toUpperCase() !== risk) return false;
+        if (term) {
+            const apiMatch = (item.api || '').toLowerCase().includes(term);
+            const dllMatch = (item.dll || '').toLowerCase().includes(term);
+            const descMatch = (item.description || '').toLowerCase().includes(term);
+            if (!apiMatch && !dllMatch && !descMatch) return false;
+        }
+        return true;
+    });
+
+    // Sorting
+    const riskWeights = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
+    if (sortBy === 'risk') {
+        filtered.sort((a, b) => (riskWeights[(b.risk_relevance || 'LOW').toUpperCase()] || 0) - (riskWeights[(a.risk_relevance || 'LOW').toUpperCase()] || 0));
+    } else if (sortBy === 'api_asc') {
+        filtered.sort((a, b) => (a.api || '').localeCompare(b.api || ''));
+    } else if (sortBy === 'dll_asc') {
+        filtered.sort((a, b) => (a.dll || '').localeCompare(b.dll || ''));
+    } else if (sortBy === 'category') {
+        filtered.sort((a, b) => (a.category || '').localeCompare(b.category || ''));
+    }
+
+    state.importsFiltered = filtered;
+    state.importsPageSize = parseInt(document.getElementById('imports-page-size-select')?.value || '50', 10);
+    state.importsTotalPages = Math.max(1, Math.ceil(filtered.length / state.importsPageSize));
+    if (state.importsCurrentPage > state.importsTotalPages) state.importsCurrentPage = state.importsTotalPages;
+
+    const countLabel = document.getElementById('imports-filter-match-count');
+    if (countLabel) countLabel.textContent = `Showing ${filtered.length} of ${all.length} functions`;
+
+    renderImportsTableSlice();
+}
+
+function renderImportsTableSlice() {
+    const tbody = document.getElementById('imports-tbody');
+    if (!tbody) return;
+
+    const filtered = state.importsFiltered || [];
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state-cell">No imported APIs match your filter criteria.</td></tr>`;
+        updateImportsPaginationBar(0, 0, 0);
+        return;
+    }
+
+    const start = (state.importsCurrentPage - 1) * state.importsPageSize;
+    const end = Math.min(start + state.importsPageSize, filtered.length);
+    const slice = filtered.slice(start, end);
+
+    tbody.innerHTML = slice.map((imp, idx) => {
+        const globalIdx = start + idx + 1;
+        const risk = (imp.risk_relevance || 'LOW').toUpperCase();
+        const badgeClass = risk === 'CRITICAL' ? 'badge-crit' : (risk === 'HIGH' ? 'badge-high' : (risk === 'MEDIUM' ? 'badge-mod' : 'badge-low'));
+
+        return `
+            <tr>
+                <td style="text-align: center; color: var(--text-muted); font-size: 11px;">${globalIdx}</td>
+                <td><span class="badge ${badgeClass}">${risk}</span></td>
+                <td>
+                    <code style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan); cursor: pointer;" onclick="openImportApiDetailModal(${start + idx})" title="Click to inspect API capability">
+                        ${escapeHtml(imp.api || 'UnknownAPI')}
+                    </code>
+                </td>
+                <td><code style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);">${escapeHtml(imp.dll || 'KERNEL32.DLL')}</code></td>
+                <td><span style="font-size: 11px; font-weight: 600; color: #a855f7;">${escapeHtml(imp.category || 'GENERAL')}</span></td>
+                <td style="font-size: 11px; color: var(--text-secondary); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${escapeHtml(imp.description || `Windows API in category ${imp.category || 'GENERAL'}`)}
+                </td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button class="btn-icon-copy" onclick="navigator.clipboard.writeText('${escapeHtml(imp.api)}'); showSocNotification('Copied', 'API name copied', 'success');" title="Copy API Name">📋</button>
+                    <button class="btn-secondary" onclick="openImportApiDetailModal(${start + idx})" style="font-size: 10px; padding: 2px 6px;" title="Inspect API">🔍</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    updateImportsPaginationBar(start + 1, end, filtered.length);
+}
+
+function updateImportsPaginationBar(start, end, total) {
+    const summary = document.getElementById('imports-pagination-summary');
+    if (summary) summary.textContent = `Showing ${start}-${end} of ${total} functions`;
+
+    const btnPrev = document.getElementById('btn-imports-prev');
+    const btnNext = document.getElementById('btn-imports-next');
+    const btnFirst = document.getElementById('btn-imports-first');
+    const btnLast = document.getElementById('btn-imports-last');
+
+    if (btnPrev) btnPrev.disabled = state.importsCurrentPage <= 1;
+    if (btnFirst) btnFirst.disabled = state.importsCurrentPage <= 1;
+    if (btnNext) btnNext.disabled = state.importsCurrentPage >= state.importsTotalPages;
+    if (btnLast) btnLast.disabled = state.importsCurrentPage >= state.importsTotalPages;
+
+    const pageBox = document.getElementById('imports-page-numbers');
+    if (pageBox) {
+        let pagesHtml = '';
+        const cur = state.importsCurrentPage;
+        const tot = state.importsTotalPages;
+        const maxButtons = 5;
+        let startPage = Math.max(1, cur - 2);
+        let endPage = Math.min(tot, startPage + maxButtons - 1);
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        for (let p = startPage; p <= endPage; p++) {
+            pagesHtml += `
+                <button class="btn-${p === cur ? 'primary' : 'secondary'}" onclick="goToImportsPage(${p})" style="font-size: 11px; padding: 2px 8px;">
+                    ${p}
+                </button>
+            `;
+        }
+        pageBox.innerHTML = pagesHtml;
+    }
+}
+
+function goToImportsPage(page) {
+    if (page < 1 || page > state.importsTotalPages) return;
+    state.importsCurrentPage = page;
+    renderImportsTableSlice();
+}
+
+function onImportsPageSizeChange() {
+    state.importsCurrentPage = 1;
+    filterAndRenderImports();
+}
+
+function openImportApiDetailModal(idx) {
+    const imp = (state.importsFiltered || [])[idx];
+    if (!imp) return;
+
+    state.activeInspectedImport = imp;
+    const modal = document.getElementById('import-api-detail-modal');
+    if (!modal) return;
+
+    document.getElementById('import-modal-api-name').textContent = imp.api || '-';
+    document.getElementById('import-modal-dll-name').textContent = imp.dll || '-';
+    document.getElementById('import-modal-category').textContent = imp.category || 'GENERAL';
+
+    const risk = (imp.risk_relevance || 'LOW').toUpperCase();
+    const badgeEl = document.getElementById('import-modal-risk-badge');
+    if (badgeEl) {
+        const badgeClass = risk === 'CRITICAL' ? 'badge-crit' : (risk === 'HIGH' ? 'badge-high' : (risk === 'MEDIUM' ? 'badge-mod' : 'badge-low'));
+        badgeEl.innerHTML = `<span class="badge ${badgeClass}">${risk}</span>`;
+    }
+
+    const descEl = document.getElementById('import-modal-desc');
+    if (descEl) descEl.textContent = imp.description || `Windows API function belonging to category '${imp.category || 'GENERAL'}'. Exported by ${imp.dll || 'system library'}.`;
+
+    const aiResp = document.getElementById('import-modal-ai-response');
+    if (aiResp) { aiResp.style.display = 'none'; aiResp.textContent = ''; }
+
+    modal.style.display = 'flex';
+}
+
+function closeImportApiDetailModal() {
+    const modal = document.getElementById('import-api-detail-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function copyImportApiName() {
+    if (!state.activeInspectedImport) return;
+    navigator.clipboard.writeText(state.activeInspectedImport.api || '');
+    showSocNotification('Copied', 'API function name copied', 'success');
+}
+
+async function askAiAboutCurrentApi() {
+    if (!state.activeInspectedImport || !state.activeAnalysisId) return;
+    const imp = state.activeInspectedImport;
+    const aiResp = document.getElementById('import-modal-ai-response');
+    if (aiResp) {
+        aiResp.style.display = 'block';
+        aiResp.textContent = 'Consulting AI Security Analyst on this API...';
+    }
+
+    try {
+        const question = `Explain the security relevance of the Windows API function '${imp.api}' imported from '${imp.dll}' in category '${imp.category}'. How do adversaries commonly abuse this API and what are legitimate benign use cases?`;
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(state.activeAnalysisId)}/ask-ai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, language: state.currentLanguage || 'en' })
+        });
+        if (!res.ok) throw new Error('AI analysis service unavailable');
+        const data = await res.json();
+        if (aiResp) aiResp.textContent = data.response || 'No AI interpretation received.';
+    } catch (err) {
+        if (aiResp) aiResp.textContent = `AI Consultation Error: ${err.message}`;
+    }
+}
+
+function exportImportsCSV() {
+    const items = state.importsFiltered || state.importsAllItems || [];
+    if (items.length === 0) {
+        alert('No imports to export.');
+        return;
+    }
+    let csv = 'API_Function,DLL_Module,Category,Risk_Relevance,Description\n';
+    items.forEach(i => {
+        csv += `"${i.api}","${i.dll}","${i.category || 'GENERAL'}","${i.risk_relevance || 'LOW'}","${(i.description || '').replace(/"/g, '""')}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Imports_${state.activeAnalysisId || 'analysis'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportImportsJSON() {
+    const items = state.importsFiltered || state.importsAllItems || [];
+    const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Imports_${state.activeAnalysisId || 'analysis'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function reloadCurrentImports() {
+    if (state.activeAnalysisId) {
+        loadImportsIntelligence(state.activeAnalysisId, false);
+        showSocNotification('Refreshed', 'Imports and APIs reloaded.', 'success');
+    }
+}
+
+
+/* --------------------------------------------------------------------------
+   3. SUSPICIOUS INDICATORS & THREAT INTELLIGENCE WORKSPACE
+   -------------------------------------------------------------------------- */
+
+async function loadIndicatorsAndIocs(analysisId) {
+    const banner = document.getElementById('indicators-no-analysis-banner');
+    const container = document.getElementById('indicators-content-container');
+    const iocTbody = document.getElementById('iocs-tbody');
+
+    const targetId = await resolveTargetAnalysisId(analysisId);
+    if (!targetId) {
+        if (banner) banner.style.display = 'block';
+        if (container) container.style.display = 'none';
+        return;
+    }
+
+    state.activeAnalysisId = targetId;
+    if (banner) banner.style.display = 'none';
+    if (container) container.style.display = 'block';
+    if (iocTbody) iocTbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell">Loading IOCs and threat indicators for ${escapeHtml(targetId)}...</td></tr>`;
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(targetId)}/iocs`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch indicators`);
+        const data = await res.json();
+
+        state.activeIndicatorsData = data;
+        state.indicatorsAllIocs = data.iocs || [];
+        state.indicatorsAllIndicators = data.indicators || [];
+        state.indicatorsAllYara = data.yara_matches || [];
+
+        // Ribbon
+        const fnEl = document.getElementById('indicators-active-filename');
+        if (fnEl) fnEl.textContent = data.filename || 'sample.exe';
+        const anlIdEl = document.getElementById('indicators-active-analysis-id');
+        if (anlIdEl) anlIdEl.textContent = data.analysis_id || targetId;
+        const shaEl = document.getElementById('indicators-active-sha256');
+        if (shaEl) shaEl.textContent = data.sha256 || 'N/A';
+        const totEl = document.getElementById('indicators-active-total-counter');
+        if (totEl) totEl.textContent = data.total_iocs || state.indicatorsAllIocs.length;
+
+        // Metrics
+        const stInd = document.getElementById('stat-ioc-indicators-count');
+        if (stInd) stInd.textContent = state.indicatorsAllIndicators.length;
+        const stTot = document.getElementById('stat-ioc-total-count');
+        if (stTot) stTot.textContent = state.indicatorsAllIocs.length;
+        const stNet = document.getElementById('stat-ioc-network-count');
+        if (stNet) stNet.textContent = (data.statistics?.urls || 0) + (data.statistics?.ips || 0) + (data.statistics?.domains || 0);
+        const stYara = document.getElementById('stat-ioc-yara-count');
+        if (stYara) stYara.textContent = state.indicatorsAllYara.length;
+
+        // Render Indicators Grid Cards
+        renderSuspiciousIndicatorsCards(state.indicatorsAllIndicators);
+
+        // Render IOCs Table
+        renderIocsTable(state.indicatorsAllIocs);
+
+        // Render YARA Matches Table
+        renderYaraMatchesTable(state.indicatorsAllYara);
+    } catch (err) {
+        if (iocTbody) iocTbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell" style="color: var(--sev-high);">Failed to load indicators: ${escapeHtml(err.message)}</td></tr>`;
+    }
+}
+
+function renderSuspiciousIndicatorsCards(indicators) {
+    const container = document.getElementById('indicators-container');
+    const badge = document.getElementById('indicators-count-badge');
+    if (badge) badge.textContent = `${indicators.length} DETECTED`;
+    if (!container) return;
+
+    if (!indicators || indicators.length === 0) {
+        container.innerHTML = `<div class="empty-table-msg">No suspicious correlated indicators detected. Baseline evaluation shows clean static features.</div>`;
+        return;
+    }
+
+    container.innerHTML = indicators.map(ind => {
+        const sev = (ind.severity || 'LOW').toUpperCase();
+        const sevClass = sev === 'CRITICAL' ? 'badge-crit' : (sev === 'HIGH' ? 'badge-high' : (sev === 'MEDIUM' ? 'badge-mod' : 'badge-low'));
+
+        return `
+            <div class="soc-card" style="margin-bottom: 12px; border-left: 3px solid ${sev === 'CRITICAL' ? 'var(--sev-crit)' : (sev === 'HIGH' ? 'var(--sev-high)' : 'var(--accent-cyan)')};">
+                <div class="card-head flex-between" style="padding: 10px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="card-icon" style="font-size: 14px;">⚠️</span>
+                        <strong style="font-size: 13px; color: var(--text-primary);">${escapeHtml(ind.name || 'Indicator')}</strong>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <span class="badge badge-rule">${escapeHtml(ind.category || 'GENERAL')}</span>
+                        <span class="badge ${sevClass}">${sev}</span>
+                    </div>
+                </div>
+                <div class="card-body" style="padding: 10px 14px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                    ${escapeHtml(ind.evidence || 'Evidence observed in static binary structure.')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderIocsTable(iocs) {
+    const tbody = document.getElementById('iocs-tbody');
+    if (!tbody) return;
+
+    if (!iocs || iocs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state-cell">No extracted IOC artifacts identified for this sample.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = iocs.map((ioc, idx) => {
+        const iocVal = escapeHtml(ioc.value || '');
+        const iocType = escapeHtml((ioc.type || 'ARTIFACT').toUpperCase());
+        const confPct = Math.round((ioc.confidence || 1.0) * 100);
+
+        return `
+            <tr>
+                <td style="text-align: center; color: var(--text-muted); font-size: 11px;">${idx + 1}</td>
+                <td><span class="badge badge-rule">${iocType}</span></td>
+                <td>
+                    <code style="font-family: var(--font-mono); font-size: 12px; color: var(--accent-cyan); word-break: break-all;">
+                        ${iocVal}
+                    </code>
+                </td>
+                <td style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(ioc.source || 'STATIC_ANALYSIS')}</td>
+                <td style="font-size: 11px;"><span class="badge badge-low">${confPct}%</span></td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button class="btn-icon-copy" onclick="navigator.clipboard.writeText('${iocVal}'); showSocNotification('Copied', 'IOC value copied', 'success');" title="Copy IOC">📋</button>
+                    <button class="btn-secondary" onclick="lookupThreatIntelligence('${iocVal}')" style="font-size: 10px; padding: 2px 8px; color: var(--accent-cyan);" title="Lookup reputation in threat intelligence providers">
+                        🌐 Lookup
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function onIocsFilterChange() {
+    const term = (document.getElementById('iocs-search-input')?.value || '').toLowerCase().trim();
+    const typeFilter = (document.getElementById('iocs-filter-type')?.value || 'ALL').toUpperCase();
+    const all = state.indicatorsAllIocs || [];
+
+    const filtered = all.filter(i => {
+        if (typeFilter !== 'ALL' && !(i.type || '').toUpperCase().includes(typeFilter)) return false;
+        if (term && !(i.value || '').toLowerCase().includes(term) && !(i.type || '').toLowerCase().includes(term)) return false;
+        return true;
+    });
+
+    renderIocsTable(filtered);
+}
+
+function renderYaraMatchesTable(matches) {
+    const tbody = document.getElementById('yara-matches-tbody');
+    const badge = document.getElementById('yara-status-badge');
+    if (!tbody) return;
+
+    if (!matches || matches.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state-cell">No YARA signatures matched. Static rule scan clean.</td></tr>`;
+        if (badge) { badge.textContent = 'YARA: Clean'; badge.className = 'badge badge-low'; }
+        return;
+    }
+
+    if (badge) { badge.textContent = `${matches.length} MATCHES`; badge.className = 'badge badge-high'; }
+
+    tbody.innerHTML = matches.map(ym => `
+        <tr>
+            <td><strong style="color: var(--sev-high); font-size: 12px;">${escapeHtml(ym.rule_name)}</strong></td>
+            <td><span class="badge badge-rule">${escapeHtml(ym.namespace || 'default')}</span></td>
+            <td style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(ym.description || 'Matched rule pattern')}</td>
+            <td><code style="font-size: 11px; color: var(--text-muted);">${escapeHtml(Array.isArray(ym.tags) ? ym.tags.join(', ') : (ym.tags || 'none'))}</code></td>
+        </tr>
+    `).join('');
+}
+
+async function lookupThreatIntelligence(indicator) {
+    const modal = document.getElementById('threat-intel-lookup-modal');
+    if (!modal) return;
+
+    state.currentThreatIntelIndicator = indicator;
+    document.getElementById('threat-intel-modal-indicator').textContent = indicator;
+    document.getElementById('threat-intel-modal-type').textContent = 'Querying...';
+    document.getElementById('threat-intel-modal-provider').textContent = 'Connecting...';
+    document.getElementById('threat-intel-modal-rep-badge').innerHTML = '<span class="badge badge-rule">CHECKING</span>';
+    document.getElementById('threat-intel-modal-malicious').textContent = '0';
+    document.getElementById('threat-intel-modal-message-box').textContent = 'Executing threat intelligence lookup query...';
+    document.getElementById('threat-intel-modal-details-container').style.display = 'none';
+
+    modal.style.display = 'flex';
+
+    try {
+        const res = await fetchWithAuth('/api/analyses/threat-intel/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ indicator })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Threat intelligence query failed`);
+        const data = await res.json();
+
+        document.getElementById('threat-intel-modal-type').textContent = data.indicator_type || 'GENERIC';
+        document.getElementById('threat-intel-modal-provider').textContent = data.provider || 'Local Heuristics';
+
+        const rep = (data.reputation || 'UNCHECKED').toUpperCase();
+        const repClass = rep === 'MALICIOUS' ? 'badge-crit' : (rep === 'SUSPICIOUS' ? 'badge-high' : (rep === 'CLEAN' ? 'badge-low' : 'badge-rule'));
+        document.getElementById('threat-intel-modal-rep-badge').innerHTML = `<span class="badge ${repClass}">${rep}</span>`;
+        document.getElementById('threat-intel-modal-malicious').textContent = data.malicious_votes || 0;
+
+        const msgBox = document.getElementById('threat-intel-modal-message-box');
+        if (msgBox) {
+            msgBox.innerHTML = `
+                <div>${escapeHtml(data.message || 'Threat intelligence query complete.')}</div>
+                ${!data.configured ? '<div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);"><em>Defensive invariant: ETHIO-AI Defender never generates fabricated external reputation scores.</em></div>' : ''}
+            `;
+        }
+
+        if (data.details && Object.keys(data.details).length > 0) {
+            const detBox = document.getElementById('threat-intel-modal-details-container');
+            const detJson = document.getElementById('threat-intel-modal-details-json');
+            if (detBox && detJson) {
+                detBox.style.display = 'block';
+                detJson.textContent = JSON.stringify(data.details, null, 2);
+            }
+        }
+    } catch (err) {
+        document.getElementById('threat-intel-modal-message-box').textContent = `Lookup Error: ${err.message}`;
+    }
+}
+
+function closeThreatIntelLookupModal() {
+    const modal = document.getElementById('threat-intel-lookup-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function copyThreatIntelIndicator() {
+    if (!state.currentThreatIntelIndicator) return;
+    navigator.clipboard.writeText(state.currentThreatIntelIndicator);
+    showSocNotification('Copied', 'Indicator copied to clipboard', 'success');
+}
+
+function reloadCurrentIndicators() {
+    if (state.activeAnalysisId) {
+        loadIndicatorsAndIocs(state.activeAnalysisId);
+        showSocNotification('Refreshed', 'Indicators and IOCs reloaded.', 'success');
+    }
+}
+
+
+/* --------------------------------------------------------------------------
+   4. AI SECURITY ANALYST WORKSPACE
+   -------------------------------------------------------------------------- */
+
+async function loadAiAnalystView(analysisId) {
+    const banner = document.getElementById('ai-no-analysis-banner');
+    const container = document.getElementById('ai-content-container');
+
+    const targetId = await resolveTargetAnalysisId(analysisId);
+    if (!targetId) {
+        if (banner) banner.style.display = 'block';
+        if (container) container.style.display = 'none';
+        return;
+    }
+
+    state.activeAnalysisId = targetId;
+    if (banner) banner.style.display = 'none';
+    if (container) container.style.display = 'block';
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(targetId)}/ai?language=${state.currentLanguage || 'en'}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch AI assessment`);
+        const data = await res.json();
+
+        state.activeAiData = data;
+
+        // Ribbon
+        const fnEl = document.getElementById('ai-active-filename');
+        if (fnEl) fnEl.textContent = data.filename || 'sample.exe';
+        const anlIdEl = document.getElementById('ai-active-analysis-id');
+        if (anlIdEl) anlIdEl.textContent = data.analysis_id || targetId;
+        const shaEl = document.getElementById('ai-active-sha256');
+        if (shaEl) shaEl.textContent = data.sha256 || 'N/A';
+        const riskEl = document.getElementById('ai-active-risk-score');
+        if (riskEl) riskEl.textContent = `${data.risk_score || 0} / 100 (${data.risk_level || 'LOW'})`;
+
+        // Executive Summary
+        const aiObj = data.ai_assessment || {};
+        const sumEl = document.getElementById('ai-summary-display');
+        if (sumEl) sumEl.textContent = aiObj.summary || 'Static binary analysis complete.';
+        const confBadge = document.getElementById('ai-confidence-badge');
+        if (confBadge) confBadge.textContent = `CONFIDENCE: ${aiObj.confidence || 'HIGH'}`;
+
+        // 3 Structured Blocks
+        renderBulletList('ai-key-findings-list', aiObj.key_findings || ['Heuristic static assessment complete.']);
+        renderBulletList('ai-benign-list', aiObj.benign_explanations || ['Standard compiler artifacts and administrative utilities.']);
+        renderBulletList('ai-recommendations-list', aiObj.recommended_investigation || ['Verify binary against software catalog.']);
+
+        // MITRE ATT&CK Matrix
+        const mitreList = data.mitre_attack || [];
+        const mitreBadge = document.getElementById('ai-mitre-count-badge');
+        if (mitreBadge) mitreBadge.textContent = `${mitreList.length} TECHNIQUES`;
+
+        const mitreTbody = document.getElementById('mitre-attack-tbody');
+        if (mitreTbody) {
+            if (mitreList.length > 0) {
+                mitreTbody.innerHTML = mitreList.map(m => `
+                    <tr>
+                        <td><code style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan);">${escapeHtml(m.technique_id)}</code></td>
+                        <td><strong>${escapeHtml(m.technique_name || 'Technique')}</strong></td>
+                        <td><span class="badge badge-rule">${escapeHtml(m.tactical_category || 'Execution')}</span></td>
+                        <td style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(m.evidence || '')}</td>
+                        <td><span class="badge badge-low">${escapeHtml(m.confidence || 'HIGH')}</span></td>
+                    </tr>
+                `).join('');
+            } else {
+                mitreTbody.innerHTML = `<tr><td colspan="5" class="empty-state-cell">No MITRE ATT&CK alignments identified.</td></tr>`;
+            }
+        }
+    } catch (err) {
+        console.error('AI assessment load failed:', err);
+    }
+}
+
+function executeAiAnalystQuestion(promptText) {
+    const input = document.getElementById('ai-analyst-view-input');
+    if (input) input.value = promptText;
+    executeAiAnalystViewQuestion();
+}
+
+async function executeAiAnalystViewQuestion() {
+    const input = document.getElementById('ai-analyst-view-input');
+    const question = (input ? input.value : '').trim();
+    if (!question || !state.activeAnalysisId) return;
+
+    const respBox = document.getElementById('ai-analyst-view-response-box');
+    const respText = document.getElementById('ai-analyst-view-response-text');
+    const askBtn = document.getElementById('btn-ai-analyst-ask');
+
+    if (respBox && respText) {
+        respBox.style.display = 'block';
+        respText.textContent = 'Consulting AI Security Analyst...';
+    }
+    if (askBtn) askBtn.disabled = true;
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(state.activeAnalysisId)}/ask-ai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, language: state.currentLanguage || 'en' })
+        });
+        if (!res.ok) throw new Error('AI consultation service returned an error');
+        const data = await res.json();
+        if (respText) respText.textContent = data.response || 'No interpretation provided.';
+    } catch (err) {
+        if (respText) respText.textContent = `Consultation Error: ${err.message}`;
+    } finally {
+        if (askBtn) askBtn.disabled = false;
+    }
+}
+
+function copyAiAnalystResponse() {
+    const respText = document.getElementById('ai-analyst-view-response-text');
+    if (respText && respText.textContent) {
+        navigator.clipboard.writeText(respText.textContent);
+        showSocNotification('Copied', 'AI response copied to clipboard', 'success');
+    }
+}
+
+function reloadCurrentAiAssessment() {
+    if (state.activeAnalysisId) {
+        loadAiAnalystView(state.activeAnalysisId);
+        showSocNotification('Refreshed', 'AI Security Analyst assessment reloaded.', 'success');
+    }
+}
+
+
+/* --------------------------------------------------------------------------
+   5. SECURITY REPORTS WORKSPACE
+   -------------------------------------------------------------------------- */
+
+async function loadReportsView(analysisId) {
+    const banner = document.getElementById('reports-no-analysis-banner');
+    const container = document.getElementById('reports-content-container');
+
+    const targetId = await resolveTargetAnalysisId(analysisId);
+    if (!targetId) {
+        if (banner) banner.style.display = 'block';
+        if (container) container.style.display = 'none';
+        return;
+    }
+
+    state.activeAnalysisId = targetId;
+    if (banner) banner.style.display = 'none';
+    if (container) container.style.display = 'block';
+
+    try {
+        const res = await fetchWithAuth(`/api/analyses/${encodeURIComponent(targetId)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch report data`);
+        const data = await res.json();
+
+        state.activeReportData = data;
+
+        // Ribbon
+        const fnEl = document.getElementById('reports-active-filename');
+        if (fnEl) fnEl.textContent = data.filename || 'sample.exe';
+        const anlIdEl = document.getElementById('reports-active-analysis-id');
+        if (anlIdEl) anlIdEl.textContent = data.analysis_id || targetId;
+        const shaEl = document.getElementById('reports-active-sha256');
+        if (shaEl) shaEl.textContent = (data.hashes && data.hashes.sha256) || 'N/A';
+        const riskEl = document.getElementById('reports-active-risk-tier');
+        if (riskEl) {
+            const ts = data.threat_score || {};
+            riskEl.textContent = `${ts.risk_level || 'LOW'} (${ts.score || 0}/100)`;
+        }
+
+        // Prepopulate Case ID if available
+        const caseInp = document.getElementById('report-meta-case-id');
+        if (caseInp && data.case_info && data.case_info.case_id) {
+            caseInp.value = data.case_info.case_id;
+        }
+
+        renderReportLivePreview();
+    } catch (err) {
+        console.error('Report load failed:', err);
+    }
+}
+
+function updateReportLivePreview() {
+    renderReportLivePreview();
+}
+
+function renderReportLivePreview() {
+    const frame = document.getElementById('report-preview-frame');
+    if (!frame) return;
+
+    const data = state.activeReportData;
+    if (!data) {
+        frame.innerHTML = '<div class="empty-state-cell">No analysis loaded for report generation.</div>';
+        return;
+    }
+
+    const org = document.getElementById('report-meta-org')?.value || 'ETHIO-AI Defender SOC';
+    const dept = document.getElementById('report-meta-dept')?.value || 'Malware Analysis Unit';
+    const caseId = document.getElementById('report-meta-case-id')?.value || 'CASE-001';
+    const analyst = document.getElementById('report-meta-analyst')?.value || 'Lead Security Analyst';
+    const classification = document.getElementById('report-meta-class')?.value || 'RESTRICTED';
+
+    const fi = data.file_information || {};
+    const hashes = data.hashes || {};
+    const ts = data.threat_score || {};
+    const ai = data.ai_assessment || {};
+    const sections = (data.sections && data.sections.sections) || [];
+    const imports = (data.imports && data.imports.imports) || [];
+    const indicators = (data.indicators && data.indicators.indicators) || [];
+
+    const riskLevel = ts.risk_level || 'LOW';
+    const riskBadgeClass = riskLevel === 'CRITICAL' ? 'badge-crit' : (riskLevel === 'HIGH' ? 'badge-high' : (riskLevel === 'MODERATE' || riskLevel === 'MEDIUM' ? 'badge-mod' : 'badge-low'));
+
+    frame.innerHTML = `
+        <div style="border-bottom: 2px solid #334155; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 1px;">
+                    ${escapeHtml(org)} • ${escapeHtml(dept)}
+                </div>
+                <h2 style="font-size: 22px; font-weight: 800; color: #f8fafc; margin: 4px 0;">DEFENSIVE STATIC MALWARE ANALYSIS REPORT</h2>
+                <div style="font-size: 12px; color: #94a3b8;">
+                    Analysis ID: <code style="color: var(--accent-cyan);">${escapeHtml(data.analysis_id)}</code> • Case Ref: <strong>${escapeHtml(caseId)}</strong> • Analyst: <strong>${escapeHtml(analyst)}</strong>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <span class="badge ${riskBadgeClass}" style="font-size: 13px; padding: 6px 14px;">${escapeHtml(riskLevel)} (${ts.score || 0}/100)</span>
+                <div style="font-size: 10px; font-weight: 700; color: #f97316; margin-top: 6px;">${escapeHtml(classification)}</div>
+            </div>
+        </div>
+
+        <!-- Metadata Table -->
+        <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px;">1. File Identification & Cryptographic Hashes</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: rgba(255,255,255,0.02); border-radius: 4px;">
+                <tr>
+                    <td style="padding: 6px 10px; color: #94a3b8; width: 140px;">Filename:</td>
+                    <td style="padding: 6px 10px; font-weight: 700; color: #f8fafc;">${escapeHtml(fi.filename || data.filename)}</td>
+                    <td style="padding: 6px 10px; color: #94a3b8; width: 140px;">File Size:</td>
+                    <td style="padding: 6px 10px; color: #f8fafc;">${escapeHtml(String(fi.file_size || 0))} bytes</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 10px; color: #94a3b8;">Architecture:</td>
+                    <td style="padding: 6px 10px; color: #f8fafc;">${escapeHtml(fi.machine_type || 'x86_64')}</td>
+                    <td style="padding: 6px 10px; color: #94a3b8;">File Format:</td>
+                    <td style="padding: 6px 10px; color: #f8fafc;">${escapeHtml(fi.file_kind || 'PE32+ Executable')}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 10px; color: #94a3b8;">SHA-256:</td>
+                    <td colspan="3" style="padding: 6px 10px; font-family: monospace; color: var(--accent-cyan);">${escapeHtml(hashes.sha256 || 'N/A')}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 10px; color: #94a3b8;">MD5:</td>
+                    <td colspan="3" style="padding: 6px 10px; font-family: monospace; color: #94a3b8;">${escapeHtml(hashes.md5 || 'N/A')}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- AI Executive Assessment -->
+        <div style="margin-bottom: 20px; background: rgba(0,240,255,0.03); border: 1px solid rgba(0,240,255,0.15); border-radius: 6px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <h4 style="font-size: 14px; font-weight: 700; color: var(--accent-cyan); margin: 0;">2. Grounded AI Security Executive Assessment</h4>
+                <span class="badge badge-rule">Confidence: ${escapeHtml(ai.confidence || 'HIGH')}</span>
+            </div>
+            <p style="font-size: 13px; line-height: 1.6; color: #f8fafc; margin: 0 0 10px 0;">${escapeHtml(ai.summary || 'Static binary analysis complete.')}</p>
+        </div>
+
+        <!-- Correlated Indicators -->
+        <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px;">3. Correlated Threat Indicators (${indicators.length})</h4>
+            ${indicators.length > 0 ? `
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead><tr style="border-bottom: 1px solid #334155; text-align: left; color: #94a3b8;"><th style="padding: 6px;">Indicator Name</th><th style="padding: 6px;">Category</th><th style="padding: 6px;">Severity</th><th style="padding: 6px;">Technical Evidence</th></tr></thead>
+                    <tbody>
+                        ${indicators.map(ind => `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <td style="padding: 6px; font-weight: 700; color: #f8fafc;">${escapeHtml(ind.name)}</td>
+                                <td style="padding: 6px; color: #a855f7;">${escapeHtml(ind.category)}</td>
+                                <td style="padding: 6px;"><span class="badge ${ind.severity === 'CRITICAL' ? 'badge-crit' : (ind.severity === 'HIGH' ? 'badge-high' : 'badge-low')}">${escapeHtml(ind.severity)}</span></td>
+                                <td style="padding: 6px; color: #94a3b8;">${escapeHtml(ind.evidence)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            ` : '<div style="font-size: 12px; color: #94a3b8;">No high-risk threat indicators identified.</div>'}
+        </div>
+
+        <!-- PE Memory Sections -->
+        <div style="margin-bottom: 20px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 8px;">4. PE Memory Sections (${sections.length})</h4>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                <thead><tr style="border-bottom: 1px solid #334155; text-align: left; color: #94a3b8;"><th style="padding: 6px;">Section</th><th style="padding: 6px;">Virtual Addr</th><th style="padding: 6px;">Virtual Size</th><th style="padding: 6px;">Raw Size</th><th style="padding: 6px;">Shannon Entropy</th><th style="padding: 6px;">Permissions</th></tr></thead>
+                <tbody>
+                    ${sections.map(s => `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 6px; font-family: monospace; color: var(--accent-cyan); font-weight: 700;">${escapeHtml(s.name)}</td>
+                            <td style="padding: 6px; font-family: monospace;">${escapeHtml(String(s.virtual_address))}</td>
+                            <td style="padding: 6px;">${escapeHtml(String(s.virtual_size))} bytes</td>
+                            <td style="padding: 6px;">${escapeHtml(String(s.raw_size))} bytes</td>
+                            <td style="padding: 6px; font-family: monospace;">${(s.entropy || 0).toFixed(2)}</td>
+                            <td style="padding: 6px; color: #94a3b8;">${escapeHtml(s.characteristics || '')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Scientific Guarantee Footer -->
+        <div style="border-top: 1px solid #334155; padding-top: 14px; margin-top: 24px; font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+                <strong>Zero-Execution Guarantee:</strong> This investigation was performed exclusively via static reverse-engineering. The target binary was never executed.
+            </div>
+            <div>
+                Generated by <strong>ETHIO-AI Defender</strong> • Platform v0.1.0
+            </div>
+        </div>
+    `;
+}
+
+async function exportCurrentReport(format) {
+    if (!state.activeAnalysisId) {
+        alert('Please select an active analysis before exporting.');
+        return;
+    }
+
+    try {
+        const url = `/api/analyses/${encodeURIComponent(state.activeAnalysisId)}/report?format=${format}&language=${state.currentLanguage || 'en'}`;
+        const res = await fetchWithAuth(url);
+        if (!res.ok) throw new Error('Report generation failed');
+
+        if (format === 'html') {
+            const htmlContent = await res.text();
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            downloadBlob(blob, `Security_Report_${state.activeAnalysisId}.html`);
+        } else if (format === 'json') {
+            const jsonData = await res.json();
+            const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+            downloadBlob(blob, `Security_Report_${state.activeAnalysisId}.json`);
+        } else if (format === 'text' || format === 'txt') {
+            const txtContent = await res.text();
+            const blob = new Blob([txtContent], { type: 'text/plain' });
+            downloadBlob(blob, `Security_Report_${state.activeAnalysisId}.txt`);
+        }
+        showSocNotification('Export Success', `Exported ${format.toUpperCase()} report`, 'success');
+    } catch (err) {
+        alert(`Export failed: ${err.message}`);
+    }
+}
+
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+}
+
 
 

@@ -2105,13 +2105,15 @@ body::before {
     padding: 16px;
 }
 
-/* String Intelligence Quick Filter Pills */
-.quick-string-pill {
+/* String Intelligence & Imports Quick Filter Pills */
+.quick-string-pill,
+.quick-import-pill {
     transition: all var(--anim-fast) ease;
     cursor: pointer;
 }
 
-.quick-string-pill.active {
+.quick-string-pill.active,
+.quick-import-pill.active {
     background: rgba(0, 240, 255, 0.15) !important;
     border-color: var(--accent-cyan) !important;
     color: var(--accent-cyan) !important;

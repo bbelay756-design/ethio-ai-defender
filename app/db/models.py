@@ -62,6 +62,9 @@ class SampleModel(Base):
     risk_factors = relationship("RiskFactorModel", back_populates="sample", cascade="all, delete-orphan")
     analysis_results = relationship("AnalysisResultModel", back_populates="sample", uselist=False, cascade="all, delete-orphan")
     notes = relationship("AnalystNoteModel", back_populates="sample", cascade="all, delete-orphan")
+    ghidra_analysis = relationship("GhidraAnalysisModel", back_populates="sample", uselist=False, cascade="all, delete-orphan")
+    ghidra_functions = relationship("GhidraFunctionModel", back_populates="sample", cascade="all, delete-orphan")
+    ghidra_relationships = relationship("GhidraRelationshipModel", back_populates="sample", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("ix_samples_sha256_created", "sha256", "created_at"),
@@ -216,6 +219,72 @@ class AnalysisResultModel(Base):
 
     # Relationship
     sample = relationship("SampleModel", back_populates="analysis_results")
+
+
+class GhidraAnalysisModel(Base):
+    """
+    Summary of a Ghidra headless reverse-engineering run for a sample.
+    Structured results are stored independently from raw Ghidra project files.
+    """
+    __tablename__ = "ghidra_analysis"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    status = Column(String(32), nullable=False, default="SUCCESS")  # SUCCESS, UNAVAILABLE, DISABLED, FAILED, TIMEOUT
+    message = Column(Text, nullable=True)
+    program_name = Column(String(255), nullable=True)
+    language_id = Column(String(64), nullable=True)
+    processor = Column(String(64), nullable=True)
+    compiler = Column(String(64), nullable=True)
+    image_base = Column(String(32), nullable=True)
+    entry_point = Column(String(32), nullable=True)
+    function_count = Column(Integer, nullable=False, default=0)
+    import_count = Column(Integer, nullable=False, default=0)
+    export_count = Column(Integer, nullable=False, default=0)
+    string_count = Column(Integer, nullable=False, default=0)
+    relationship_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationship
+    sample = relationship("SampleModel", back_populates="ghidra_analysis")
+
+
+class GhidraFunctionModel(Base):
+    """
+    Individual function recovered from the Ghidra program database for a sample.
+    """
+    __tablename__ = "ghidra_functions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(255), nullable=False, index=True)
+    address = Column(String(32), nullable=True)
+    size = Column(Integer, nullable=False, default=0)
+    is_thunk = Column(Boolean, nullable=False, default=False)
+    calling_convention = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationship
+    sample = relationship("SampleModel", back_populates="ghidra_functions")
+
+
+class GhidraRelationshipModel(Base):
+    """
+    A call-graph edge recovered from the Ghidra program database for a sample,
+    showing one function invoking another.
+    """
+    __tablename__ = "ghidra_relationships"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_address = Column(String(32), nullable=True)
+    from_name = Column(String(255), nullable=True)
+    to_address = Column(String(32), nullable=True)
+    to_name = Column(String(255), nullable=True, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationship
+    sample = relationship("SampleModel", back_populates="ghidra_relationships")
 
 
 class UserModel(Base):

@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from app.core.logger import logger
+from app.core.config import settings
 from app.db.session import get_db
 from app.db.models import UserModel
 from app.auth.roles import UserRole, Permission, ROLE_PERMISSIONS
@@ -34,7 +35,7 @@ class UserRegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64)
     email: str = Field(..., min_length=5, max_length=128, pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")
     password: str = Field(..., min_length=8, max_length=128)
-    role: Optional[str] = Field("STUDENT", description="ADMIN, ANALYST, or STUDENT")
+    role: Optional[str] = Field("STUDENT", description="Self-registration role (default: STUDENT)")
 
 
 class UserLoginRequest(BaseModel):
@@ -116,14 +117,25 @@ def register(
 ):
     """
     Registers a new platform user with salted PBKDF2-HMAC-SHA256 password hashing.
+
+    SEC-01: public self-registration is restricted to the non-privileged roles
+    configured in SELF_REGISTRATION_ROLES (default: STUDENT). The role is decided
+    server-side; privileged roles such as ADMIN can never be self-assigned and are
+    provisioned only through the ADMIN-guarded endpoints.
     """
+    requested_role = (req.role or "STUDENT").strip().upper()
+    if requested_role not in settings.SELF_REGISTRATION_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Requested role is not permitted for self-registration.",
+        )
     try:
         user = AuthService.register_user(
             db=db,
             username=req.username,
             email=req.email,
             password=req.password,
-            role=req.role or "STUDENT"
+            role=requested_role
         )
         user_role = UserRole(user.role)
         perms = [p.value for p in ROLE_PERMISSIONS.get(user_role, set())]

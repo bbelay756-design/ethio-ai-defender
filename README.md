@@ -1,8 +1,8 @@
 # ETHIO-AI Defender (የኢትዮ-ኤአይ መከላከያ)
 **Defensive AI-Powered Malware Analysis & Reverse-Engineering Platform for Ethiopia**
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](file:///C:/Users/MILKWAY/ethio-ai-defender/verify_module_19.py)
-[![Test Suite](https://img.shields.io/badge/tests-290%2F290%20passed-success.svg)](file:///C:/Users/MILKWAY/ethio-ai-defender/verify_module_19.py)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](file:///C:/Users/MILKWAY/ethio-ai-defender/verify_module_20.py)
+[![Test Suite](https://img.shields.io/badge/tests-386%2F386%20passed-success.svg)](file:///C:/Users/MILKWAY/ethio-ai-defender/verify_module_20.py)
 [![Safety Invariant](https://img.shields.io/badge/safety-zero--execution-blue.svg)](file:///C:/Users/MILKWAY/ethio-ai-defender/app/analyzers/file_intake.py)
 [![Localization](https://img.shields.io/badge/locale-English%20%7C%20%E1%8A%A0%E1%88%9B%E1%88%AD%E1%8B%9B-orange.svg)](file:///C:/Users/MILKWAY/ethio-ai-defender/frontend/static/js/app.js)
 
@@ -52,9 +52,12 @@ The platform provides deterministic, zero-execution static analysis of Windows P
                      (Multi-Feature Heuristic Correlations)
                                          ↓
                          [ 11. Threat Scoring Engine ]
-                       (0-100 Score & MITRE ATT&CK Map)
+                        (0-100 Score & MITRE ATT&CK Map)
                                          ↓
-                     [ 12. Ethiopian Context Engine ]
+                       [ 11b. Ghidra Headless RE ]
+                     (Isolated Static Reverse Engineering)
+                                         ↓
+                      [ 12. Ethiopian Context Engine ]
                     (Domestic .et & Infrastructure Triage)
                                          ↓
                        [ 13. AI Security Analyst ]
@@ -90,7 +93,7 @@ The platform provides deterministic, zero-execution static analysis of Windows P
 
 ---
 
-## 📦 4. Comprehensive Module Breakdown (Modules 01 - 19)
+## 📦 4. Comprehensive Module Breakdown (Modules 01 - 20)
 
 | Module | Name | Responsibility & Key Deliverables |
 | :--- | :--- | :--- |
@@ -113,6 +116,7 @@ The platform provides deterministic, zero-execution static analysis of Windows P
 | **Module 17** | **Security Audit Logging** | Structured JSON audit logging for security events (login, logout, upload, analysis start/complete/failure, report export) with sensitive data redaction. |
 | **Module 18** | **Security Testing Suite** | Comprehensive defensive test harness with in-memory synthetic PE fixtures testing path traversal, SQLi, XSS, fuzzing, rate limiting, and IDOR. |
 | **Module 19** | **Final System Integration** | Unified Pipeline Orchestrator delivering the standardized Unified Analysis Object with graceful error isolation and full regression verification. |
+| **Module 20** | **Ghidra Headless Reverse Engineering** | Runs Ghidra's supported `analyzeHeadless` workflow over the quarantined sample in an isolated per-analysis workspace. Extracts structured program identity, architecture, entry point, functions, imports, exports, and strings. Never executes the sample, uses subprocess argument arrays only, enforces a hard timeout, cleans workspaces per configuration, and degrades gracefully when Ghidra is not installed. |
 
 ---
 
@@ -227,6 +231,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 *(Optional: add `GEMINI_API_KEY` in `.env` for cloud LLM reasoning; defaults to deterministic offline provider if absent).*
+*(Optional: set `GHIDRA_HOME` in `.env` to your extracted Ghidra directory to enable headless reverse engineering; the platform degrades gracefully and reports Ghidra as unavailable if it is not installed).*
 
 ### 3. Launch Development Server
 ```powershell
@@ -242,6 +247,11 @@ Access the API Documentation at: **`http://127.0.0.1:8000/docs`**
 ### Master Regression Runner (Modules 01 - 19):
 ```powershell
 python verify_module_19.py
+```
+
+### Module 20 (Ghidra Integration) Verification:
+```powershell
+python verify_module_20.py
 ```
 
 ### Run Full Test Suite via Standard `unittest`:
@@ -266,6 +276,12 @@ python audit_security_issues.py
 | `GET` | `/api/dashboard/samples` | Public / User | Lists analyzed samples in database. |
 | `GET` | `/api/dashboard/samples/{id}/full` | Owner / Admin | Fetches full multi-section sample details with IDOR protection. |
 | `GET` | `/api/dashboard/samples/{id}/report` | Owner / Admin | Exports security report in JSON, Markdown, HTML, or Plain Text. |
+| `GET` | `/api/analyses/{id}/pe` | Owner / Admin | Returns completed PE structure, sections, and entropy metrics. |
+| `GET` | `/api/analyses/{id}/imports` | Owner / Admin | Returns categorized imports with search and risk filters. |
+| `GET` | `/api/analyses/{id}/iocs` | Owner / Admin | Returns extracted IOCs, correlated indicators, and YARA matches. |
+| `GET` | `/api/analyses/{id}/ai` | Owner / Admin | Returns grounded AI assessment and MITRE ATT&CK candidates. |
+| `GET` | `/api/analyses/{id}/ghidra` | Owner / Admin | Returns structured Ghidra reverse-engineering metadata and recovered functions. |
+| `POST`| `/api/analyses/threat-intel/lookup` | Analyst / Admin | Queries configured threat-intelligence providers for an indicator. |
 | `DELETE`| `/api/dashboard/samples/{id}` | Owner / Admin | Deletes analyzed sample and cascading records. |
 | `POST` | `/api/auth/register` | Public | Registers new platform user (`STUDENT`, `ANALYST`, or `ADMIN`). |
 | `POST` | `/api/auth/login` | Public | Authenticates user credentials, returns signed JWT access token. |
