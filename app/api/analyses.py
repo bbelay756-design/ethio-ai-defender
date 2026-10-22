@@ -19,12 +19,13 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.db.models import UserModel, SampleModel
 from app.db.repository import SampleRepository
-from app.auth.roles import UserRole
-from app.auth.dependencies import get_current_user, get_optional_current_user
+from app.auth.roles import UserRole, Permission
+from app.auth.dependencies import get_current_user, get_optional_current_user, require_permissions
 from app.pipeline.orchestrator import unified_pipeline_service
 from app.audit.logger import audit_logger
 from app.audit.events import AuditResult
 from app.db.schemas import AnalysisSummaryResponse
+from app.utils.upload_guard import read_upload_bounded
 
 router = APIRouter(prefix="/api/analyses", tags=["Static Binary Analyses"])
 
@@ -59,17 +60,23 @@ class AnalysisListResponse(BaseModel):
 async def create_analysis(
     file: UploadFile = File(...),
     language: str = Query("en", description="'en' for English, 'am' for Amharic"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.UPLOAD_FILES))
 ):
     """
     Handles secure multipart/form-data upload and executes complete deterministic static analysis pipeline.
+
+    Requires authentication and the UPLOAD_FILES permission (ADMIN / ANALYST).
     """
     raw_filename = file.filename or "sample.exe"
-    logger.info(f"REST POST /api/analyses request for '{raw_filename}' (Lang: {language})")
+    logger.info(f"REST POST /api/analyses request from '{current_user.username}' for '{raw_filename}' (Lang: {language})")
 
-    # 1. Read binary stream
+    # 1. Read binary stream (bounded by MAX_FILE_SIZE_BYTES)
     try:
-        content = await file.read()
+        content = await read_upload_bounded(
+            file, settings.MAX_FILE_SIZE_BYTES, settings.UPLOAD_CHUNK_SIZE
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         audit_logger.log_analysis_failure(
             analysis_id="UNKNOWN",
@@ -98,7 +105,7 @@ async def create_analysis(
 
     # 4. Execute Unified Pipeline
     try:
-        user_id = current_user.id if current_user else None
+        user_id = current_user.id
         result = unified_pipeline_service.execute_pipeline(
             content=content,
             filename=raw_filename,

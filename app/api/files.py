@@ -2,15 +2,20 @@
 File Management and Secure Intake API Endpoints.
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
+from app.core.config import settings
 from app.core.logger import logger
 from app.core.storage import analysis_store
 from app.analyzers.file_intake import secure_intake_service, IntakeStatus
 from app.audit.logger import audit_logger
 from app.audit.events import AuditResult
+from app.auth.dependencies import require_permissions
+from app.auth.roles import Permission
+from app.db.models import UserModel
+from app.utils.upload_guard import read_upload_bounded
 
 router = APIRouter(prefix="/api/files", tags=["File Intake"])
 
@@ -32,15 +37,24 @@ class FileUploadResponse(BaseModel):
     summary="Securely upload a Windows PE file (.exe, .dll)",
     description="Accepts and validates a binary without executing it. Returns an analysis ID and hashes.",
 )
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: UserModel = Depends(require_permissions(Permission.UPLOAD_FILES)),
+):
     """
     Handles secure upload and perimeter validation for Windows PE executables.
+
+    Requires authentication and the UPLOAD_FILES permission (ADMIN / ANALYST).
     """
     raw_filename = file.filename or "unnamed_sample.bin"
-    logger.info(f"Incoming upload request for file: '{raw_filename}'")
+    logger.info(f"Incoming upload request from '{current_user.username}' for file: '{raw_filename}'")
 
     try:
-        content = await file.read()
+        content = await read_upload_bounded(
+            file, settings.MAX_FILE_SIZE_BYTES, settings.UPLOAD_CHUNK_SIZE
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to read incoming file stream: {e}")
         audit_logger.log_upload(

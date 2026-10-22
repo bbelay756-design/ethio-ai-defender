@@ -65,6 +65,9 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
 
         cls.valid_pe = SyntheticPEBuilder.create_minimal_pe()
 
+        # SEC-05: upload endpoints require an authenticated ANALYST identity.
+        cls.auth_headers = {"Authorization": f"Bearer {cls.analyst_token}"}
+
     @classmethod
     def tearDownClass(cls):
         cls.db.close()
@@ -76,7 +79,8 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
             file_obj = io.BytesIO(self.valid_pe)
             response = self.client.post(
                 "/api/files/upload",
-                files={"file": (path_payload, file_obj, "application/octet-stream")}
+                files={"file": (path_payload, file_obj, "application/octet-stream")},
+                headers=self.auth_headers
             )
             self.assertIn(response.status_code, [200, 201, 400], f"Failed on path payload: {path_payload}")
             if response.status_code in (200, 201):
@@ -95,7 +99,8 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
         file_obj = io.BytesIO(oversized_bytes)
         response = self.client.post(
             "/api/files/upload",
-            files={"file": ("oversized_payload.exe", file_obj, "application/octet-stream")}
+            files={"file": ("oversized_payload.exe", file_obj, "application/octet-stream")},
+            headers=self.auth_headers
         )
         self.assertIn(response.status_code, [400, 413])
 
@@ -118,7 +123,8 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
             file_obj = io.BytesIO(mal_bytes)
             response = self.client.post(
                 "/api/files/upload",
-                files={"file": (f"mal_{variant}.exe", file_obj, "application/octet-stream")}
+                files={"file": (f"mal_{variant}.exe", file_obj, "application/octet-stream")},
+                headers=self.auth_headers
             )
             # Must be handled without unhandled 500 server crash
             self.assertIn(response.status_code, [200, 201, 400, 422], f"Variant '{variant}' returned unexpected status")
@@ -136,7 +142,8 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
         file_obj1 = io.BytesIO(self.valid_pe)
         res1 = self.client.post(
             "/api/files/upload",
-            files={"file": ("dup_sample.exe", file_obj1, "application/octet-stream")}
+            files={"file": ("dup_sample.exe", file_obj1, "application/octet-stream")},
+            headers=self.auth_headers
         )
         self.assertIn(res1.status_code, [200, 201])
         data1 = res1.json()
@@ -144,7 +151,8 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
         file_obj2 = io.BytesIO(self.valid_pe)
         res2 = self.client.post(
             "/api/files/upload",
-            files={"file": ("dup_sample.exe", file_obj2, "application/octet-stream")}
+            files={"file": ("dup_sample.exe", file_obj2, "application/octet-stream")},
+            headers=self.auth_headers
         )
         self.assertIn(res2.status_code, [200, 201])
         data2 = res2.json()
@@ -219,7 +227,8 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
             filename = f"sample_{xss}.exe"
             response = self.client.post(
                 "/api/files/upload",
-                files={"file": (filename, file_obj, "application/octet-stream")}
+                files={"file": (filename, file_obj, "application/octet-stream")},
+                headers=self.auth_headers
             )
             self.assertIn(response.status_code, [200, 201, 400])
             if response.status_code in (200, 201):
@@ -259,7 +268,8 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
             file_obj = io.BytesIO(self.valid_pe)
             response = self.client.post(
                 "/api/files/upload",
-                files={"file": (dangerous_name, file_obj, "application/octet-stream")}
+                files={"file": (dangerous_name, file_obj, "application/octet-stream")},
+                headers=self.auth_headers
             )
             self.assertIn(response.status_code, [200, 201, 400], f"Failed on filename: {dangerous_name}")
             if response.status_code in (200, 201):

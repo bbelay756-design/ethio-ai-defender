@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings, BASE_DIR
 from app.core.logger import logger
+from app.middleware.body_size_limit import BodySizeLimitMiddleware
 from app.api.files import router as files_router
 from app.api.dashboard import router as dashboard_router
 from app.api.analyses import router as analyses_router
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
     (fail closed). The error message never contains the secret value.
     """
     settings.validate_security()
+    settings.validate_cors()
     logger.info("Security configuration validated: signing secret present and strong.")
     yield
 
@@ -41,14 +43,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration for web dashboard integration
+# SEC-05: bound the request body for upload endpoints BEFORE multipart parsing.
+# Added first so that the CORS middleware (added below) remains outermost and
+# can still attach headers to the 413 rejection responses.
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    BodySizeLimitMiddleware,
+    max_body_size=settings.MAX_UPLOAD_BODY_BYTES,
 )
+
+# SEC-04: explicit, configurable CORS allowlist.
+# Disabled entirely by default, which is correct for the same-origin,
+# single-host deployment. Wildcards are rejected at startup by
+# settings.validate_cors(). Populate CORS_ORIGINS only with known front-end
+# origins.
+if settings.CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=sorted(settings.CORS_ORIGINS),
+        allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
+    )
 
 
 @app.middleware("http")
@@ -148,11 +163,11 @@ async def analyst_dashboard_routes():
     return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})
 
 
-@app.get("/student/dashboard", tags=["Role Dashboards"])
-@app.get("/student/learning", tags=["Role Dashboards"])
-@app.get("/student/safe-samples", tags=["Role Dashboards"])
-async def student_dashboard_routes():
-    """Dedicated Cybersecurity Student Learning Lab Dashboard routes."""
+@app.get("/viewer/dashboard", tags=["Role Dashboards"])
+@app.get("/viewer/reports", tags=["Role Dashboards"])
+@app.get("/viewer/analyses", tags=["Role Dashboards"])
+async def viewer_dashboard_routes():
+    """Dedicated Security Viewer Dashboard routes."""
     if frontend_index.exists():
         return FileResponse(frontend_index)
     return JSONResponse(status_code=404, content={"detail": "Frontend index.html not found."})

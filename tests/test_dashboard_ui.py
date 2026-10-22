@@ -15,7 +15,8 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.config import BASE_DIR
-from app.db.session import init_db
+from app.db.session import init_db, SessionLocal
+from tests.auth_helpers import make_analyst
 
 
 class TestDefensiveSecurityDashboard(unittest.TestCase):
@@ -24,7 +25,15 @@ class TestDefensiveSecurityDashboard(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         init_db()
+        cls._db = SessionLocal()
+        _, cls._auth_headers = make_analyst(cls._db)
         cls.client = TestClient(app)
+        # SEC-05: /api/dashboard/analyze now requires an authenticated identity.
+        cls.client.headers.update(cls._auth_headers)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._db.close()
 
     def test_root_serves_html_dashboard(self):
         """Verify GET / returns HTML dashboard when requested by a browser."""

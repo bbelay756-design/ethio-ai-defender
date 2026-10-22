@@ -3,10 +3,10 @@ Security and Unit tests for Module 16: Authentication and Access Control.
 
 Tests:
 1. PBKDF2-HMAC-SHA256 password hashing with unique random salts.
-2. User registration and role assignment (ADMIN, ANALYST, STUDENT).
+2. User registration and role assignment (ADMIN, ANALYST, VIEWER).
 3. JWT-like HMAC-SHA256 signed access token generation, decoding, and verification.
 4. Token logout and revocation blacklist.
-5. Role-Based Access Control (RBAC): Admin permissions granted, Student access forbidden (403).
+5. Role-Based Access Control (RBAC): Admin permissions granted, Viewer access forbidden (403).
 6. Brute-force rate limiting and consecutive failed attempt account lockout.
 7. Verification that plaintext passwords and secrets are never returned or logged.
 """
@@ -59,29 +59,29 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
         self.assertFalse(verify_password("WrongPassword123", salt1, hash1))
 
     def test_user_registration_and_roles(self):
-        """SEC-01: public self-registration assigns STUDENT and rejects privileged roles."""
-        # 1. Register Student (allowed)
-        student_res = self.client.post("/api/auth/register", json={
-            "username": f"{self.prefix}_student",
-            "email": f"{self.prefix}_student@university.edu.et",
-            "password": "StudentSecurePass2026!",
-            "role": "STUDENT"
+        """SEC-01: public self-registration assigns VIEWER and rejects privileged roles."""
+        # 1. Register Viewer (allowed)
+        viewer_res = self.client.post("/api/auth/register", json={
+            "username": f"{self.prefix}_viewer",
+            "email": f"{self.prefix}_viewer@university.edu.et",
+            "password": "ViewerSecurePass2026!",
+            "role": "VIEWER"
         })
-        self.assertEqual(student_res.status_code, 201)
-        data = student_res.json()
-        self.assertEqual(data["username"], f"{self.prefix}_student")
-        self.assertEqual(data["role"], "STUDENT")
-        self.assertIn("use_learning_mode", data["permissions"])
+        self.assertEqual(viewer_res.status_code, 201)
+        data = viewer_res.json()
+        self.assertEqual(data["username"], f"{self.prefix}_viewer")
+        self.assertEqual(data["role"], "VIEWER")
+        self.assertIn("view_authorized_reports", data["permissions"])
         self.assertNotIn("manage_users", data["permissions"])
 
-        # 2. Omitting the role still yields STUDENT (server-decided)
+        # 2. Omitting the role still yields VIEWER (server-decided)
         default_res = self.client.post("/api/auth/register", json={
             "username": f"{self.prefix}_default",
             "email": f"{self.prefix}_default@university.edu.et",
             "password": "DefaultSecurePass2026!"
         })
         self.assertEqual(default_res.status_code, 201)
-        self.assertEqual(default_res.json()["role"], "STUDENT")
+        self.assertEqual(default_res.json()["role"], "VIEWER")
 
         # 3. Self-registering as ANALYST is rejected
         analyst_res = self.client.post("/api/auth/register", json={
@@ -126,7 +126,7 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
             "username": uname,
             "email": f"{uname}@university.edu.et",
             "password": "LoginSecurePass2026!",
-            "role": "STUDENT"
+            "role": "VIEWER"
         })
 
         login_res = self.client.post("/api/auth/login", json={
@@ -137,7 +137,7 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
         data = login_res.json()
         self.assertIn("access_token", data)
         self.assertEqual(data["token_type"], "bearer")
-        self.assertEqual(data["role"], "STUDENT")
+        self.assertEqual(data["role"], "VIEWER")
 
         # Use token on /api/auth/me
         token = data["access_token"]
@@ -152,7 +152,7 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
             "username": uname,
             "email": f"{uname}@soc.gov.et",
             "password": "LogoutSecurePass2026!",
-            "role": "ANALYST"
+            "role": "VIEWER"
         })
 
         # Login
@@ -175,16 +175,16 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
         self.assertEqual(me_after.status_code, 401)
         self.assertIn("revoked", me_after.json()["detail"].lower())
 
-    def test_rbac_students_cannot_access_admin_functions(self):
-        """Verify students are strictly forbidden (403) from accessing administrator endpoints."""
-        student_uname = f"{self.prefix}_rbac_std"
+    def test_rbac_viewers_cannot_access_admin_functions(self):
+        """Verify viewers are strictly forbidden (403) from accessing administrator endpoints."""
+        viewer_uname = f"{self.prefix}_rbac_viewer"
         admin_uname = f"{self.prefix}_rbac_adm"
 
         self.client.post("/api/auth/register", json={
-            "username": student_uname,
-            "email": f"{student_uname}@university.edu.et",
-            "password": "StudentPass2026!",
-            "role": "STUDENT"
+            "username": viewer_uname,
+            "email": f"{viewer_uname}@university.edu.et",
+            "password": "ViewerPass2026!",
+            "role": "VIEWER"
         })
         # SEC-01: ADMIN cannot be self-registered; provision directly via the service layer.
         AuthService.register_user(
@@ -195,14 +195,14 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
             role="ADMIN"
         )
 
-        # Student login
-        student_token = self.client.post("/api/auth/login", json={
-            "username": student_uname,
-            "password": "StudentPass2026!"
+        # Viewer login
+        viewer_token = self.client.post("/api/auth/login", json={
+            "username": viewer_uname,
+            "password": "ViewerPass2026!"
         }).json()["access_token"]
 
-        # Student attempts to list all users (Admin only)
-        forbidden_res = self.client.get("/api/auth/users", headers={"Authorization": f"Bearer {student_token}"})
+        # Viewer attempts to list all users (Admin only)
+        forbidden_res = self.client.get("/api/auth/users", headers={"Authorization": f"Bearer {viewer_token}"})
         self.assertEqual(forbidden_res.status_code, 403)
         self.assertIn("Access forbidden", forbidden_res.json()["detail"])
 
@@ -249,7 +249,7 @@ class TestAuthenticationAndAccessControl(unittest.TestCase):
             "username": secret_uname,
             "email": f"{secret_uname}@insa.gov.et",
             "password": "SuperSecretPass2026!",
-            "role": "ANALYST"
+            "role": "VIEWER"
         })
         user = self.db.query(UserModel).filter(UserModel.username == secret_uname).first()
         self.assertIsNotNone(user)

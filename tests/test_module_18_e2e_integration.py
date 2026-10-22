@@ -147,7 +147,8 @@ class TestModule18E2EPipeline(unittest.TestCase):
         file_obj = io.BytesIO(self.suspicious_pe)
         response = self.client.post(
             "/api/dashboard/analyze?language=en",
-            files={"file": ("suspicious_loader.exe", file_obj, "application/octet-stream")}
+            files={"file": ("suspicious_loader.exe", file_obj, "application/octet-stream")},
+            headers={"Authorization": f"Bearer {self.admin_token}"}
         )
         self.assertEqual(response.status_code, 200)
         data = response.json()

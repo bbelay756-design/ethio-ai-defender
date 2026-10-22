@@ -30,6 +30,7 @@ class SampleModel(Base):
     """
     Core sample catalog table.
     Stores metadata and hashes without saving raw binary payloads in DB.
+    Sample lifecycle states: NEW, QUEUED, ANALYZING, ANALYSIS_COMPLETE, ANALYST_REVIEW, CONFIRMED_SUSPICIOUS, ESCALATED, CLOSED, FAILED
     """
     __tablename__ = "samples"
 
@@ -42,15 +43,16 @@ class SampleModel(Base):
     md5 = Column(String(32), nullable=False)
     sha1 = Column(String(40), nullable=True)
     sha256 = Column(String(64), index=True, nullable=False)
-    status = Column(String(32), nullable=False, default="COMPLETED")
+    status = Column(String(32), nullable=False, default="NEW")  # NEW, QUEUED, ANALYZING, ANALYSIS_COMPLETE, ANALYST_REVIEW, CONFIRMED_SUSPICIOUS, ESCALATED, CLOSED, FAILED
     risk_score = Column(Integer, nullable=True, default=0)
     classification = Column(String(32), nullable=True, default="LOW")
     case_id = Column(String(64), nullable=True)
     case_status = Column(String(32), nullable=True, default="OPEN")  # OPEN, INVESTIGATING, CONTAINED, RESOLVED
     case_priority = Column(String(32), nullable=True, default="MEDIUM")  # LOW, MEDIUM, HIGH, CRITICAL
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    completed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=True)
+    completed_at = Column(DateTime, nullable=True)
 
     # Relationships with cascading deletes
     sections = relationship("SectionModel", back_populates="sample", cascade="all, delete-orphan")
@@ -65,6 +67,7 @@ class SampleModel(Base):
     ghidra_analysis = relationship("GhidraAnalysisModel", back_populates="sample", uselist=False, cascade="all, delete-orphan")
     ghidra_functions = relationship("GhidraFunctionModel", back_populates="sample", cascade="all, delete-orphan")
     ghidra_relationships = relationship("GhidraRelationshipModel", back_populates="sample", cascade="all, delete-orphan")
+    organization = relationship("OrganizationModel", backref="samples")
 
     __table_args__ = (
         Index("ix_samples_sha256_created", "sha256", "created_at"),
@@ -299,11 +302,15 @@ class UserModel(Base):
     email = Column(String(128), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     salt = Column(String(64), nullable=False)
-    role = Column(String(32), default="STUDENT", nullable=False)  # 'ADMIN', 'ANALYST', 'STUDENT'
+    role = Column(String(32), default="VIEWER", nullable=False)  # 'ADMIN', 'ANALYST', 'VIEWER'
+    org_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
     is_active = Column(Integer, default=1, nullable=False)  # 1 = active, 0 = inactive
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationship
+    organization = relationship("OrganizationModel", backref="users")
 
 
 class RevokedTokenModel(Base):
@@ -360,5 +367,42 @@ class AnalystNoteModel(Base):
     # Relationships
     sample = relationship("SampleModel", back_populates="notes")
     user = relationship("UserModel")
+
+
+class OrganizationModel(Base):
+    """
+    Organization model for Ethiopian organizations.
+    Supports configurable organization information including:
+    - Name
+    - Organization type
+    - Sector
+    - Region
+    - City
+    - Status
+    - Created date
+    """
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), unique=True, index=True, nullable=False)
+    org_type = Column(String(64), nullable=False)  # government, private, ngo, educational, healthcare, financial, ict, other
+    sector = Column(String(128), nullable=True, index=True)
+    region = Column(String(128), nullable=True)
+    city = Column(String(128), nullable=True)
+    status = Column(String(32), nullable=False, default="ACTIVE")  # ACTIVE, INACTIVE, SUSPENDED
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationship to users (many-to-many through association table)
+    # For now, we'll add org_id to UserModel
+
+    __table_args__ = (
+        Index("ix_organizations_sector_region", "sector", "region"),
+        Index("ix_organizations_status", "status"),
+    )
+
+
+# Add org_id to UserModel (will need migration)
+# This is a forward reference, actual column added via migration
 
 

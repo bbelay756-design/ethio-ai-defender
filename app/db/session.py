@@ -75,6 +75,8 @@ def init_db() -> None:
             if cols:
                 if "user_id" not in cols:
                     cursor.execute("ALTER TABLE samples ADD COLUMN user_id INTEGER REFERENCES users(id)")
+                if "org_id" not in cols:
+                    cursor.execute("ALTER TABLE samples ADD COLUMN org_id INTEGER REFERENCES organizations(id)")
                 if "sha1" not in cols:
                     cursor.execute("ALTER TABLE samples ADD COLUMN sha1 VARCHAR(40)")
                 if "risk_score" not in cols:
@@ -120,6 +122,18 @@ def init_db() -> None:
                 if "relationship_count" not in ghidra_cols:
                     cursor.execute("ALTER TABLE ghidra_analysis ADD COLUMN relationship_count INTEGER DEFAULT 0")
                 conn.connection.commit()
+
+            # Migration for users table - add org_id column
+            cursor.execute("PRAGMA table_info(users)")
+            user_cols = [row[1] for row in cursor.fetchall()]
+            if user_cols and "org_id" not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN org_id INTEGER REFERENCES organizations(id)")
+                conn.connection.commit()
+
+            # Migration: update legacy STUDENT role to VIEWER
+            cursor.execute("UPDATE users SET role = 'VIEWER' WHERE role = 'STUDENT'")
+            conn.connection.commit()
+
             cursor.close()
 
     logger.info("Database tables initialized successfully.")

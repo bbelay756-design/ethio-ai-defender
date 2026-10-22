@@ -20,7 +20,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.core.config import settings
+from app.core.config import settings, LEGACY_INSECURE_SECRET
 from app.db.session import SessionLocal, init_db
 from app.db.models import UserModel, SampleModel, RevokedTokenModel
 from app.auth.roles import UserRole, Permission, has_permission
@@ -414,7 +414,12 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
             # Assert secrets/passwords/tokens are never present in log text
             self.assertNotIn(self.admin_pass, combined_logs)
             self.assertNotIn("WrongPassword123!", combined_logs)
-            self.assertNotIn(settings.SECRET_KEY, combined_logs)
+            # SEC-02: the insecure legacy default must never reach logs, whatever
+            # key is configured. Only assert the active key when one is set (an
+            # empty string would trivially match every log line).
+            self.assertNotIn(LEGACY_INSECURE_SECRET, combined_logs)
+            if settings.SECRET_KEY:
+                self.assertNotIn(settings.SECRET_KEY, combined_logs)
 
 
 if __name__ == "__main__":

@@ -39,18 +39,18 @@ class TestModule19FinalIntegration(unittest.TestCase):
         cls.admin_token = AuthService.create_token_for_user(cls.admin)["access_token"]
         cls.admin_hdr = {"Authorization": f"Bearer {cls.admin_token}"}
 
-        # Student User A
-        u_student_a = f"m19_student_a_{uuid.uuid4().hex[:6]}"
+        # Analyst User A (owns a private analysis; upload requires UPLOAD_FILES)
+        u_student_a = f"m19_analyst_a_{uuid.uuid4().hex[:6]}"
         cls.user_a = AuthService.register_user(
-            cls.db, u_student_a, f"{u_student_a}@uni.et", "StudentAPass2026!", role=UserRole.STUDENT
+            cls.db, u_student_a, f"{u_student_a}@uni.et", "StudentAPass2026!", role=UserRole.ANALYST
         )
         cls.user_a_token = AuthService.create_token_for_user(cls.user_a)["access_token"]
         cls.user_a_hdr = {"Authorization": f"Bearer {cls.user_a_token}"}
 
         # Student User B
-        u_student_b = f"m19_student_b_{uuid.uuid4().hex[:6]}"
+        u_student_b = f"m19_viewer_b_{uuid.uuid4().hex[:6]}"
         cls.user_b = AuthService.register_user(
-            cls.db, u_student_b, f"{u_student_b}@uni.et", "StudentBPass2026!", role=UserRole.STUDENT
+            cls.db, u_student_b, f"{u_student_b}@uni.et", "ViewerBPass2026!", role=UserRole.VIEWER
         )
         cls.user_b_token = AuthService.create_token_for_user(cls.user_b)["access_token"]
         cls.user_b_hdr = {"Authorization": f"Bearer {cls.user_b_token}"}
@@ -233,7 +233,8 @@ class TestModule19FinalIntegration(unittest.TestCase):
         file_obj = io.BytesIO(bad_bytes)
         res = self.client.post(
             "/api/files/upload",
-            files={"file": ("invalid_non_pe.exe", file_obj, "application/octet-stream")}
+            files={"file": ("invalid_non_pe.exe", file_obj, "application/octet-stream")},
+            headers=self.admin_hdr
         )
         self.assertEqual(res.status_code, 400)
         self.assertEqual(res.json().get("detail", {}).get("status"), "REJECTED_INVALID_PE")
@@ -244,7 +245,8 @@ class TestModule19FinalIntegration(unittest.TestCase):
         file_obj = io.BytesIO(corrupt_pe)
         res = self.client.post(
             "/api/files/upload",
-            files={"file": ("malformed_pe.exe", file_obj, "application/octet-stream")}
+            files={"file": ("malformed_pe.exe", file_obj, "application/octet-stream")},
+            headers=self.admin_hdr
         )
         self.assertEqual(res.status_code, 400)
 

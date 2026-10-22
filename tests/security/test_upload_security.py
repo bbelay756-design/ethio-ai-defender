@@ -12,6 +12,8 @@ from app.main import app
 from app.core.config import settings
 from app.analyzers.file_intake import secure_intake_service, IntakeStatus
 from app.testing.synthetic_pe import SyntheticPEBuilder
+from app.db.session import init_db, SessionLocal
+from tests.auth_helpers import make_analyst
 from tests.fixtures.security_payloads import PATH_TRAVERSAL_FILENAMES, DANGEROUS_FILENAMES
 
 
@@ -20,10 +22,19 @@ class TestUploadSecurity(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # SEC-05: endpoint requires an authenticated ANALYST/ADMIN identity.
+        init_db()
+        cls._db = SessionLocal()
+        _, cls._auth_headers = make_analyst(cls._db)
         cls.client = TestClient(app)
+        cls.client.headers.update(cls._auth_headers)
         cls.valid_exe = SyntheticPEBuilder.create_minimal_pe()
         cls.valid_dll = SyntheticPEBuilder.create_minimal_pe(subsystem=2)
         cls.quarantine_dir = Path(settings.QUARANTINE_DIR).resolve()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._db.close()
 
     def test_01_valid_exe_upload_accepted(self):
         """Verify valid PE32 EXE binary is accepted and assigned an analysis ID."""

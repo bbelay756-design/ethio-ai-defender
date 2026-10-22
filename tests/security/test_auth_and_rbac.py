@@ -26,7 +26,7 @@ class TestAuthAndRBAC(unittest.TestCase):
         # Create users for all three roles
         cls.admin_username = f"sec_admin_{uid}"
         cls.analyst_username = f"sec_analyst_{uid}"
-        cls.student_username = f"sec_student_{uid}"
+        cls.viewer_username = f"sec_viewer_{uid}"
         cls.password = "SecTestPass2026!"
 
         cls.admin_user = AuthService.register_user(
@@ -35,13 +35,13 @@ class TestAuthAndRBAC(unittest.TestCase):
         cls.analyst_user = AuthService.register_user(
             cls.db, cls.analyst_username, f"{cls.analyst_username}@soc.et", cls.password, role=UserRole.ANALYST
         )
-        cls.student_user = AuthService.register_user(
-            cls.db, cls.student_username, f"{cls.student_username}@soc.et", cls.password, role=UserRole.STUDENT
+        cls.viewer_user = AuthService.register_user(
+            cls.db, cls.viewer_username, f"{cls.viewer_username}@soc.et", cls.password, role=UserRole.VIEWER
         )
 
         cls.admin_token = AuthService.create_token_for_user(cls.admin_user)["access_token"]
         cls.analyst_token = AuthService.create_token_for_user(cls.analyst_user)["access_token"]
-        cls.student_token = AuthService.create_token_for_user(cls.student_user)["access_token"]
+        cls.viewer_token = AuthService.create_token_for_user(cls.viewer_user)["access_token"]
 
     @classmethod
     def tearDownClass(cls):
@@ -80,7 +80,7 @@ class TestAuthAndRBAC(unittest.TestCase):
         # Authenticate new session
         login_res = self.client.post(
             "/api/auth/login",
-            json={"username": self.student_username, "password": self.password}
+            json={"username": self.viewer_username, "password": self.password}
         )
         token = login_res.json()["access_token"]
         auth_hdr = {"Authorization": f"Bearer {token}"}
@@ -97,16 +97,16 @@ class TestAuthAndRBAC(unittest.TestCase):
         res_me2 = self.client.get("/api/auth/me", headers=auth_hdr)
         self.assertEqual(res_me2.status_code, 401)
 
-    def test_05_student_role_boundary_enforcement(self):
-        """Verify STUDENT role cannot access user administration or security audit logs."""
-        std_hdr = {"Authorization": f"Bearer {self.student_token}"}
+    def test_05_viewer_role_boundary_enforcement(self):
+        """Verify VIEWER role cannot access user administration or security audit logs."""
+        viewer_hdr = {"Authorization": f"Bearer {self.viewer_token}"}
 
         # Cannot list users
-        res_users = self.client.get("/api/auth/users", headers=std_hdr)
+        res_users = self.client.get("/api/auth/users", headers=viewer_hdr)
         self.assertEqual(res_users.status_code, 403)
 
         # Cannot access audit logs
-        res_audit = self.client.get("/api/audit/logs", headers=std_hdr)
+        res_audit = self.client.get("/api/audit/logs", headers=viewer_hdr)
         self.assertEqual(res_audit.status_code, 403)
 
     def test_06_analyst_role_boundary_enforcement(self):
@@ -125,7 +125,3 @@ class TestAuthAndRBAC(unittest.TestCase):
 
         res_audit = self.client.get("/api/audit/logs", headers=adm_hdr)
         self.assertEqual(res_audit.status_code, 200)
-
-
-if __name__ == "__main__":
-    unittest.main()

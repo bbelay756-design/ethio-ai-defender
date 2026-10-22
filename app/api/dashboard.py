@@ -32,8 +32,10 @@ from app.audit.events import AuditResult, AuditEventType
 from app.db.session import SessionLocal, get_db
 from app.db.models import UserModel
 from app.db.repository import SampleRepository
-from app.auth.roles import UserRole
-from app.auth.dependencies import get_current_user, get_optional_current_user
+from app.auth.roles import UserRole, Permission
+from app.auth.dependencies import get_current_user, get_optional_current_user, require_permissions
+from app.core.config import settings
+from app.utils.upload_guard import read_upload_bounded
 from app.db.schemas import (
     SampleCreate,
     SectionCreate,
@@ -70,17 +72,23 @@ def run_full_analysis_pipeline(
 async def analyze_upload(
     file: UploadFile = File(...),
     language: str = Query("en", description="'en' for English, 'am' for Amharic"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.UPLOAD_FILES))
 ):
     """
     Accepts PE binary, validates perimeter, orchestrates full multi-module analysis,
     and returns comprehensive results for the 8 dashboard views.
+
+    Requires authentication and the UPLOAD_FILES permission (ADMIN / ANALYST).
     """
     raw_filename = file.filename or "sample.exe"
-    logger.info(f"Incoming dashboard analysis request for '{raw_filename}' (Lang: {language})")
+    logger.info(f"Incoming dashboard analysis request from '{current_user.username}' for '{raw_filename}' (Lang: {language})")
 
     try:
-        content = await file.read()
+        content = await read_upload_bounded(
+            file, settings.MAX_FILE_SIZE_BYTES, settings.UPLOAD_CHUNK_SIZE
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         audit_logger.log_analysis_failure(
             analysis_id="UNKNOWN",
@@ -97,7 +105,7 @@ async def analyze_upload(
             content,
             filename=raw_filename,
             language=language,
-            user_id=current_user.id if current_user else None
+            user_id=current_user.id
         )
         return result
     except ValueError as ve:

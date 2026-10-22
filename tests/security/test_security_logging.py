@@ -27,7 +27,7 @@ class TestSecurityLogging(unittest.TestCase):
         cls.username = f"log_user_{uuid.uuid4().hex[:6]}"
         cls.password = "LoggingSecretPass2026!"
         cls.user = AuthService.register_user(
-            cls.db, cls.username, f"{cls.username}@soc.et", cls.password, role=UserRole.STUDENT
+            cls.db, cls.username, f"{cls.username}@soc.et", cls.password, role=UserRole.VIEWER
         )
 
     @classmethod

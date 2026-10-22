@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.testing.synthetic_pe import SyntheticPEBuilder
+from app.db.session import init_db, SessionLocal
+from tests.auth_helpers import make_analyst
 from tests.fixtures.security_payloads import SQL_INJECTION_PAYLOADS, XSS_PAYLOADS
 
 
@@ -17,8 +19,17 @@ class TestInjectionAndXSS(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # SEC-05: upload calls require an authenticated ANALYST identity.
+        init_db()
+        cls._db = SessionLocal()
+        _, cls._auth_headers = make_analyst(cls._db)
         cls.client = TestClient(app)
+        cls.client.headers.update(cls._auth_headers)
         cls.valid_pe = SyntheticPEBuilder.create_minimal_pe()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._db.close()
 
     def test_01_sqli_login_bypass_neutralized(self):
         """Verify SQL injection payloads in login fields do not bypass authentication."""

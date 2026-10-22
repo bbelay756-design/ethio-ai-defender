@@ -28,7 +28,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 from app.main import app
-from app.core.config import settings, BASE_DIR
+from app.core.config import settings, BASE_DIR, LEGACY_INSECURE_SECRET
 from app.db.session import SessionLocal, init_db
 from app.db.models import UserModel, SampleModel
 from app.auth.roles import UserRole, Permission, has_permission
@@ -283,7 +283,12 @@ class ComprehensiveSecurityAudit(unittest.TestCase):
 
             self.assertNotIn(raw_password, logs_text)
             self.assertNotIn("WrongPassword", logs_text)
-            self.assertNotIn(settings.SECRET_KEY, logs_text)
+            # SEC-02: the insecure legacy default must never reach logs, whatever
+            # key is configured. Only assert the active key when one is set (an
+            # empty string would trivially match every log line).
+            self.assertNotIn(LEGACY_INSECURE_SECRET, logs_text)
+            if settings.SECRET_KEY:
+                self.assertNotIn(settings.SECRET_KEY, logs_text)
 
 
 if __name__ == "__main__":

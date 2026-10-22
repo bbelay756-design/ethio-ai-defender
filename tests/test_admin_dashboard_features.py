@@ -53,7 +53,7 @@ class TestAdminDashboardFeatures(unittest.TestCase):
                 username=f"stu_feat_{cls.uid}",
                 email=f"stu_feat_{cls.uid}@defensive.local",
                 password="StudentPassword123!",
-                role="STUDENT"
+                role="VIEWER"
             )
 
         # Login admin to get token
@@ -80,7 +80,7 @@ class TestAdminDashboardFeatures(unittest.TestCase):
         self.assertIn("total_users", data)
         self.assertIn("admin_count", data)
         self.assertIn("analyst_count", data)
-        self.assertIn("student_count", data)
+        self.assertIn("viewer_count", data)
         self.assertIn("system_health", data)
         self.assertTrue(data["zero_execution_guarantee"])
         self.assertIsInstance(data["recent_users"], list)
@@ -113,7 +113,7 @@ class TestAdminDashboardFeatures(unittest.TestCase):
             "username": tmp_username,
             "email": f"{tmp_username}@defensive.local",
             "password": "TmpPassword123!",
-            "role": "STUDENT"
+            "role": "VIEWER"
         })
         tmp_user_id = prov_res.json()["id"]
 
@@ -155,7 +155,7 @@ class TestAdminDashboardFeatures(unittest.TestCase):
             "username": del_username,
             "email": f"{del_username}@defensive.local",
             "password": "DelPassword123!",
-            "role": "STUDENT"
+            "role": "VIEWER"
         })
         del_user_id = prov_res.json()["id"]
 
@@ -213,7 +213,7 @@ class TestAdminDashboardFeatures(unittest.TestCase):
         self.assertIn("matrix", data)
         self.assertIn("ADMIN", data["matrix"])
         self.assertIn("ANALYST", data["matrix"])
-        self.assertIn("STUDENT", data["matrix"])
+        self.assertIn("VIEWER", data["matrix"])
         self.assertIn("permissions", data)
         self.assertIn("roles", data)
 

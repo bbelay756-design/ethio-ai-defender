@@ -10,7 +10,7 @@ class UserRole(str, Enum):
     """Platform system access roles."""
     ADMIN = "ADMIN"
     ANALYST = "ANALYST"
-    STUDENT = "STUDENT"
+    VIEWER = "VIEWER"
 
 
 class Permission(str, Enum):
@@ -19,17 +19,18 @@ class Permission(str, Enum):
     MANAGE_USERS = "manage_users"
     MANAGE_SETTINGS = "manage_settings"
     VIEW_AUDIT_LOGS = "view_audit_logs"
+    MANAGE_ORGANIZATIONS = "manage_organizations"
 
     # Analyst Permissions
     UPLOAD_FILES = "upload_files"
     ANALYZE_FILES = "analyze_files"
     GENERATE_REPORTS = "generate_reports"
     VIEW_ANALYSES = "view_analyses"
+    ADD_ANALYST_CONCLUSIONS = "add_analyst_conclusions"
 
-    # Student Permissions
-    ANALYZE_APPROVED_SAMPLES = "analyze_approved_samples"
-    USE_LEARNING_MODE = "use_learning_mode"
-    VIEW_OWN_REPORTS = "view_own_reports"
+    # Viewer Permissions
+    VIEW_AUTHORIZED_REPORTS = "view_authorized_reports"
+    VIEW_AUTHORIZED_ANALYSES = "view_authorized_analyses"
 
 
 # Exact Role-to-Permissions Matrix
@@ -38,23 +39,27 @@ ROLE_PERMISSIONS: Dict[UserRole, Set[Permission]] = {
         Permission.MANAGE_USERS,
         Permission.MANAGE_SETTINGS,
         Permission.VIEW_AUDIT_LOGS,
+        Permission.MANAGE_ORGANIZATIONS,
         Permission.VIEW_ANALYSES,
         Permission.UPLOAD_FILES,
         Permission.ANALYZE_FILES,
         Permission.GENERATE_REPORTS,
-        Permission.USE_LEARNING_MODE,
+        Permission.ADD_ANALYST_CONCLUSIONS,
+        Permission.VIEW_AUTHORIZED_REPORTS,
+        Permission.VIEW_AUTHORIZED_ANALYSES,
     },
     UserRole.ANALYST: {
         Permission.UPLOAD_FILES,
         Permission.ANALYZE_FILES,
         Permission.GENERATE_REPORTS,
         Permission.VIEW_ANALYSES,
-        Permission.USE_LEARNING_MODE,
+        Permission.ADD_ANALYST_CONCLUSIONS,
+        Permission.VIEW_AUTHORIZED_REPORTS,
+        Permission.VIEW_AUTHORIZED_ANALYSES,
     },
-    UserRole.STUDENT: {
-        Permission.ANALYZE_APPROVED_SAMPLES,
-        Permission.USE_LEARNING_MODE,
-        Permission.VIEW_OWN_REPORTS,
+    UserRole.VIEWER: {
+        Permission.VIEW_AUTHORIZED_REPORTS,
+        Permission.VIEW_AUTHORIZED_ANALYSES,
     },
 }
 

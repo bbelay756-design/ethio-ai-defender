@@ -26,7 +26,7 @@ class TestRateLimiting(unittest.TestCase):
         cls.victim_username = f"rl_target_{uuid.uuid4().hex[:6]}"
         cls.correct_password = "ValidTargetPass2026!"
         cls.user = AuthService.register_user(
-            cls.db, cls.victim_username, f"{cls.victim_username}@soc.et", cls.correct_password, role=UserRole.STUDENT
+            cls.db, cls.victim_username, f"{cls.victim_username}@soc.et", cls.correct_password, role=UserRole.VIEWER
         )
 
     @classmethod

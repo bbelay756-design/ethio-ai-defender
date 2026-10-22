@@ -801,7 +801,7 @@ async function loadDashboardOverviewStats() {
                 actList.innerHTML = '<div class="empty-state-cell">No recent binary analyses recorded.</div>';
             } else {
                 actList.innerHTML = data.recent_activity.map(item => `
-                    <div class="recent-activity-item" onclick="loadAnalysisById('${escapeHtml(item.analysis_id)}')">
+                    <div class="recent-activity-item" onclick="loadAnalysisById('${escapeJsString(item.analysis_id)}')">
                         <div class="recent-activity-info">
                             <span class="recent-activity-name">${escapeHtml(item.filename)}</span>
                             <span class="recent-activity-meta">ID: ${escapeHtml(item.analysis_id)} • SHA: ${escapeHtml(item.sha256_short)}</span>
@@ -872,6 +872,12 @@ function switchTab(tabId, updateUrl = true) {
             return;
         }
         if (updateUrl) updateUrlPath('/admin/dashboard');
+    } else if (tabId === 'home' && state.user && state.user.role === 'STUDENT') {
+        // SEC-05 / P1: Students have no UPLOAD_FILES permission, so the generic
+        // binary upload intake view must not be reachable. Show an explicit
+        // access-denied view directing them to the Safe Practice Labs.
+        showUnauthorizedView("Access Denied: Uploading binaries is restricted to Analysts and Administrators. Please use the Safe Practice Labs.");
+        return;
     } else if (tabId === 'learning') {
         if (updateUrl && state.user && state.user.role === 'STUDENT') {
             updateUrlPath('/student/dashboard');
@@ -1436,7 +1442,7 @@ function renderSampleData(data) {
     if (impTbody) {
         if (importsList.length > 0) {
             impTbody.innerHTML = importsList.map(i => `
-                <tr style="cursor: pointer;" onclick="openStringOrApiDrawer('${escapeHtml(i.api)}', 'API', '${escapeHtml(i.risk_relevance || 'LOW')}', '${escapeHtml(i.category || 'GENERAL')}', 'Imported API function from ${escapeHtml(i.dll)}')">
+                <tr style="cursor: pointer;" onclick="openStringOrApiDrawer('${escapeJsString(i.api)}', 'API', '${escapeJsString(i.risk_relevance || 'LOW')}', '${escapeJsString(i.category || 'GENERAL')}', 'Imported API function from ${escapeJsString(i.dll)}')">
                     <td class="font-mono">${escapeHtml(i.dll)}</td>
                     <td><strong>${escapeHtml(i.api)}</strong></td>
                     <td><span class="badge badge-rule">${escapeHtml(i.category || 'GENERAL')}</span></td>
@@ -1469,7 +1475,7 @@ function renderSampleData(data) {
         const sampleStrings = Array.isArray(strObj) ? strObj : (strObj.strings || []);
         if (sampleStrings.length > 0) {
             topStrTbody.innerHTML = sampleStrings.slice(0, 5).map(s => `
-                <tr style="cursor: pointer;" onclick="openStringOrApiDrawer('${escapeHtml(s.value || s)}', '${escapeHtml(s.category || s.type || 'STRING')}', '${escapeHtml(s.severity || 'LOW')}', '${escapeHtml(s.encoding || 'ASCII')}', '${escapeHtml(s.reason || 'Extracted ASCII / Unicode string artifact')}')">
+                <tr style="cursor: pointer;" onclick="openStringOrApiDrawer('${escapeJsString(s.value || s)}', '${escapeJsString(s.category || s.type || 'STRING')}', '${escapeJsString(s.severity || 'LOW')}', '${escapeJsString(s.encoding || 'ASCII')}', '${escapeJsString(s.reason || 'Extracted ASCII / Unicode string artifact')}')">
                     <td class="font-mono" style="word-break: break-all; max-width: 260px;">${escapeHtml(s.value || s)}</td>
                     <td><span class="badge badge-rule">${escapeHtml(s.category || s.type || 'GENERAL')}</span></td>
                     <td><span class="badge ${getRiskBadgeClass(s.severity || 'LOW')}">${escapeHtml(s.severity || 'LOW')}</span></td>
@@ -1495,7 +1501,7 @@ function renderSampleData(data) {
                     <td>${escapeHtml(ioc.source || 'STATIC_ANALYSIS')}</td>
                     <td>${ioc.confidence ? `${Math.round(ioc.confidence * 100)}%` : '100%'}</td>
                     <td style="text-align: right;">
-                        <button class="btn-secondary" onclick="navigator.clipboard.writeText('${escapeHtml(ioc.value)}'); showSocNotification('Copied', 'IOC copied to clipboard', 'success');" style="font-size: 9px; padding: 2px 6px;">📋 Copy</button>
+                        <button class="btn-secondary" onclick="navigator.clipboard.writeText('${escapeJsString(ioc.value)}'); showSocNotification('Copied', 'IOC copied to clipboard', 'success');" style="font-size: 9px; padding: 2px 6px;">📋 Copy</button>
                     </td>
                 </tr>
             `).join('');
@@ -2002,7 +2008,7 @@ function filterHistoryTable() {
                 <td><span class="badge badge-rule">${escapeHtml(item.file_type || 'EXE')} (${escapeHtml(item.architecture || 'x64')})</span></td>
                 <td class="font-mono">
                     <span title="${escapeHtml(item.sha256)}">${shortHash}</span>
-                    <button class="btn-icon-copy" onclick="copyTextToClipboard('${escapeHtml(item.sha256)}')" title="Copy full SHA-256">📋</button>
+                    <button class="btn-icon-copy" onclick="copyTextToClipboard('${escapeJsString(item.sha256)}')" title="Copy full SHA-256">📋</button>
                 </td>
                 <td>
                     <span class="badge ${riskBadge}">${riskLevel} (${score}/100)</span>
@@ -2010,7 +2016,7 @@ function filterHistoryTable() {
                 <td style="font-size: 12px; color: var(--text-secondary);">${dateStr}</td>
                 <td>
                     <div style="display: flex; gap: 6px; align-items: center;">
-                        <button class="btn-primary" style="padding: 4px 8px; font-size: 11px;" onclick="openAnalysisInWorkspace('${escapeHtml(item.analysis_id)}')" title="Load into Workspace">📂 Open</button>
+                        <button class="btn-primary" style="padding: 4px 8px; font-size: 11px;" onclick="openAnalysisInWorkspace('${escapeJsString(item.analysis_id)}')" title="Load into Workspace">📂 Open</button>
                         <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="window.open('/api/analyses/${encodeURIComponent(item.analysis_id)}/report?format=html&language=${state.currentLanguage}', '_blank')" title="View Report">📄 Report</button>
                     </div>
                 </td>
@@ -2349,7 +2355,7 @@ function renderStringsModalAnalysesList() {
                 <td><span class="badge badge-low">${escapeHtml(a.status || 'COMPLETED')}</span></td>
                 <td style="font-size: 11px; color: var(--text-muted);">${escapeHtml(dateStr)}</td>
                 <td style="text-align: center;">
-                    <button class="btn-${isCurrent ? 'secondary' : 'primary'}" onclick="selectAnalysisForStrings('${escapeHtml(a.analysis_id)}')" style="font-size: 11px; padding: 3px 10px;">
+                    <button class="btn-${isCurrent ? 'secondary' : 'primary'}" onclick="selectAnalysisForStrings('${escapeJsString(a.analysis_id)}')" style="font-size: 11px; padding: 3px 10px;">
                         ${isCurrent ? '✓ Active' : 'Open'}
                     </button>
                 </td>
@@ -3565,6 +3571,31 @@ function escapeHtml(str) {
 }
 
 /**
+ * SEC-07: Escape an untrusted value for safe inclusion inside a JavaScript
+ * string literal that is itself embedded in an inline HTML event-handler
+ * attribute (e.g. onclick="fn('VALUE')").
+ *
+ * escapeHtml() is NOT sufficient here: the HTML parser decodes entities such
+ * as &#039; back into a raw quote BEFORE the JavaScript engine parses the
+ * handler, which allows attribute-to-script breakout. This helper emits only
+ * backslash-escaped \xHH sequences, so neither the HTML attribute nor the JS
+ * string literal can be terminated by attacker-controlled text.
+ */
+function escapeJsString(str) {
+    if (str === undefined || str === null) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, '\\x27')
+        .replace(/"/g, '\\x22')
+        .replace(/&/g, '\\x26')
+        .replace(/</g, '\\x3c')
+        .replace(/>/g, '\\x3e')
+        .replace(/\r/g, '\\x0d')
+        .replace(/\n/g, '\\x0a')
+        .replace(/\t/g, '\\x09');
+}
+
+/**
  * Authentication and Access Control Management (Module 16)
  */
 function setAuthLoading(isLoading, text = "Authenticating Security Workspace...") {
@@ -3723,16 +3754,15 @@ function renderNavigationForRole() {
             if (label) label.textContent = isAm ? 'የሳይበር ደህንነት ትምህርት' : 'Learning Center';
         }
     } else if (role === 'STUDENT') {
-        // STUDENT sees: Learning Center, Safe Sample Analysis, Analysis Overview, Reports, History
+        // STUDENT sees: Learning Center, Analysis Overview, PE, Imports, Strings,
+        // Indicators, AI Analyst, Reports, History.
+        // SEC-05 / P1: the generic binary upload intake ("Home") is intentionally
+        // NOT shown — Student accounts lack the UPLOAD_FILES permission and must
+        // use the Safe Practice Labs instead.
         if (navLearning) {
             navLearning.style.display = 'block';
             const label = document.getElementById('nav-label-learning');
             if (label) label.textContent = isAm ? 'የተማሪዎች መማሪያ' : 'Learning Center';
-        }
-        if (navHome) {
-            navHome.style.display = 'block';
-            const label = document.getElementById('nav-label-home');
-            if (label) label.textContent = isAm ? 'ደህንነቱ የተጠበቀ ናሙና' : 'Safe Sample Analysis';
         }
         if (navAnalysis) {
             navAnalysis.style.display = 'block';
@@ -4363,19 +4393,19 @@ function filterUsersTable() {
         }
 
         const roleModalBtn = isCurrent ? '' : `
-            <button class="btn-secondary" onclick="openAdminRoleModal(${u.id}, '${escapeHtml(u.username)}', '${escapeHtml(u.role)}')" style="font-size: 10px; padding: 2px 6px;" title="Change user role">
+            <button class="btn-secondary" onclick="openAdminRoleModal(${u.id}, '${escapeJsString(u.username)}', '${escapeJsString(u.role)}')" style="font-size: 10px; padding: 2px 6px;" title="Change user role">
                 🎭 Role
             </button>
         `;
 
         const resetPassBtn = `
-            <button class="btn-secondary" onclick="openAdminResetPassModal(${u.id}, '${escapeHtml(u.username)}')" style="font-size: 10px; padding: 2px 6px;" title="Reset password">
+            <button class="btn-secondary" onclick="openAdminResetPassModal(${u.id}, '${escapeJsString(u.username)}')" style="font-size: 10px; padding: 2px 6px;" title="Reset password">
                 🔑 Password
             </button>
         `;
 
         const unlockBtn = isLocked ? `
-            <button class="btn-secondary" onclick="handleAdminUnlockUser(${u.id}, '${escapeHtml(u.username)}')" style="font-size: 10px; padding: 2px 6px; color: var(--accent-blue); border-color: var(--accent-blue);" title="Clear failed attempts and unlock">
+            <button class="btn-secondary" onclick="handleAdminUnlockUser(${u.id}, '${escapeJsString(u.username)}')" style="font-size: 10px; padding: 2px 6px; color: var(--accent-blue); border-color: var(--accent-blue);" title="Clear failed attempts and unlock">
                 🔓 Unlock
             </button>
         ` : '';
@@ -4387,7 +4417,7 @@ function filterUsersTable() {
         `;
 
         const deleteBtn = isCurrent ? '' : `
-            <button class="btn-secondary" onclick="deleteUserAccount(${u.id}, '${escapeHtml(u.username)}')" style="font-size: 10px; padding: 2px 6px; color: #f87171; border-color: rgba(239,68,68,0.3);" title="Delete user">
+            <button class="btn-secondary" onclick="deleteUserAccount(${u.id}, '${escapeJsString(u.username)}')" style="font-size: 10px; padding: 2px 6px; color: #f87171; border-color: rgba(239,68,68,0.3);" title="Delete user">
                 🗑️
             </button>
         `;
@@ -5374,7 +5404,7 @@ function renderImportsTableSlice() {
                     ${escapeHtml(imp.description || `Windows API in category ${imp.category || 'GENERAL'}`)}
                 </td>
                 <td style="text-align: center; white-space: nowrap;">
-                    <button class="btn-icon-copy" onclick="navigator.clipboard.writeText('${escapeHtml(imp.api)}'); showSocNotification('Copied', 'API name copied', 'success');" title="Copy API Name">📋</button>
+                    <button class="btn-icon-copy" onclick="navigator.clipboard.writeText('${escapeJsString(imp.api)}'); showSocNotification('Copied', 'API name copied', 'success');" title="Copy API Name">📋</button>
                     <button class="btn-secondary" onclick="openImportApiDetailModal(${start + idx})" style="font-size: 10px; padding: 2px 6px;" title="Inspect API">🔍</button>
                 </td>
             </tr>
@@ -5643,6 +5673,7 @@ function renderIocsTable(iocs) {
 
     tbody.innerHTML = iocs.map((ioc, idx) => {
         const iocVal = escapeHtml(ioc.value || '');
+        const iocValJs = escapeJsString(ioc.value || '');
         const iocType = escapeHtml((ioc.type || 'ARTIFACT').toUpperCase());
         const confPct = Math.round((ioc.confidence || 1.0) * 100);
 
@@ -5658,8 +5689,8 @@ function renderIocsTable(iocs) {
                 <td style="font-size: 11px; color: var(--text-secondary);">${escapeHtml(ioc.source || 'STATIC_ANALYSIS')}</td>
                 <td style="font-size: 11px;"><span class="badge badge-low">${confPct}%</span></td>
                 <td style="text-align: center; white-space: nowrap;">
-                    <button class="btn-icon-copy" onclick="navigator.clipboard.writeText('${iocVal}'); showSocNotification('Copied', 'IOC value copied', 'success');" title="Copy IOC">📋</button>
-                    <button class="btn-secondary" onclick="lookupThreatIntelligence('${iocVal}')" style="font-size: 10px; padding: 2px 8px; color: var(--accent-cyan);" title="Lookup reputation in threat intelligence providers">
+                    <button class="btn-icon-copy" onclick="navigator.clipboard.writeText('${iocValJs}'); showSocNotification('Copied', 'IOC value copied', 'success');" title="Copy IOC">📋</button>
+                    <button class="btn-secondary" onclick="lookupThreatIntelligence('${iocValJs}')" style="font-size: 10px; padding: 2px 8px; color: var(--accent-cyan);" title="Lookup reputation in threat intelligence providers">
                         🌐 Lookup
                     </button>
                 </td>

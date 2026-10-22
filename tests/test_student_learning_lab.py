@@ -199,6 +199,56 @@ class TestStudentLearningLab(unittest.TestCase):
             self.assertTrue(r["is_correct"])
             self.assertIn("explanation", r)
 
+    def _register_and_login_student(self, tag):
+        uid = uuid.uuid4().hex[:8]
+        uname = f"dash_{tag}_{uid}"
+        with SessionLocal() as db:
+            AuthService.register_user(
+                db=db,
+                username=uname,
+                email=f"{uname}@defensive.local",
+                password="DashStatsPass2026!",
+                role="STUDENT"
+            )
+        token = self.client.post("/api/auth/login", json={
+            "username": uname,
+            "password": "DashStatsPass2026!"
+        }).json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    def test_12_dashboard_stats_empty_state(self):
+        """12. BUG-01: dashboard-stats returns 200 with zeroed metrics for a fresh student."""
+        headers = self._register_and_login_student("empty")
+        res = self.client.get("/api/learning/dashboard-stats", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["completed_analyses_count"], 0)
+        self.assertEqual(data["labs_completed_count"], 0)
+        self.assertGreaterEqual(data["total_available_labs"], 5)
+        self.assertGreaterEqual(data["total_topics"], 14)
+        self.assertEqual(len(data["achievements"]), 5)
+        self.assertFalse(any(a["unlocked"] for a in data["achievements"]))
+
+    def test_13_dashboard_stats_populated_state(self):
+        """13. BUG-01: dashboard-stats reflects progress after loading a practice lab."""
+        headers = self._register_and_login_student("pop")
+        load = self.client.post(
+            "/api/learning/practice-samples/lab-01-benign-cli/load?lang=en",
+            headers=headers
+        )
+        self.assertEqual(load.status_code, 200)
+        res = self.client.get("/api/learning/dashboard-stats", headers=headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertGreaterEqual(data["completed_analyses_count"], 1)
+        self.assertEqual(data["labs_completed_count"], 1)
+        self.assertGreaterEqual(len(data["recent_analyses"]), 1)
+
+    def test_14_dashboard_stats_requires_authentication(self):
+        """14. BUG-01: dashboard-stats rejects unauthenticated requests."""
+        res = self.client.get("/api/learning/dashboard-stats")
+        self.assertEqual(res.status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

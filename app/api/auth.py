@@ -35,7 +35,7 @@ class UserRegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64)
     email: str = Field(..., min_length=5, max_length=128, pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")
     password: str = Field(..., min_length=8, max_length=128)
-    role: Optional[str] = Field("STUDENT", description="Self-registration role (default: STUDENT)")
+    role: Optional[str] = Field("VIEWER", description="Self-registration role (default: VIEWER)")
 
 
 class UserLoginRequest(BaseModel):
@@ -74,14 +74,14 @@ class UserProfileResponse(BaseModel):
 
 
 class RoleUpdateRequest(BaseModel):
-    role: str = Field(..., description="ADMIN, ANALYST, or STUDENT")
+    role: str = Field(..., description="ADMIN, ANALYST, or VIEWER")
 
 
 class AdminCreateUserRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64)
     email: str = Field(..., min_length=5, max_length=128, pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")
     password: str = Field(..., min_length=8, max_length=128)
-    role: str = Field("STUDENT", description="ADMIN, ANALYST, or STUDENT")
+    role: str = Field("VIEWER", description="ADMIN, ANALYST, or VIEWER")
 
 
 class AdminResetPasswordRequest(BaseModel):
@@ -92,7 +92,7 @@ class AdminOverviewStatsResponse(BaseModel):
     total_users: int
     admin_count: int
     analyst_count: int
-    student_count: int
+    viewer_count: int
     active_users: int
     inactive_users: int
     total_samples: int
@@ -119,15 +119,15 @@ def register(
     Registers a new platform user with salted PBKDF2-HMAC-SHA256 password hashing.
 
     SEC-01: public self-registration is restricted to the non-privileged roles
-    configured in SELF_REGISTRATION_ROLES (default: STUDENT). The role is decided
+    configured in SELF_REGISTRATION_ROLES (default: VIEWER). The role is decided
     server-side; privileged roles such as ADMIN can never be self-assigned and are
     provisioned only through the ADMIN-guarded endpoints.
     """
-    requested_role = (req.role or "STUDENT").strip().upper()
+    requested_role = (req.role or "VIEWER").strip().upper()
     if requested_role not in settings.SELF_REGISTRATION_ROLES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Requested role is not permitted for self-registration.",
+            detail="Invalid or disallowed role for self-registration.",
         )
     try:
         user = AuthService.register_user(
@@ -536,7 +536,7 @@ def get_rbac_matrix(
     roles_info = [
         {"role": "ADMIN", "name": "Security Administrator", "description": "Full platform authority, user provisioning, SOC audit logs, SIEM export, and engine policies.", "color": "#f59e0b"},
         {"role": "ANALYST", "name": "Malware Forensic Analyst", "description": "Binary intake, static PE analysis, YARA scanning, threat scoring, and SOC reporting.", "color": "#06b6d4"},
-        {"role": "STUDENT", "name": "Cybersecurity Apprentice", "description": "Learning center, safe synthetic lab samples, and personal report review.", "color": "#10b981"},
+        {"role": "VIEWER", "name": "Security Viewer", "description": "View authorized reports and analysis results. Cannot upload or modify samples.", "color": "#10b981"},
     ]
 
     return {
@@ -657,7 +657,7 @@ def get_user_analysis_object(
     Object-Level Authorization:
     - Admin: can view any analysis report.
     - Analyst: can view analyses.
-    - Student: can view ONLY their own analysis reports.
+    - Viewer: can view ONLY their own analysis reports.
     """
     from app.db.models import SampleModel
 
@@ -666,16 +666,16 @@ def get_user_analysis_object(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Analysis '{analysis_id}' not found.")
 
     # Object-level authorization check:
-    # If Student, must be the owner of the sample
-    if current_user.role == UserRole.STUDENT.value:
+    # If Viewer, must be the owner of the sample
+    if current_user.role == UserRole.VIEWER.value:
         if sample.user_id is not None and sample.user_id != current_user.id:
             logger.warning(
-                f"Object-Level Auth Violation: Student '{current_user.username}' (ID: {current_user.id}) "
+                f"Object-Level Auth Violation: Viewer '{current_user.username}' (ID: {current_user.id}) "
                 f"attempted to access analysis '{analysis_id}' owned by user ID {sample.user_id}."
             )
             audit_logger.log_security_alert(
                 alert_type="OBJECT_AUTH_VIOLATION",
-                description=f"Student '{current_user.username}' attempted unauthorized view of analysis '{analysis_id}'",
+                description=f"Viewer '{current_user.username}' attempted unauthorized view of analysis '{analysis_id}'",
                 user_id=current_user.id,
                 analysis_id=analysis_id,
                 details={"target_owner_id": sample.user_id},

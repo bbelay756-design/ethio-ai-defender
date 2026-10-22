@@ -28,6 +28,8 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.config import settings
+from app.db.session import init_db, SessionLocal
+from tests.auth_helpers import make_analyst
 
 
 def generate_synthetic_pe(size: int = 512) -> bytes:
@@ -48,8 +50,20 @@ def generate_synthetic_pe(size: int = 512) -> bytes:
 class TestFileIntakeAPI(unittest.TestCase):
     """Integration test suite for the Secure File Intake endpoints."""
 
+    @classmethod
+    def setUpClass(cls):
+        # SEC-05: uploads now require an authenticated ANALYST/ADMIN identity.
+        init_db()
+        cls._db = SessionLocal()
+        _, cls._auth_headers = make_analyst(cls._db)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._db.close()
+
     def setUp(self):
         self.client = TestClient(app)
+        self.client.headers.update(self._auth_headers)
 
     def test_upload_valid_exe(self):
         """Test uploading a valid synthetic .exe PE file."""

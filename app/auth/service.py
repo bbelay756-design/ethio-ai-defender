@@ -44,7 +44,7 @@ class AuthService:
         username: str,
         email: str,
         password: str,
-        role: str = "STUDENT"
+        role: str = "VIEWER"
     ) -> UserModel:
         """
         Registers a new user with salted PBKDF2-HMAC-SHA256 password digest.
@@ -280,7 +280,7 @@ class AuthService:
         total_users = len(users)
         admin_count = sum(1 for u in users if str(u.role).upper() == "ADMIN")
         analyst_count = sum(1 for u in users if str(u.role).upper() == "ANALYST")
-        student_count = sum(1 for u in users if str(u.role).upper() == "STUDENT")
+        viewer_count = sum(1 for u in users if str(u.role).upper() == "VIEWER")
         active_count = sum(1 for u in users if u.is_active)
         inactive_count = total_users - active_count
 
@@ -310,7 +310,7 @@ class AuthService:
             "total_users": total_users,
             "admin_count": admin_count,
             "analyst_count": analyst_count,
-            "student_count": student_count,
+            "viewer_count": viewer_count,
             "active_users": active_count,
             "inactive_users": inactive_count,
             "total_samples": total_samples,

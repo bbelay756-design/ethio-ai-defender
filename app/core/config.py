@@ -7,8 +7,14 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Set
 
+from dotenv import load_dotenv
+
 # Project root directory
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# Load environment variables from the project-level .env file if present.
+load_dotenv(BASE_DIR / ".env")
+load_dotenv()
 
 # Minimum acceptable length for the token-signing secret.
 MIN_SECRET_KEY_LENGTH = 32
@@ -27,6 +33,14 @@ class Settings:
     # Security & Storage Configuration
     # Max file size: 50MB (52,428,800 bytes) by default
     MAX_FILE_SIZE_BYTES: int = int(os.getenv("MAX_FILE_SIZE_BYTES", str(50 * 1024 * 1024)))
+
+    # Upper bound for the entire multipart request body on upload endpoints.
+    # Slightly larger than MAX_FILE_SIZE_BYTES to accommodate multipart
+    # form-field/framing overhead. Enforced by the ASGI body-size middleware
+    # BEFORE multipart parsing; see app/middleware/body_size_limit.py.
+    MAX_UPLOAD_BODY_BYTES: int = int(os.getenv("MAX_UPLOAD_BODY_BYTES", str(51 * 1024 * 1024)))
+    # Chunk size used when streaming an uploaded file through read_upload_bounded.
+    UPLOAD_CHUNK_SIZE: int = int(os.getenv("UPLOAD_CHUNK_SIZE", str(1024 * 1024)))
     
     # Strictly supported static analysis file extensions
     ALLOWED_EXTENSIONS: Set[str] = field(default_factory=lambda: {".exe", ".dll"})
@@ -82,10 +96,49 @@ class Settings:
     SELF_REGISTRATION_ROLES: Set[str] = field(
         default_factory=lambda: {
             role.strip().upper()
-            for role in os.getenv("SELF_REGISTRATION_ROLES", "STUDENT").split(",")
+            for role in os.getenv("SELF_REGISTRATION_ROLES", "VIEWER").split(",")
             if role.strip()
         }
     )
+
+    # Cross-Origin Resource Sharing (CORS).
+    # Explicit allowlist of trusted front-end origins. Empty (the default)
+    # disables cross-origin access entirely, which is the correct behaviour for
+    # the same-origin, single-host deployment the platform ships with. Wildcards
+    # are explicitly rejected by validate_cors(). Populate via the comma
+    # separated CORS_ORIGINS environment variable only for a real, known
+    # front-end origin.
+    CORS_ORIGINS: Set[str] = field(
+        default_factory=lambda: {
+            origin.strip()
+            for origin in os.getenv("CORS_ORIGINS", "").split(",")
+            if origin.strip()
+        }
+    )
+    CORS_ALLOW_CREDENTIALS: bool = os.getenv(
+        "CORS_ALLOW_CREDENTIALS", "false"
+    ).lower() in ("true", "1", "yes")
+
+    def validate_cors(self) -> None:
+        """
+        Fail closed if CORS is configured unsafely.
+
+        Rejects the wildcard origin and any wildcard pattern, which is critical
+        when credentials are allowed (a wildcard + credentials combination lets
+        any site read authenticated responses).
+        """
+        for origin in self.CORS_ORIGINS:
+            if "*" in origin:
+                raise RuntimeError(
+                    "SECURITY CONFIGURATION ERROR: CORS_ORIGINS must list explicit "
+                    "origins; wildcards ('*') are not permitted. Configure the exact "
+                    "front-end origin(s) via the CORS_ORIGINS environment variable."
+                )
+        if self.CORS_ALLOW_CREDENTIALS and not self.CORS_ORIGINS:
+            raise RuntimeError(
+                "SECURITY CONFIGURATION ERROR: CORS_ALLOW_CREDENTIALS is enabled but "
+                "CORS_ORIGINS is empty. Configure an explicit origin allowlist."
+            )
 
     def validate_security(self) -> None:
         """

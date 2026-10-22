@@ -5,7 +5,7 @@ Verifies:
 1. Test 1: Unauthenticated request to /api/auth/me returns 401 Unauthorized.
 2. Test 2: Admin session returns 200 with role ADMIN and /admin/dashboard.
 3. Test 3: Analyst session returns 200 with role ANALYST and /analyst/dashboard.
-4. Test 4: Student session returns 200 with role STUDENT and /student/dashboard.
+4. Test 4: Viewer session returns 200 with role VIEWER and /viewer/dashboard.
 5. Test 5: Revoked/invalid token returns 401 Unauthorized.
 6. Test 6: HTML index contains decoupled public layout (#public-layout) and hidden loading overlay (#auth-loading-overlay).
 """
@@ -46,12 +46,12 @@ class TestAuthLoadingStates(unittest.TestCase):
                 password="AnalystPassword123!",
                 role="ANALYST"
             )
-            cls.student = AuthService.register_user(
+            cls.viewer = AuthService.register_user(
                 db=db,
-                username=f"stu_load_{cls.uid}",
-                email=f"stu_load_{cls.uid}@defensive.local",
-                password="StudentPassword123!",
-                role="STUDENT"
+                username=f"view_load_{cls.uid}",
+                email=f"view_load_{cls.uid}@defensive.local",
+                password="ViewerPassword123!",
+                role="VIEWER"
             )
 
     @classmethod
@@ -94,11 +94,11 @@ class TestAuthLoadingStates(unittest.TestCase):
         self.assertEqual(data["role"], "ANALYST")
         self.assertEqual(data["dashboard_url"], "/analyst/dashboard")
 
-    def test_04_student_session_resolution(self):
-        """Test 4: Backend running + valid student session resolves to Student Dashboard."""
+    def test_04_viewer_session_resolution(self):
+        """Test 4: Backend running + valid viewer session resolves to Viewer Dashboard."""
         login = self.client.post("/api/auth/login", json={
-            "username": f"stu_load_{self.uid}",
-            "password": "StudentPassword123!"
+            "username": f"view_load_{self.uid}",
+            "password": "ViewerPassword123!"
         })
         self.assertEqual(login.status_code, 200)
         token = login.json()["access_token"]
@@ -106,8 +106,8 @@ class TestAuthLoadingStates(unittest.TestCase):
         me_res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         self.assertEqual(me_res.status_code, 200)
         data = me_res.json()
-        self.assertEqual(data["role"], "STUDENT")
-        self.assertEqual(data["dashboard_url"], "/student/dashboard")
+        self.assertEqual(data["role"], "VIEWER")
+        self.assertEqual(data["dashboard_url"], "/viewer/dashboard")
 
     def test_05_revoked_token_returns_401(self):
         """Test 5: Revoked token returns 401."""

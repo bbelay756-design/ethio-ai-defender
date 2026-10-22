@@ -233,6 +233,13 @@ cp .env.example .env
 *(Optional: add `GEMINI_API_KEY` in `.env` for cloud LLM reasoning; defaults to deterministic offline provider if absent).*
 *(Optional: set `GHIDRA_HOME` in `.env` to your extracted Ghidra directory to enable headless reverse engineering; the platform degrades gracefully and reports Ghidra as unavailable if it is not installed).*
 
+**Security-critical settings (see `.env.example` for details):**
+* `SECRET_KEY` — **required**; strong, unique, ≥ 32 chars. Startup fails closed if missing/weak.
+* `SELF_REGISTRATION_ROLES` — roles allowed to self-register publicly (default `STUDENT`; `ADMIN` is never allowed).
+* `MAX_FILE_SIZE_BYTES` / `MAX_UPLOAD_BODY_BYTES` — per-file and raw request-body upload ceilings (defaults 50 MB / 51 MB); oversized uploads return HTTP `413` before parsing.
+* `CORS_ORIGINS` — explicit comma-separated origin allowlist. **Empty by default** (same-origin only). Wildcards (`*`) are rejected at startup. The platform ships as a same-origin, single-host deployment.
+* Upload endpoints (`/api/files/upload`, `/api/analyses`, `/api/dashboard/analyze`) require an authenticated `ADMIN` or `ANALYST` identity (`UPLOAD_FILES` permission); `STUDENT` accounts use the Safe Practice Labs instead.
+
 ### 3. Launch Development Server
 ```powershell
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -256,7 +263,7 @@ python verify_module_20.py
 
 ### Run Full Test Suite via Standard `unittest`:
 ```powershell
-python -m unittest discover tests
+python -m unittest discover -s tests -t .
 ```
 
 ### Run Defensive Security Audit Tool:
@@ -271,8 +278,9 @@ python audit_security_issues.py
 | Method | Endpoint | Access Level | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/` | Public | Serves SOC Dashboard UI or system health JSON. |
-| `POST` | `/api/files/upload` | Public / User | Validates and quarantines PE binaries, returns `analysis_id`. |
-| `POST` | `/api/dashboard/analyze` | Public / User | Executes complete 15-stage pipeline, returns Unified Analysis Object. |
+| `POST` | `/api/files/upload` | Analyst / Admin | Validates and quarantines PE binaries, returns `analysis_id`. Requires `UPLOAD_FILES`. |
+| `POST` | `/api/dashboard/analyze` | Analyst / Admin | Executes complete 15-stage pipeline, returns Unified Analysis Object. Requires `UPLOAD_FILES`. |
+| `POST` | `/api/analyses` | Analyst / Admin | REST upload + full static analysis. Requires `UPLOAD_FILES`. |
 | `GET` | `/api/dashboard/samples` | Public / User | Lists analyzed samples in database. |
 | `GET` | `/api/dashboard/samples/{id}/full` | Owner / Admin | Fetches full multi-section sample details with IDOR protection. |
 | `GET` | `/api/dashboard/samples/{id}/report` | Owner / Admin | Exports security report in JSON, Markdown, HTML, or Plain Text. |
@@ -283,7 +291,7 @@ python audit_security_issues.py
 | `GET` | `/api/analyses/{id}/ghidra` | Owner / Admin | Returns structured Ghidra reverse-engineering metadata and recovered functions. |
 | `POST`| `/api/analyses/threat-intel/lookup` | Analyst / Admin | Queries configured threat-intelligence providers for an indicator. |
 | `DELETE`| `/api/dashboard/samples/{id}` | Owner / Admin | Deletes analyzed sample and cascading records. |
-| `POST` | `/api/auth/register` | Public | Registers new platform user (`STUDENT`, `ANALYST`, or `ADMIN`). |
+| `POST` | `/api/auth/register` | Public | Self-registers a new platform user (restricted to `SELF_REGISTRATION_ROLES`, default `STUDENT`). |
 | `POST` | `/api/auth/login` | Public | Authenticates user credentials, returns signed JWT access token. |
 | `GET` | `/api/auth/me` | Authenticated | Returns current authenticated user profile and active permissions. |
 | `POST` | `/api/auth/logout` | Authenticated | Revokes current JWT access token (blacklists JTI). |
