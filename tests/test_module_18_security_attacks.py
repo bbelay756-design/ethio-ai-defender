@@ -47,7 +47,7 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
         uid = str(uuid.uuid4())[:8]
         cls.admin_username = f"admin_atk_{uid}"
         cls.analyst_username = f"analyst_atk_{uid}"
-        cls.student_username = f"student_atk_{uid}"
+        cls.student_username = f"viewer_atk_{uid}"
 
         cls.admin = AuthService.register_user(
             cls.db, cls.admin_username, f"{cls.admin_username}@soc.et", "AdminSecretPass2026!", role="ADMIN"
@@ -56,7 +56,7 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
             cls.db, cls.analyst_username, f"{cls.analyst_username}@soc.et", "AnalystSecretPass2026!", role="ANALYST"
         )
         cls.student = AuthService.register_user(
-            cls.db, cls.student_username, f"{cls.student_username}@soc.et", "StudentSecretPass2026!", role="STUDENT"
+            cls.db, cls.student_username, f"{cls.student_username}@soc.et", "ViewerSecretPass2026!", role="VIEWER"
         )
 
         cls.admin_token = AuthService.create_token_for_user(cls.admin)["access_token"]
@@ -243,7 +243,7 @@ class TestModule18SecurityAttackVectors(unittest.TestCase):
         """Verify 5 consecutive failed logins trigger a 15-minute account lockout."""
         victim_user = f"rate_victim_{uuid.uuid4().hex[:6]}"
         AuthService.register_user(
-            self.db, victim_user, f"{victim_user}@soc.et", "ValidPassword2026!", role="STUDENT"
+            self.db, victim_user, f"{victim_user}@soc.et", "ValidPassword2026!", role="VIEWER"
         )
 
         for i in range(5):

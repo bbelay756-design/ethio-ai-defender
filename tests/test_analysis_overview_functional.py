@@ -30,13 +30,13 @@ class TestAnalysisOverviewFunctional(unittest.TestCase):
         # Seed test users
         cls.admin_username = "test_admin_ov"
         cls.analyst_username = "test_analyst_ov"
-        cls.student_username = "test_student_ov"
+        cls.student_username = "test_viewer_ov"
 
         from app.auth.service import AuthService
         for u_name, role in [
             (cls.admin_username, "ADMIN"),
             (cls.analyst_username, "ANALYST"),
-            (cls.student_username, "STUDENT"),
+            (cls.student_username, "VIEWER"),
         ]:
             existing = cls.db.query(UserModel).filter(UserModel.username == u_name).first()
             if existing:

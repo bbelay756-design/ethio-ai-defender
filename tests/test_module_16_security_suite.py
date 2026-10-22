@@ -51,9 +51,9 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
         cls.analyst_email = "analyst@test.local"
         cls.analyst_pass = "FakeAnalystPass2026!"
 
-        cls.student_user = "student_sec_tester"
-        cls.student_email = "student@test.local"
-        cls.student_pass = "FakeStudentPass2026!"
+        cls.student_user = "viewer_sec_tester"
+        cls.student_email = "viewer@test.local"
+        cls.student_pass = "FakeViewerPass2026!"
 
         # Register standard test users if not exist
         db = SessionLocal()
@@ -61,7 +61,7 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
             for u, e, p, r in [
                 (cls.admin_user, cls.admin_email, cls.admin_pass, "ADMIN"),
                 (cls.analyst_user, cls.analyst_email, cls.analyst_pass, "ANALYST"),
-                (cls.student_user, cls.student_email, cls.student_pass, "STUDENT"),
+                (cls.student_user, cls.student_email, cls.student_pass, "VIEWER"),
             ]:
                 if not db.query(UserModel).filter(UserModel.username == u).first():
                     AuthService.register_user(db, username=u, email=e, password=p, role=r)
@@ -100,8 +100,8 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
         self.assertIn("access_token", data)
         self.assertEqual(data["role"], "ANALYST")
 
-    def test_03_valid_student_login(self):
-        """Test valid student login returns 200 and access token."""
+    def test_03_valid_viewer_login(self):
+        """Test valid viewer login returns 200 and access token."""
         res = self.client.post("/api/auth/login", json={
             "username": self.student_user,
             "password": self.student_pass
@@ -109,7 +109,7 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertIn("access_token", data)
-        self.assertEqual(data["role"], "STUDENT")
+        self.assertEqual(data["role"], "VIEWER")
 
     def test_04_wrong_password_returns_401(self):
         """Test authentication with wrong password returns 401 Unauthorized."""
@@ -199,7 +199,7 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
         res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["username"], self.student_user)
-        self.assertEqual(res.json()["role"], "STUDENT")
+        self.assertEqual(res.json()["role"], "VIEWER")
 
     # ==========================================
     # 2. AUTHORIZATION TESTS (ROLE BOUNDARIES)
@@ -226,25 +226,25 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
         self.assertEqual(res.status_code, 403)
         self.assertIn("Access forbidden", res.json()["detail"])
 
-    def test_15_student_role_cannot_access_admin_endpoints(self):
-        """Test STUDENT role receives 403 Forbidden on admin user management."""
-        student_token = self.client.post("/api/auth/login", json={
+    def test_15_viewer_role_cannot_access_admin_endpoints(self):
+        """Test VIEWER role receives 403 Forbidden on admin user management."""
+        viewer_token = self.client.post("/api/auth/login", json={
             "username": self.student_user,
             "password": self.student_pass
         }).json()["access_token"]
 
-        res = self.client.get("/api/auth/users", headers={"Authorization": f"Bearer {student_token}"})
+        res = self.client.get("/api/auth/users", headers={"Authorization": f"Bearer {viewer_token}"})
         self.assertEqual(res.status_code, 403)
         self.assertIn("Access forbidden", res.json()["detail"])
 
-    def test_16_student_role_cannot_update_roles(self):
-        """Test STUDENT role receives 403 Forbidden when attempting to elevate user roles."""
-        student_token = self.client.post("/api/auth/login", json={
+    def test_16_viewer_role_cannot_update_roles(self):
+        """Test VIEWER role receives 403 Forbidden when attempting to elevate user roles."""
+        viewer_token = self.client.post("/api/auth/login", json={
             "username": self.student_user,
             "password": self.student_pass
         }).json()["access_token"]
 
-        res = self.client.put("/api/auth/users/1/role", json={"role": "ADMIN"}, headers={"Authorization": f"Bearer {student_token}"})
+        res = self.client.put("/api/auth/users/1/role", json={"role": "ADMIN"}, headers={"Authorization": f"Bearer {viewer_token}"})
         self.assertEqual(res.status_code, 403)
 
     # ==========================================
@@ -260,9 +260,9 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
         - Admin accesses Analysis A -> Allowed (200 OK).
         """
         pfx = secrets.token_hex(4)
-        # Register User A (Student A) and User B (Student B)
-        user_a = AuthService.register_user(self.db, f"user_a_{pfx}", f"user_a_{pfx}@test.local", "FakePass12345!", "STUDENT")
-        user_b = AuthService.register_user(self.db, f"user_b_{pfx}", f"user_b_{pfx}@test.local", "FakePass12345!", "STUDENT")
+        # Register User A (Viewer A) and User B (Viewer B)
+        user_a = AuthService.register_user(self.db, f"user_a_{pfx}", f"user_a_{pfx}@test.local", "FakePass12345!", "VIEWER")
+        user_b = AuthService.register_user(self.db, f"user_b_{pfx}", f"user_b_{pfx}@test.local", "FakePass12345!", "VIEWER")
 
         # Create Analysis A owned by User A
         anl_id = f"ANL-OBJ-{pfx}"
@@ -370,7 +370,7 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
     def test_23_rate_limiting_and_account_lockout_activation(self):
         """Verify that 5 consecutive failed attempts trigger account lockout (423)."""
         target_name = f"rate_target_{secrets.token_hex(4)}"
-        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "TargetPass123!", "STUDENT")
+        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "TargetPass123!", "VIEWER")
 
         for _ in range(4):
             r = self.client.post("/api/auth/login", json={"username": target_name, "password": "WrongPassword"})

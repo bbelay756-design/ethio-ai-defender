@@ -42,15 +42,15 @@ class TestStudentLearningLab(unittest.TestCase):
         with SessionLocal() as db:
             cls.student = AuthService.register_user(
                 db=db,
-                username=f"student_lab_{cls.uid}",
-                email=f"student_lab_{cls.uid}@defensive.local",
+                username=f"viewer_lab_{cls.uid}",
+                email=f"viewer_lab_{cls.uid}@defensive.local",
                 password="StudentPassword123!",
-                role="STUDENT"
+                role="VIEWER"
             )
 
         # Login student to get JWT token
         student_login = cls.client.post("/api/auth/login", json={
-            "username": f"student_lab_{cls.uid}",
+            "username": f"viewer_lab_{cls.uid}",
             "password": "StudentPassword123!"
         })
         cls.student_token = student_login.json()["access_token"]
@@ -208,7 +208,7 @@ class TestStudentLearningLab(unittest.TestCase):
                 username=uname,
                 email=f"{uname}@defensive.local",
                 password="DashStatsPass2026!",
-                role="STUDENT"
+                role="VIEWER"
             )
         token = self.client.post("/api/auth/login", json={
             "username": uname,

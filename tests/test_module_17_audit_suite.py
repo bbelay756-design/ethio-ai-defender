@@ -40,7 +40,7 @@ class TestModule17SecurityAuditExhaustiveSuite(unittest.TestCase):
             cls.db, f"adm_m17_{uid}", f"adm_{uid}@soc.et", "AdminPassword2026!", role="ADMIN"
         )
         cls.student_user = AuthService.register_user(
-            cls.db, f"std_m17_{uid}", f"std_{uid}@soc.et", "StudentPassword2026!", role="STUDENT"
+            cls.db, f"std_m17_{uid}", f"std_{uid}@soc.et", "ViewerPassword2026!", role="VIEWER"
         )
 
         cls.admin_token = AuthService.create_token_for_user(cls.admin_user)["access_token"]

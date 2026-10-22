@@ -32,7 +32,7 @@ class TestAuditApiAndAccessControl(unittest.TestCase):
         uid = str(uuid.uuid4())[:8]
         cls.admin_username = f"admin_audit_{uid}"
         cls.analyst_username = f"analyst_audit_{uid}"
-        cls.student_username = f"student_audit_{uid}"
+        cls.student_username = f"viewer_audit_{uid}"
 
         cls.admin = AuthService.register_user(
             cls.db, cls.admin_username, f"{cls.admin_username}@soc.et", "AdminSecretPass2026!", role="ADMIN"
@@ -41,7 +41,7 @@ class TestAuditApiAndAccessControl(unittest.TestCase):
             cls.db, cls.analyst_username, f"{cls.analyst_username}@soc.et", "AnalystSecretPass2026!", role="ANALYST"
         )
         cls.student = AuthService.register_user(
-            cls.db, cls.student_username, f"{cls.student_username}@soc.et", "StudentSecretPass2026!", role="STUDENT"
+            cls.db, cls.student_username, f"{cls.student_username}@soc.et", "ViewerSecretPass2026!", role="VIEWER"
         )
 
         cls.admin_token = AuthService.create_token_for_user(cls.admin)["access_token"]

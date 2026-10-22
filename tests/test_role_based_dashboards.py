@@ -4,14 +4,14 @@ Tests for Role-Based Dashboard Routing and Authorization (Step 7 Verification)
 Covers:
 1. Admin login -> /admin/dashboard
 2. Analyst login -> /analyst/dashboard
-3. Student login -> /student/dashboard
+3. Viewer login -> /viewer/dashboard
 4. Invalid credentials -> rejected (401)
-5. Student requests admin API -> 403 Forbidden
+5. Viewer requests admin API -> 403 Forbidden
 6. Analyst requests admin API -> 403 Forbidden
 7. Admin requests admin API -> allowed (200 OK)
 8. Logout -> token revoked, protected routes unavailable
 9. Missing / invalid role registration -> safe failure (400)
-10. Web dashboard routes (/admin/dashboard, /analyst/dashboard, /student/dashboard, /unauthorized) -> 200 OK HTML
+10. Web dashboard routes (/admin/dashboard, /analyst/dashboard, /viewer/dashboard, /unauthorized) -> 200 OK HTML
 """
 
 import unittest
@@ -52,12 +52,12 @@ class TestRoleBasedDashboards(unittest.TestCase):
                 password="AnalystSecretPassword123!",
                 role="ANALYST"
             )
-            cls.student_user = AuthService.register_user(
+            cls.viewer_user = AuthService.register_user(
                 db=db,
-                username=f"student_{cls.uid}",
-                email=f"student_{cls.uid}@defensive.local",
-                password="StudentSecretPassword123!",
-                role="STUDENT"
+                username=f"viewer_{cls.uid}",
+                email=f"viewer_{cls.uid}@defensive.local",
+                password="ViewerSecretPassword123!",
+                role="VIEWER"
             )
 
     @classmethod
@@ -92,18 +92,18 @@ class TestRoleBasedDashboards(unittest.TestCase):
         self.assertEqual(data["user_id"], self.analyst_user.id)
         self.assertEqual(data["username"], f"analyst_{self.uid}")
 
-    def test_03_student_login_routing(self):
-        """3. Student login returns student role and /student/dashboard URL."""
+    def test_03_viewer_login_routing(self):
+        """3. Viewer login returns viewer role and /viewer/dashboard URL."""
         res = self.client.post("/api/auth/login", json={
-            "username": f"student_{self.uid}",
-            "password": "StudentSecretPassword123!"
+            "username": f"viewer_{self.uid}",
+            "password": "ViewerSecretPassword123!"
         })
         self.assertEqual(res.status_code, 200)
         data = res.json()
-        self.assertEqual(data["role"], "STUDENT")
-        self.assertEqual(data["dashboard_url"], "/student/dashboard")
-        self.assertEqual(data["user_id"], self.student_user.id)
-        self.assertEqual(data["username"], f"student_{self.uid}")
+        self.assertEqual(data["role"], "VIEWER")
+        self.assertEqual(data["dashboard_url"], "/viewer/dashboard")
+        self.assertEqual(data["user_id"], self.viewer_user.id)
+        self.assertEqual(data["username"], f"viewer_{self.uid}")
 
     def test_04_invalid_credentials_rejected(self):
         """4. Invalid credentials rejected with 401 Unauthorized."""
@@ -114,20 +114,20 @@ class TestRoleBasedDashboards(unittest.TestCase):
         self.assertEqual(res.status_code, 401)
         self.assertTrue("invalid" in res.json().get("detail", "").lower())
 
-    def test_05_student_requests_admin_api_forbidden(self):
-        """5. Student requesting admin API (/api/auth/users, /api/audit/logs) returns 403 Forbidden."""
+    def test_05_viewer_requests_admin_api_forbidden(self):
+        """5. Viewer requesting admin API (/api/auth/users, /api/audit/logs) returns 403 Forbidden."""
         login_res = self.client.post("/api/auth/login", json={
-            "username": f"student_{self.uid}",
-            "password": "StudentSecretPassword123!"
+            "username": f"viewer_{self.uid}",
+            "password": "ViewerSecretPassword123!"
         })
         token = login_res.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Student calls /api/auth/users
+        # Viewer calls /api/auth/users
         res_users = self.client.get("/api/auth/users", headers=headers)
         self.assertEqual(res_users.status_code, 403)
 
-        # Student calls /api/audit/logs
+        # Viewer calls /api/audit/logs
         res_logs = self.client.get("/api/audit/logs", headers=headers)
         self.assertEqual(res_logs.status_code, 403)
 
@@ -201,7 +201,7 @@ class TestRoleBasedDashboards(unittest.TestCase):
         routes = [
             "/admin/dashboard",
             "/analyst/dashboard",
-            "/student/dashboard",
+            "/viewer/dashboard",
             "/unauthorized",
             "/dashboard",
             "/",
@@ -219,8 +219,8 @@ class TestRoleBasedDashboards(unittest.TestCase):
             "/admin/audit",
             "/analyst/new-analysis",
             "/analyst/history",
-            "/student/learning",
-            "/student/safe-samples",
+            "/viewer/reports",
+            "/viewer/analyses",
         ]
         for route in routes:
             res = self.client.get(route, headers={"Accept": "text/html"})
@@ -243,8 +243,8 @@ class TestRoleBasedDashboards(unittest.TestCase):
     def test_12_token_persistence_refresh_flow(self):
         """12. Session persistence: /api/auth/me validates stored token on refresh."""
         login_res = self.client.post("/api/auth/login", json={
-            "username": f"student_{self.uid}",
-            "password": "StudentSecretPassword123!"
+            "username": f"viewer_{self.uid}",
+            "password": "ViewerSecretPassword123!"
         })
         self.assertEqual(login_res.status_code, 200)
         token = login_res.json()["access_token"]
@@ -253,19 +253,19 @@ class TestRoleBasedDashboards(unittest.TestCase):
         refresh_res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
         self.assertEqual(refresh_res.status_code, 200)
         user_data = refresh_res.json()
-        self.assertEqual(user_data["username"], f"student_{self.uid}")
-        self.assertEqual(user_data["role"], "STUDENT")
-        self.assertEqual(user_data["dashboard_url"], "/student/dashboard")
+        self.assertEqual(user_data["username"], f"viewer_{self.uid}")
+        self.assertEqual(user_data["role"], "VIEWER")
+        self.assertEqual(user_data["dashboard_url"], "/viewer/dashboard")
 
     def test_13_client_cannot_escalate_via_tampered_role(self):
         """13. Zero-trust: Backend authorization always reads DB identity, ignoring any client role spoofing."""
         login_res = self.client.post("/api/auth/login", json={
-            "username": f"student_{self.uid}",
-            "password": "StudentSecretPassword123!"
+            "username": f"viewer_{self.uid}",
+            "password": "ViewerSecretPassword123!"
         })
         token = login_res.json()["access_token"]
 
-        # Student attempts to call admin endpoint with query params or custom headers pretending to be admin
+        # Viewer attempts to call admin endpoint with query params or custom headers pretending to be admin
         res = self.client.get("/api/auth/users?role=ADMIN", headers={
             "Authorization": f"Bearer {token}",
             "X-User-Role": "ADMIN",
