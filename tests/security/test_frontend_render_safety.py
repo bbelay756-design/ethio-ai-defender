@@ -43,16 +43,24 @@ class TestFrontendRenderSafety(unittest.TestCase):
         )
 
     def test_admin_handlers_use_js_string_escaping(self):
+        # After SEC-07 remediation, inline handlers replaced with data attributes + event delegation.
+        # escapeJsString is now used for data-* attribute values in the HTML template strings.
         for snippet in (
-            "openAdminRoleModal(${u.id}, '${escapeJsString(u.username)}'",
-            "openAdminResetPassModal(${u.id}, '${escapeJsString(u.username)}'",
-            "handleAdminUnlockUser(${u.id}, '${escapeJsString(u.username)}'",
-            "deleteUserAccount(${u.id}, '${escapeJsString(u.username)}'",
+            "data-username=\"${escapeHtml(u.username)}\"",
+            "data-action=\"role-modal\"",
+            "data-action=\"reset-pass\"",
+            "data-action=\"unlock-user\"",
+            "data-action=\"toggle-status\"",
+            "data-action=\"delete-user\"",
         ):
             self.assertIn(snippet, self.source, snippet)
 
     def test_user_controlled_username_no_longer_uses_escape_html_in_handler(self):
         self.assertNotIn("'${escapeHtml(u.username)}'", self.source)
+        # Verify escapeJsString still exists and is used for JS string escaping
+        self.assertIn("function escapeJsString", self.source)
+        self.assertIn("\\x27", self.source)  # single quote escaping
+        self.assertIn("\\x22", self.source)  # double quote escaping
 
     def test_student_upload_intake_removed_from_navigation(self):
         # The Student "Safe Sample Analysis" upload nav label is gone.
