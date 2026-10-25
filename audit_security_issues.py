@@ -122,7 +122,7 @@ class ComprehensiveSecurityAudit(unittest.TestCase):
             username=f"{self.pfx}_user",
             email=f"{self.pfx}_user@test.local",
             password=raw_pass,
-            role="STUDENT"
+            role="VIEWER"
         )
         # Verify in-memory model and DB record
         db_user = self.db.query(UserModel).filter(UserModel.id == user.id).first()
@@ -141,7 +141,7 @@ class ComprehensiveSecurityAudit(unittest.TestCase):
             username=f"{self.pfx}_std_tok",
             email=f"{self.pfx}_std_tok@test.local",
             password="Password123!",
-            role="STUDENT"
+            role="VIEWER"
         )
         token_data = AuthService.create_token_for_user(user)
         legit_token = token_data["access_token"]
@@ -160,7 +160,7 @@ class ComprehensiveSecurityAudit(unittest.TestCase):
         """Audit: Verify that non-admin roles cannot perform administrative actions."""
         # Register Analyst and Student
         analyst = AuthService.register_user(self.db, f"{self.pfx}_analyst", f"{self.pfx}_analyst@test.local", "Pass1234!", "ANALYST")
-        student = AuthService.register_user(self.db, f"{self.pfx}_student", f"{self.pfx}_student@test.local", "Pass1234!", "STUDENT")
+        student = AuthService.register_user(self.db, f"{self.pfx}_student", f"{self.pfx}_student@test.local", "Pass1234!", "VIEWER")
 
         analyst_token = AuthService.create_token_for_user(analyst)["access_token"]
         student_token = AuthService.create_token_for_user(student)["access_token"]
@@ -186,8 +186,8 @@ class ComprehensiveSecurityAudit(unittest.TestCase):
     # -------------------------------------------------------------
     def test_security_06_object_level_tenant_isolation(self):
         """Audit: Verify cross-user / cross-tenant object access isolation."""
-        user_alpha = AuthService.register_user(self.db, f"{self.pfx}_alpha", f"{self.pfx}_alpha@test.local", "Pass1234!", "STUDENT")
-        user_beta = AuthService.register_user(self.db, f"{self.pfx}_beta", f"{self.pfx}_beta@test.local", "Pass1234!", "STUDENT")
+        user_alpha = AuthService.register_user(self.db, f"{self.pfx}_alpha", f"{self.pfx}_alpha@test.local", "Pass1234!", "VIEWER")
+        user_beta = AuthService.register_user(self.db, f"{self.pfx}_beta", f"{self.pfx}_beta@test.local", "Pass1234!", "VIEWER")
 
         # Create an analysis sample owned by User Alpha
         anl_id = f"ANL-AUDIT-{self.pfx}"
@@ -248,7 +248,7 @@ class ComprehensiveSecurityAudit(unittest.TestCase):
     def test_security_08_brute_force_account_lockout(self):
         """Audit: Verify consecutive failed logins trigger 15-minute account lockout."""
         target_name = f"{self.pfx}_lock_target"
-        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "CorrectPassword123!", "STUDENT")
+        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "CorrectPassword123!", "VIEWER")
 
         for _ in range(4):
             r = self.client.post("/api/auth/login", json={"username": target_name, "password": "WrongPassword"})
