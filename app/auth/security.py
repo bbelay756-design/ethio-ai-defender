@@ -70,6 +70,7 @@ def create_access_token(
         "jti": jti,
         "exp": int(expire.timestamp()),
         "iat": int(now.timestamp()),
+        "tv": data.get("token_version", 1),  # token version for revocation
     })
 
     # Header & Payload base64url encoding

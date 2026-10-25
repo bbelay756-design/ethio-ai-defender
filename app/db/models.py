@@ -308,6 +308,7 @@ class UserModel(Base):
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    token_version = Column(Integer, default=1, nullable=False)  # Incremented on password reset, role change, deactivation
 
     # Relationship
     organization = relationship("OrganizationModel", backref="users")
@@ -323,6 +324,25 @@ class RevokedTokenModel(Base):
     token_jti = Column(String(64), unique=True, index=True, nullable=False)
     revoked_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     expires_at = Column(DateTime, nullable=False)
+
+
+class FailedLoginAttemptModel(Base):
+    """
+    Database-backed failed login attempt tracking for distributed rate limiting.
+    Replaces in-memory rate limiter for multi-worker deployments.
+    """
+    __tablename__ = "failed_login_attempts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    identifier = Column(String(128), nullable=False, index=True)  # username:ip or ip
+    attempt_count = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
+    last_attempt_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        Index("ix_failed_login_identifier", "identifier"),
+    )
 
 
 class AuditLogModel(Base):

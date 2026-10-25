@@ -134,6 +134,29 @@ def init_db() -> None:
             cursor.execute("UPDATE users SET role = 'VIEWER' WHERE role = 'STUDENT'")
             conn.connection.commit()
 
+            # Migration for users table - add token_version column
+            cursor.execute("PRAGMA table_info(users)")
+            user_cols = [row[1] for row in cursor.fetchall()]
+            if user_cols and "token_version" not in user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1")
+                conn.connection.commit()
+
+            # Migration for failed_login_attempts table
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='failed_login_attempts'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    CREATE TABLE failed_login_attempts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        identifier VARCHAR(128) NOT NULL,
+                        attempt_count INTEGER DEFAULT 0 NOT NULL,
+                        locked_until DATETIME,
+                        last_attempt_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+                    )
+                """)
+                cursor.execute("CREATE INDEX ix_failed_login_identifier ON failed_login_attempts(identifier)")
+                conn.connection.commit()
+
             cursor.close()
 
     logger.info("Database tables initialized successfully.")

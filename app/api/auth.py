@@ -3,7 +3,7 @@ Authentication and Access Control API Endpoints.
 """
 
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Header, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, status, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
@@ -21,9 +21,11 @@ from app.auth.service import (
 from app.auth.dependencies import (
     get_current_user,
     get_token_from_header,
+    get_token_from_header_or_cookie,
     require_roles,
     require_permissions,
 )
+from app.auth.csrf import verify_csrf_token, set_csrf_cookie, clear_csrf_cookie, generate_csrf_token
 from app.audit.logger import audit_logger
 from app.audit.events import AuditEventType, AuditResult
 
@@ -113,6 +115,9 @@ class AdminOverviewStatsResponse(BaseModel):
 @router.post("/register", response_model=UserProfileResponse, status_code=status.HTTP_201_CREATED)
 def register(
     req: UserRegisterRequest,
+    request: Request,
+    response: Response,
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -168,12 +173,16 @@ def register(
 def login(
     req: UserLoginRequest,
     request: Request,
+    response: Response,
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
     Authenticates user and returns an HMAC-SHA256 signed access token.
+    Sets HttpOnly cookie for browser clients; Bearer token for API clients.
     Enforces brute-force rate limiting and account lockout.
     """
+    from app.core.config import settings
     client_ip = request.client.host if request.client else "127.0.0.1"
     try:
         user = AuthService.authenticate_user(
@@ -191,6 +200,19 @@ def login(
             user_id=user.id,
             ip_address=client_ip,
             db=db,
+        )
+
+        # Set HttpOnly cookie for browser clients
+        access_token = token_data["access_token"]
+        cookie_max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        response.set_cookie(
+            key="auth_token",
+            value=access_token,
+            max_age=cookie_max_age,
+            httponly=True,
+            secure=not settings.DEBUG,  # Secure in production
+            samesite="strict",
+            path="/"
         )
 
         return TokenResponse(**token_data)
@@ -226,16 +248,24 @@ def login(
 @router.post("/logout", summary="Log out and invalidate access token")
 def logout(
     request: Request,
-    token: str = Depends(get_token_from_header),
+    response: Response,
+    token: str = Depends(get_token_from_header_or_cookie),
     current_user: UserModel = Depends(get_current_user),
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
     Revokes the current access token by adding its JTI to the revocation blacklist.
+    Clears HttpOnly cookie for browser clients.
     """
     success = AuthService.revoke_token(db, token)
     if not success:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to revoke token.")
+
+    # Clear HttpOnly cookie
+    response.delete_cookie(key="auth_token", path="/", httponly=True, secure=not settings.DEBUG, samesite="strict")
+    # Clear CSRF cookie
+    clear_csrf_cookie(response)
 
     client_ip = request.client.host if request.client else "127.0.0.1"
     audit_logger.log_logout(
@@ -301,7 +331,9 @@ def list_all_users(
 def update_user_role_admin(
     user_id: int,
     req: RoleUpdateRequest,
+    request: Request,
     admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -353,7 +385,9 @@ def get_admin_overview(
 @router.post("/users", response_model=UserProfileResponse, status_code=status.HTTP_201_CREATED)
 def admin_create_user(
     req: AdminCreateUserRequest,
+    request: Request,
     admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -395,7 +429,9 @@ def admin_create_user(
 @router.put("/users/{user_id}/status", response_model=UserProfileResponse)
 def toggle_user_active_status_admin(
     user_id: int,
+    request: Request,
     admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -436,7 +472,9 @@ def toggle_user_active_status_admin(
 @router.delete("/users/{user_id}")
 def admin_delete_user(
     user_id: int,
+    request: Request,
     admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -468,7 +506,9 @@ def admin_delete_user(
 @router.post("/users/{user_id}/unlock", summary="Admin: Unlock user account")
 def admin_unlock_user(
     user_id: int,
+    request: Request,
     admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -493,7 +533,9 @@ def admin_unlock_user(
 def admin_reset_user_password(
     user_id: int,
     req: AdminResetPasswordRequest,
+    request: Request,
     admin_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
+    csrf_ok: bool = Depends(verify_csrf_token),
     db: Session = Depends(get_db)
 ):
     """
@@ -743,3 +785,17 @@ def delete_user_analysis_object(
         db=db,
     )
     return {"message": f"Analysis '{analysis_id}' deleted successfully."}
+
+
+# --- CSRF Token Endpoint ---
+@router.get("/csrf-token", summary="Get CSRF token for cookie-based authentication")
+def get_csrf_token(request: Request, response: Response):
+    """
+    Returns a CSRF token for use with cookie-based authentication.
+    The token is also set as a cookie (readable by JavaScript) for double-submit pattern.
+    """
+    from app.auth.csrf import generate_csrf_token, set_csrf_cookie
+    
+    csrf_token = generate_csrf_token()
+    set_csrf_cookie(response, csrf_token)
+    return {"csrf_token": csrf_token}

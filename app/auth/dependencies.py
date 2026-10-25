@@ -3,7 +3,7 @@ FastAPI Authentication and Role-Based Authorization Dependencies.
 """
 
 from typing import List, Optional
-from fastapi import Depends, HTTPException, Header, status
+from fastapi import Depends, HTTPException, Header, Request, status, Cookie
 from sqlalchemy.orm import Session
 
 from app.core.logger import logger
@@ -14,30 +14,42 @@ from app.auth.security import decode_access_token
 from app.auth.service import AuthService
 
 
-def get_token_from_header(authorization: Optional[str] = Header(None)) -> str:
+def get_token_from_header_or_cookie(
+    authorization: Optional[str] = Header(None),
+    auth_token: Optional[str] = Cookie(None)
+) -> str:
     """
-    Extracts Bearer token from HTTP Authorization header.
+    Extracts Bearer token from HTTP Authorization header or HttpOnly cookie.
+    Priority: Authorization header > auth_token cookie.
     """
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Authorization header. Bearer token required.",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
+    # First try Authorization header (for API clients)
+    if authorization:
+        parts = authorization.split()
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            return parts[1]
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Authorization header format. Expected 'Bearer <token>'.",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-    return parts[1]
+    # Fallback to HttpOnly cookie (for browser clients)
+    if auth_token:
+        return auth_token
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Missing authentication. Provide Authorization header or auth_token cookie.",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+
+
+# Backward compatibility alias
+get_token_from_header = get_token_from_header_or_cookie
 
 
 def get_current_user(
-    token: str = Depends(get_token_from_header),
+    token: str = Depends(get_token_from_header_or_cookie),
     db: Session = Depends(get_db)
 ) -> UserModel:
     """
@@ -80,6 +92,15 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is deactivated."
+        )
+
+    # SEC-06: Validate token version against user's current token version
+    token_version = payload.get("tv", 1)
+    if token_version != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been invalidated due to security changes. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"}
         )
 
     return user
@@ -149,22 +170,48 @@ def require_permissions(*required_permissions):
 
 def get_optional_current_user(
     authorization: Optional[str] = Header(None),
+    auth_token: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ) -> Optional[UserModel]:
     """
-    Extracts and validates current user if Authorization header is present; otherwise returns None.
+    Extracts and validates current user if Authorization header or auth_token cookie is present; otherwise returns None.
+    
+    Validates token signature, expiration, revocation, token version, and user active status.
+    Returns None for any validation failure (treats invalid tokens as anonymous).
+    Does not silently downgrade valid-but-rejected tokens to anonymous on sensitive endpoints.
     """
-    if not authorization:
-        return None
-    try:
+    token = None
+    if authorization:
         parts = authorization.split()
-        if len(parts) != 2 or parts[0].lower() != "bearer":
+        if len(parts) == 2 and parts[0].lower() == "bearer":
+            token = parts[1]
+    elif auth_token:
+        token = auth_token
+    
+    if not token:
+        return None
+    
+    try:
+        payload = decode_access_token(token)
+        
+        # Check token revocation
+        jti = payload.get("jti")
+        if jti and AuthService.is_token_revoked(db, jti):
             return None
-        payload = decode_access_token(parts[1])
+        
         user_id = payload.get("sub")
         if not user_id:
             return None
+        
         user = db.query(UserModel).filter(UserModel.id == int(user_id)).first()
-        return user if user and user.is_active else None
+        if not user or not user.is_active:
+            return None
+        
+        # SEC-06: Validate token version against user's current token version
+        token_version = payload.get("tv", 1)
+        if token_version != user.token_version:
+            return None
+        
+        return user
     except Exception:
         return None

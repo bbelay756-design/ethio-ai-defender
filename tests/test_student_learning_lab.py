@@ -56,6 +56,10 @@ class TestStudentLearningLab(unittest.TestCase):
         cls.student_token = student_login.json()["access_token"]
         cls.student_headers = {"Authorization": f"Bearer {cls.student_token}"}
 
+    def setUp(self):
+        from tests.security.test_helpers import reset_failed_login_attempts
+        reset_failed_login_attempts()
+
     def test_01_list_all_14_learning_topics(self):
         """1. Student can list all 14 reverse-engineering educational topics."""
         res = self.client.get("/api/learning/topics?lang=en", headers=self.student_headers)
@@ -178,12 +182,18 @@ class TestStudentLearningLab(unittest.TestCase):
 
     def test_11_evaluate_quiz_submission(self):
         """11. Student submits quiz answers and receives grading and technical rationales."""
+        # Correct answers based on quiz questions:
+        # q1: b (e_lfanew is a pointer to PE NT Header)
+        # q2: b (high entropy = compression/encryption/packing)
+        # q3: b (VirtualProtect has legitimate uses)
+        # q4: a (W+X violates W^X/DEP)
+        # q5: b (OpenProcess + VirtualAllocEx + WriteProcessMemory + CreateRemoteThread = process injection)
         submission_payload = {
             "answers": [
-                {"question_id": "q1", "selected_option_id": "b"},  # correct (e_lfanew)
-                {"question_id": "q2", "selected_option_id": "b"},  # correct (entropy randomness)
-                {"question_id": "q3", "selected_option_id": "b"},  # correct (VirtualProtect benign JIT)
-                {"question_id": "q4", "selected_option_id": "a"},  # correct (W^X violation)
+                {"question_id": "q1", "selected_option_id": "b"},  # correct (e_lfanew is a pointer to PE NT Header)
+                {"question_id": "q2", "selected_option_id": "b"},  # correct (high entropy = compression/encryption/packing)
+                {"question_id": "q3", "selected_option_id": "b"},  # correct (VirtualProtect has legitimate uses)
+                {"question_id": "q4", "selected_option_id": "a"},  # correct (W+X violates W^X/DEP)
                 {"question_id": "q5", "selected_option_id": "b"}   # correct (process injection APIs)
             ]
         }
@@ -246,7 +256,9 @@ class TestStudentLearningLab(unittest.TestCase):
 
     def test_14_dashboard_stats_requires_authentication(self):
         """14. BUG-01: dashboard-stats rejects unauthenticated requests."""
-        res = self.client.get("/api/learning/dashboard-stats")
+        # Use a fresh client to avoid cookie persistence from setUpClass login
+        fresh_client = TestClient(app)
+        res = fresh_client.get("/api/learning/dashboard-stats")
         self.assertEqual(res.status_code, 401)
 
 

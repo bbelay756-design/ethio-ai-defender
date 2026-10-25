@@ -15,7 +15,7 @@ from app.auth.security import (
     create_access_token,
     decode_access_token,
 )
-from app.auth.rate_limiter import rate_limiter
+from app.auth.rate_limiter_db import get_db_rate_limiter
 
 
 class AuthenticationError(Exception):
@@ -92,8 +92,9 @@ class AuthService:
     ) -> UserModel:
         """
         Authenticates username and password against stored cryptographic salt & digest.
-        Enforces rate limiting and account lockout protection.
+        Enforces rate limiting and account lockout protection using database-backed limiter.
         """
+        rate_limiter = get_db_rate_limiter(db)
         rate_key = f"login:{username}:{client_ip}"
 
         # 1. Check Rate Limiting
@@ -201,7 +202,10 @@ class AuthService:
 
     @staticmethod
     def update_user_role(db: Session, user_id: int, new_role: str) -> Optional[UserModel]:
-        """Updates a user's authorization role."""
+        """Updates a user's authorization role.
+        
+        Increments token_version to invalidate all existing tokens.
+        """
         role_norm = new_role.upper()
         if role_norm not in [r.value for r in UserRole]:
             raise ValueError(f"Invalid role '{new_role}'. Allowed: {[r.value for r in UserRole]}")
@@ -210,22 +214,32 @@ class AuthService:
         if not user:
             return None
 
+        old_role = user.role
         user.role = role_norm
+        user.token_version = (user.token_version or 1) + 1  # Invalidate all existing tokens
         db.commit()
         db.refresh(user)
-        logger.info(f"Updated role for user '{user.username}' (ID: {user_id}) to '{role_norm}'")
+        logger.info(f"Updated role for user '{user.username}' (ID: {user_id}) from '{old_role}' to '{role_norm}'; token_version incremented to {user.token_version}")
         return user
 
     @staticmethod
     def toggle_user_active_status(db: Session, user_id: int) -> Optional[UserModel]:
-        """Toggles user active/inactive status."""
+        """Toggles user active/inactive status.
+        
+        Increments token_version to invalidate all existing tokens on deactivation.
+        """
         user = db.query(UserModel).filter(UserModel.id == user_id).first()
         if not user:
             return None
         user.is_active = 0 if user.is_active else 1
+        if user.is_active == 0:  # Only increment on deactivation
+            user.token_version = (user.token_version or 1) + 1  # Invalidate all existing tokens
         db.commit()
         db.refresh(user)
-        logger.info(f"Toggled active status for user '{user.username}' (ID: {user_id}) to {user.is_active}")
+        status_str = "ACTIVE" if user.is_active else "INACTIVE"
+        logger.info(f"Toggled active status for user '{user.username}' (ID: {user_id}) to {status_str}")
+        if user.is_active == 0:
+            logger.info(f"Token version incremented to {user.token_version} due to deactivation")
         return user
 
     @staticmethod
@@ -255,7 +269,10 @@ class AuthService:
 
     @staticmethod
     def reset_user_password(db: Session, user_id: int, new_password: str) -> Optional[UserModel]:
-        """Resets a user's password with cryptographically salted PBKDF2 hashing."""
+        """Resets a user's password with cryptographically salted PBKDF2 hashing.
+        
+        Increments token_version to invalidate all existing tokens.
+        """
         if not new_password or len(new_password) < 8:
             raise ValueError("Password must be at least 8 characters long.")
         user = db.query(UserModel).filter(UserModel.id == user_id).first()
@@ -266,9 +283,11 @@ class AuthService:
         user.hashed_password = hashed
         user.failed_login_attempts = 0
         user.locked_until = None
+        user.token_version = (user.token_version or 1) + 1  # Invalidate all existing tokens
+        
         db.commit()
         db.refresh(user)
-        logger.info(f"Password reset for user '{user.username}' (ID: {user_id})")
+        logger.info(f"Password reset for user '{user.username}' (ID: {user_id}); token_version incremented to {user.token_version}")
         return user
 
     @staticmethod

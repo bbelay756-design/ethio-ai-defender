@@ -11,6 +11,7 @@ from app.main import app
 from app.db.session import init_db, SessionLocal
 from app.auth.service import AuthService
 from app.auth.roles import UserRole
+from tests.security.test_helpers import reset_failed_login_attempts, get_fresh_test_client
 
 
 class TestAuthAndRBAC(unittest.TestCase):
@@ -46,6 +47,11 @@ class TestAuthAndRBAC(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.db.close()
+
+    def setUp(self):
+        # Reset rate limiter before each test
+        from tests.security.test_helpers import reset_failed_login_attempts
+        reset_failed_login_attempts()
 
     def test_01_valid_login_returns_jwt(self):
         """Verify valid credentials return signed JWT bearer token and role."""
@@ -125,3 +131,7 @@ class TestAuthAndRBAC(unittest.TestCase):
 
         res_audit = self.client.get("/api/audit/logs", headers=adm_hdr)
         self.assertEqual(res_audit.status_code, 200)
+
+
+if __name__ == "__main__":
+    unittest.main()

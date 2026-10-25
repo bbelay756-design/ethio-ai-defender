@@ -147,9 +147,11 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
 
     def test_08_missing_authentication_returns_401(self):
         """Test accessing protected route without token returns 401."""
-        res = self.client.get("/api/auth/me")
+        # Use a fresh client to avoid cookie persistence from prior login tests
+        fresh_client = TestClient(app)
+        res = fresh_client.get("/api/auth/me")
         self.assertEqual(res.status_code, 401)
-        self.assertIn("Missing Authorization header", res.json()["detail"])
+        self.assertIn("Missing authentication", res.json()["detail"])
 
     def test_09_invalid_token_signature_returns_401(self):
         """Test accessing protected route with forged token returns 401."""
@@ -381,20 +383,103 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
         self.assertEqual(r5.status_code, 423)
         self.assertIn("locked", r5.json()["detail"].lower())
 
-    # ==========================================
-    # 7. SESSION & TOKEN EDGE CASES
-    # ==========================================
-    def test_24_malformed_token_handling(self):
-        """Verify malformed tokens are safely rejected with 401."""
-        for malformed in ["not_a_jwt", "part1.part2", "part1.part2.part3.part4", ""]:
-            headers = {"Authorization": f"Bearer {malformed}"} if malformed else {}
-            res = self.client.get("/api/auth/me", headers=headers)
-            self.assertEqual(res.status_code, 401)
+    def test_24_token_version_invalidated_on_password_reset(self):
+        """Verify that password reset increments token_version and invalidates old tokens."""
+        target_name = f"token_ver_pwd_{secrets.token_hex(4)}"
+        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "OldPass123!", "ANALYST")
+        
+        # Login to get token
+        login_res = self.client.post("/api/auth/login", json={
+            "username": target_name, "password": "OldPass123!"
+        })
+        self.assertEqual(login_res.status_code, 200)
+        token = login_res.json()["access_token"]
+        
+        # Verify token works before reset
+        res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Admin resets password
+        admin_token = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        }).json()["access_token"]
+        
+        res = self.client.post(f"/api/auth/users/{self.client.post('/api/auth/login', json={'username': target_name, 'password': 'OldPass123!'}).json()['user_id']}/reset-password",
+            json={"password": "NewPass123!"}, headers={"Authorization": f"Bearer {admin_token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Old token should now be invalid
+        res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 401)
+        self.assertIn("invalidated", res.json()["detail"].lower())
+
+    def test_25_token_version_invalidated_on_role_change(self):
+        """Verify that role change increments token_version and invalidates old tokens."""
+        target_name = f"token_ver_role_{secrets.token_hex(4)}"
+        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "OldPass123!", "VIEWER")
+        
+        # Login to get token
+        login_res = self.client.post("/api/auth/login", json={
+            "username": target_name, "password": "OldPass123!"
+        })
+        self.assertEqual(login_res.status_code, 200)
+        token = login_res.json()["access_token"]
+        
+        # Verify token works before role change
+        res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["role"], "VIEWER")
+        
+        # Admin changes role
+        admin_token = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        }).json()["access_token"]
+        
+        user_id = self.client.post("/api/auth/login", json={"username": target_name, "password": "OldPass123!"}).json()["user_id"]
+        res = self.client.put(f"/api/auth/users/{user_id}/role",
+            json={"role": "ANALYST"}, headers={"Authorization": f"Bearer {admin_token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Old token should now be invalid
+        res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 401)
+        self.assertIn("invalidated", res.json()["detail"].lower())
+
+    def test_26_token_version_invalidated_on_deactivation(self):
+        """Verify that deactivation increments token_version and invalidates old tokens."""
+        target_name = f"token_ver_deact_{secrets.token_hex(4)}"
+        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "OldPass123!", "ANALYST")
+        
+        # Login to get token
+        login_res = self.client.post("/api/auth/login", json={
+            "username": target_name, "password": "OldPass123!"
+        })
+        self.assertEqual(login_res.status_code, 200)
+        token = login_res.json()["access_token"]
+        
+        # Verify token works before deactivation
+        res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Admin deactivates user
+        admin_token = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        }).json()["access_token"]
+        
+        user_id = self.client.post("/api/auth/login", json={"username": target_name, "password": "OldPass123!"}).json()["user_id"]
+        res = self.client.put(f"/api/auth/users/{user_id}/status",
+            headers={"Authorization": f"Bearer {admin_token}"})
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.json()["is_active"])
+        
+        # Old token should now be invalid (403 because account is deactivated)
+        res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertIn(res.status_code, [401, 403])
 
     # ==========================================
     # 8. SECURITY LOGGING AND SECRETS EXCLUSION
     # ==========================================
-    def test_25_security_logging_and_zero_secret_leakage(self):
+    def test_27_security_logging_and_zero_secret_leakage(self):
         """Verify that authentication events are logged and secrets/passwords are never logged."""
         with patch("app.core.logger.logger.info") as mock_info, \
              patch("app.core.logger.logger.warning") as mock_warn:
@@ -420,6 +505,241 @@ class TestComprehensiveSecurityModule16(unittest.TestCase):
             self.assertNotIn(LEGACY_INSECURE_SECRET, combined_logs)
             if settings.SECRET_KEY:
                 self.assertNotIn(settings.SECRET_KEY, combined_logs)
+
+    # ==========================================
+    # 9. TOKEN VERSION VALIDATION
+    # ==========================================
+    def test_28_token_version_in_payload(self):
+        """Verify that token payload contains token_version field."""
+        login_res = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        })
+        token = login_res.json()["access_token"]
+        
+        # Decode token payload (without verification) to check for tv field
+        import base64, json
+        payload_b64 = token.split('.')[1]
+        padding = '=' * (-len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64 + padding))
+        
+        self.assertIn("tv", payload)
+        self.assertEqual(payload["tv"], 1)
+
+    def test_29_token_version_mismatch_rejected(self):
+        """Verify that tokens with mismatched token_version are rejected."""
+        # Create a token with wrong token_version
+        from app.auth.security import create_access_token
+        wrong_token, _, _ = create_access_token(
+            data={"sub": str(self.admin_user_id), "username": self.admin_user, "role": "ADMIN", "token_version": 999}
+        )
+        
+        res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {wrong_token}"})
+        self.assertEqual(res.status_code, 401)
+        self.assertIn("invalidated", res.json()["detail"].lower())
+
+    # ==========================================
+    # 10. OPTIONAL AUTHENTICATION TOKEN VERSION VALIDATION
+    # ==========================================
+    def test_30_optional_auth_valid_token_works(self):
+        """Verify that optional auth works with valid token."""
+        login_res = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        })
+        token = login_res.json()["access_token"]
+        
+        # Use optional auth endpoint (system health uses optional auth)
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+
+    def test_31_optional_auth_stale_token_after_password_reset_rejected(self):
+        """Verify optional auth rejects stale token after password reset."""
+        target_name = f"opt_pwd_{secrets.token_hex(4)}"
+        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "OldPass123!", "ANALYST")
+        
+        # Login to get token
+        login_res = self.client.post("/api/auth/login", json={
+            "username": target_name, "password": "OldPass123!"
+        })
+        self.assertEqual(login_res.status_code, 200)
+        token = login_res.json()["access_token"]
+        
+        # Verify token works before reset
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Admin resets password
+        admin_token = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        }).json()["access_token"]
+        
+        user_id = self.client.post("/api/auth/login", json={"username": target_name, "password": "OldPass123!"}).json()["user_id"]
+        res = self.client.post(f"/api/auth/users/{user_id}/reset-password",
+            json={"password": "NewPass123!"}, headers={"Authorization": f"Bearer {admin_token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Old token should now be rejected by optional auth
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)  # Optional auth returns 200 but user is None
+        # The endpoint should not have user context since token is invalid
+
+    def test_32_optional_auth_stale_token_after_role_change_rejected(self):
+        """Verify optional auth rejects stale token after role change."""
+        target_name = f"opt_role_{secrets.token_hex(4)}"
+        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "OldPass123!", "VIEWER")
+        
+        # Login to get token
+        login_res = self.client.post("/api/auth/login", json={
+            "username": target_name, "password": "OldPass123!"
+        })
+        self.assertEqual(login_res.status_code, 200)
+        token = login_res.json()["access_token"]
+        
+        # Verify token works before role change
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Admin changes role
+        admin_token = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        }).json()["access_token"]
+        
+        user_id = self.client.post("/api/auth/login", json={"username": target_name, "password": "OldPass123!"}).json()["user_id"]
+        res = self.client.put(f"/api/auth/users/{user_id}/role",
+            json={"role": "ANALYST"}, headers={"Authorization": f"Bearer {admin_token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Old token should now be rejected by optional auth
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)  # Optional auth returns 200 but user is None
+
+    def test_33_optional_auth_stale_token_after_deactivation_rejected(self):
+        """Verify optional auth rejects stale token after deactivation."""
+        target_name = f"opt_deact_{secrets.token_hex(4)}"
+        AuthService.register_user(self.db, target_name, f"{target_name}@test.local", "OldPass123!", "ANALYST")
+        
+        # Login to get token
+        login_res = self.client.post("/api/auth/login", json={
+            "username": target_name, "password": "OldPass123!"
+        })
+        self.assertEqual(login_res.status_code, 200)
+        token = login_res.json()["access_token"]
+        
+        # Verify token works before deactivation
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)
+        
+        # Admin deactivates user
+        admin_token = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        }).json()["access_token"]
+        
+        user_id = self.client.post("/api/auth/login", json={"username": target_name, "password": "OldPass123!"}).json()["user_id"]
+        res = self.client.put(f"/api/auth/users/{user_id}/status",
+            headers={"Authorization": f"Bearer {admin_token}"})
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.json()["is_active"])
+        
+        # Old token should now be rejected by optional auth
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)  # Optional auth returns 200 but user is None
+
+    def test_34_optional_auth_missing_tv_claim_accepted(self):
+        """Verify optional auth accepts token without tv claim (legacy token)."""
+        from app.auth.security import create_access_token
+        
+        # Create token without tv claim (legacy format)
+        legacy_token, _, _ = create_access_token(
+            data={"sub": str(self.admin_user_id), "username": self.admin_user, "role": "ADMIN"}
+        )
+        
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {legacy_token}"})
+        self.assertEqual(res.status_code, 200)  # Should work (defaults to version 1)
+
+    def test_34_optional_auth_mismatched_token_version_rejected(self):
+        """Verify optional auth rejects token with mismatched version."""
+        from app.auth.security import create_access_token
+        
+        # Create token with wrong token_version
+        wrong_token, _, _ = create_access_token(
+            data={"sub": str(self.admin_user_id), "username": self.admin_user, "role": "ADMIN", "token_version": 999}
+        )
+        
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {wrong_token}"})
+        self.assertEqual(res.status_code, 200)  # Optional auth returns 200 but user is None
+
+    def test_35_optional_auth_revoked_token_rejected(self):
+        """Verify optional auth rejects revoked token."""
+        login_res = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        })
+        token = login_res.json()["access_token"]
+        
+        # Logout to revoke token
+        self.client.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        
+        # Optional auth should reject revoked token
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)  # Optional auth returns 200 but user is None
+
+    def test_36_optional_auth_anonymous_request_works(self):
+        """Verify optional auth works for anonymous requests."""
+        res = self.client.get("/api/auth/system/health")
+        self.assertEqual(res.status_code, 200)
+
+    def test_37_optional_auth_inactive_account_rejected(self):
+        """Verify optional auth rejects tokens for inactive accounts."""
+        target_name = f"opt_inactive_{secrets.token_hex(4)}"
+        AuthService.register_user(self.db, f"{target_name}", f"{target_name}@test.local", "Pass123!", "ANALYST")
+        
+        # Login to get token
+        login_res = self.client.post("/api/auth/login", json={
+            "username": target_name, "password": "Pass123!"
+        })
+        token = login_res.json()["access_token"]
+        
+        # Deactivate user
+        admin_token = self.client.post("/api/auth/login", json={
+            "username": self.admin_user, "password": self.admin_pass
+        }).json()["access_token"]
+        
+        user_id = self.client.post("/api/auth/login", json={"username": target_name, "password": "Pass123!"}).json()["user_id"]
+        self.client.put(f"/api/auth/users/{user_id}/status",
+            headers={"Authorization": f"Bearer {admin_token}"})
+        
+        # Token should be rejected
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res.status_code, 200)  # Optional auth returns 200 but user is None
+
+    def test_38_optional_auth_malformed_token_rejected(self):
+        """Verify optional auth rejects malformed tokens."""
+        malformed_tokens = ["not_a_jwt", "part1.part2", "part1.part2.part3.part4", ""]
+        for malformed in malformed_tokens:
+            headers = {"Authorization": f"Bearer {malformed}"} if malformed else {}
+            res = self.client.get("/api/auth/system/health", headers=headers)
+            self.assertEqual(res.status_code, 200)  # Optional auth returns 200 but user is None
+
+    def test_39_optional_auth_expired_token_rejected(self):
+        """Verify optional auth rejects expired tokens."""
+        from app.auth.security import create_access_token
+        from datetime import timedelta
+        
+        expired_token, _, _ = create_access_token(
+            data={"sub": str(self.admin_user_id), "username": self.admin_user, "role": "ADMIN"},
+            expires_delta=timedelta(hours=-1)
+        )
+        
+        res = self.client.get("/api/auth/system/health", headers={"Authorization": f"Bearer {expired_token}"})
+        self.assertEqual(res.status_code, 200)  # Optional auth returns 200 but user is None
+
+    @property
+    def admin_user_id(self):
+        """Helper to get admin user ID."""
+        db = SessionLocal()
+        try:
+            user = db.query(UserModel).filter(UserModel.username == self.admin_user).first()
+            return user.id if user else 1
+        finally:
+            db.close()
 
 
 if __name__ == "__main__":

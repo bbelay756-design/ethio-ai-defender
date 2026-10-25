@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from tests.fixtures.security_payloads import MALFORMED_JSON_PAYLOADS, INVALID_AUTH_HEADERS
+from tests.security.test_helpers import reset_failed_login_attempts
 
 
 class TestAPISecurity(unittest.TestCase):
@@ -16,6 +17,10 @@ class TestAPISecurity(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.client = TestClient(app)
+
+    def setUp(self):
+        from tests.security.test_helpers import reset_failed_login_attempts
+        reset_failed_login_attempts()
 
     def test_01_malformed_json_returns_422(self):
         """Verify malformed JSON requests produce controlled 422 Unprocessable Entity responses."""
