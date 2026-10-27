@@ -170,6 +170,124 @@ class IOCModel(Base):
     sample = relationship("SampleModel", back_populates="iocs")
 
 
+class YaraRuleModel(Base):
+    """
+    Stable logical identity of a YARA rule (M02B, Phase 1).
+
+    A rule row represents the *identity* (name/namespace); the authoritative
+    rule source lives in immutable rows of YaraRuleVersionModel. The legacy
+    mutable ``source``/``version`` columns are retained (mapped) for backward
+    compatibility with pre-versioning data; new publications must write to
+    ``yara_rule_versions`` instead. The legacy ``compiled`` BLOB column remains
+    in the physical table but is deliberately not mapped (no compiled-artifact
+    storage in this phase).
+    """
+    __tablename__ = "yara_rules"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), unique=True, nullable=False, index=True)
+    namespace = Column(String(64), nullable=False, default="default", index=True)
+    # Legacy mutable representation (pre-M02B). Kept for schema/data parity
+    # with the existing table; new writes go to yara_rule_versions.
+    source = Column(Text, nullable=False)  # LEGACY: authoritative source is YaraRuleVersionModel.source
+    version = Column(Integer, nullable=False, default=1)  # LEGACY: superseded by yara_rule_versions.version
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    # Denormalized metadata mirroring the current published version
+    description = Column(Text, nullable=True)
+    author = Column(String(128), nullable=True)
+    tags = Column(Text, nullable=True)  # JSON array
+    # Pointer to the current published version (circular FK with
+    # yara_rule_versions.rule_id; cleared via ON DELETE SET NULL).
+    # use_alter=True marks the known circular dependency for SQLAlchemy's
+    # table sorting (SQLite still emits the constraint inline in CREATE TABLE).
+    current_version_id = Column(
+        Integer, ForeignKey("yara_rule_versions.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+    )
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationships. Both directions declare foreign_keys explicitly because
+    # two FK paths exist between yara_rules and yara_rule_versions
+    # (rule -> current_version and version -> rule).
+    current_version = relationship(
+        "YaraRuleVersionModel",
+        foreign_keys="YaraRuleModel.current_version_id",
+        back_populates="current_for_rule",
+        post_update=True,  # allows flushing the circular rule<->version pointer
+    )
+    versions = relationship(
+        "YaraRuleVersionModel",
+        foreign_keys="YaraRuleVersionModel.rule_id",
+        back_populates="rule",
+        order_by="YaraRuleVersionModel.version",
+        cascade="all, delete-orphan",
+    )
+
+
+class YaraRuleVersionModel(Base):
+    """
+    Immutable published version of a YARA rule (M02B, Phase 1).
+
+    Publication contract:
+    - Rows are append-only. Once published (is_published=True), ``version``,
+      ``source``, ``source_hash`` and the metadata snapshot must never be
+      mutated; a changed rule is published as a NEW version row. The service
+      layer (Phase 2) enforces this; the database guarantees uniqueness of
+      (rule_id, version) pairs.
+    - ``source`` is the authoritative rule text at publication time and
+      ``source_hash`` its SHA-256 hex digest.
+    - ``published_by``/``published_at`` record who published the version and
+      when (unknown for versions seeded from pre-versioning legacy rows).
+    - Published versions referenced by historical YaraMatchModel rows are
+      protected from destructive deletion by the ON DELETE RESTRICT foreign
+      key on yara_matches.rule_version_id.
+    """
+    __tablename__ = "yara_rule_versions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    rule_id = Column(Integer, ForeignKey("yara_rules.id", ondelete="CASCADE"),
+                     nullable=False, index=True)
+    version = Column(Integer, nullable=False)  # monotonically increasing per rule
+    source = Column(Text, nullable=False)  # authoritative rule source at publication
+    source_hash = Column(String(64), nullable=False)  # SHA-256 of source (hex digest)
+    # Metadata snapshot at publication time
+    description = Column(Text, nullable=True)
+    author = Column(String(128), nullable=True)
+    tags = Column(Text, nullable=True)  # JSON array
+    severity = Column(String(32), nullable=True)
+    category = Column(String(64), nullable=True)
+    # Publication metadata (NULL published_by = seeded from legacy data)
+    published_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    published_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    is_published = Column(Boolean, nullable=False, default=True)  # False = draft
+
+    # Relationships (foreign_keys explicit: two FK paths link the two tables)
+    rule = relationship(
+        "YaraRuleModel",
+        foreign_keys="YaraRuleVersionModel.rule_id",
+        back_populates="versions",
+    )
+    current_for_rule = relationship(
+        "YaraRuleModel",
+        foreign_keys="YaraRuleModel.current_version_id",
+        back_populates="current_version",
+        uselist=False,
+    )
+    # passive_deletes=True: the Session must NOT emulate SET NULL on delete
+    # (which would silently destroy provenance pointers); the database-level
+    # ON DELETE RESTRICT on yara_matches.rule_version_id is authoritative and
+    # raises IntegrityError, preserving historical matches and versions.
+    matches = relationship("YaraMatchModel", back_populates="rule_version",
+                           passive_deletes=True)
+
+    __table_args__ = (
+        # Unique (rule_id, version) pairs enforced in the database.
+        Index("ix_yara_rule_versions_rule_version", "rule_id", "version", unique=True),
+    )
+
+
 class YaraMatchModel(Base):
     """
     YARA rule detection matches recorded for the sample.
@@ -183,9 +301,17 @@ class YaraMatchModel(Base):
     tags = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    
+    # Version provenance. Nullable: legacy matches recorded before M02B keep
+    # NULL (their exact historical version cannot be established - never
+    # fabricate provenance). ON DELETE RESTRICT prevents destructive deletion
+    # of published versions referenced by historical matches.
+    rule_version_id = Column(Integer, ForeignKey("yara_rule_versions.id", ondelete="RESTRICT"),
+                             nullable=True, index=True)
 
     # Relationship
     sample = relationship("SampleModel", back_populates="yara_matches")
+    rule_version = relationship("YaraRuleVersionModel", back_populates="matches")
 
 
 class RiskFactorModel(Base):

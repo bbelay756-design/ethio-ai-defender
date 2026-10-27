@@ -18,6 +18,7 @@ from app.api.analyses import router as analyses_router
 from app.api.auth import router as auth_router
 from app.api.audit import router as audit_router
 from app.api.learning import router as learning_router
+from app.api.yara import router as yara_router
 
 
 @asynccontextmanager
@@ -85,6 +86,7 @@ app.include_router(dashboard_router)
 app.include_router(auth_router)
 app.include_router(audit_router)
 app.include_router(learning_router)
+app.include_router(yara_router)
 
 # Mount Static Files (CSS, JS)
 static_dir = BASE_DIR / "frontend" / "static"

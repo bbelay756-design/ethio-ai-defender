@@ -315,8 +315,14 @@ class UnifiedPipelineOrchestrator:
         # =========================================================================
         try:
             from app.analyzers.yara_analyzer import yara_analyzer_service
-            yara_res = yara_analyzer_service.scan_bytes(content)
-            yara_data = yara_res.to_dict()
+            from app.db.session import SessionLocal
+            # Try DB-driven scanning first; fall back to filesystem on any issue
+            db_session = SessionLocal()
+            try:
+                yara_res = yara_analyzer_service.scan_bytes_with_db_rules(content, db=db_session)
+                yara_data = yara_res.to_dict()
+            finally:
+                db_session.close()
         except Exception as e:
             logger.warning(f"YARA Analyzer warning: {e}")
             yara_data = {
@@ -624,7 +630,9 @@ class UnifiedPipelineOrchestrator:
                     rule_name=ym.get("rule_name", "YaraRule"),
                     namespace=ym.get("namespace", "default"),
                     tags=",".join(ym.get("tags", [])) if isinstance(ym.get("tags"), list) else str(ym.get("tags", "")),
-                    description=ym.get("description", "")
+                    description=ym.get("description", ""),
+                    rule_version_id=ym.get("rule_version_id"),
+                    rule_id=ym.get("rule_id"),
                 )
                 for ym in yara_data.get("matches", [])
             ]

@@ -305,12 +305,37 @@ class SampleRepository:
 
             # 7. Add YARA matches
             for ym in yara_matches_in:
+                # Validate version ownership for DB-managed matches
+                if ym.rule_version_id is not None:
+                    from app.db.models import YaraRuleVersionModel, YaraRuleModel
+                    version = db.query(YaraRuleVersionModel).filter(
+                        YaraRuleVersionModel.id == ym.rule_version_id
+                    ).first()
+                    if version is None:
+                        raise ValueError(
+                            f"rule_version_id {ym.rule_version_id} does not exist"
+                        )
+                    # Validate exact rule ownership (both rule_id and rule_name)
+                    rule = db.query(YaraRuleModel).filter(
+                        YaraRuleModel.id == version.rule_id
+                    ).first()
+                    if rule is None or rule.name != ym.rule_name:
+                        raise ValueError(
+                            f"rule_version_id {ym.rule_version_id} belongs to rule "
+                            f"'{rule.name if rule else 'UNKNOWN'}', not '{ym.rule_name}'"
+                        )
+                    if ym.rule_id is not None and version.rule_id != ym.rule_id:
+                        raise ValueError(
+                            f"rule_version_id {ym.rule_version_id} belongs to rule_id "
+                            f"{version.rule_id}, not {ym.rule_id}"
+                        )
                 db_ym = YaraMatchModel(
                     sample_id=db_sample.id,
                     rule_name=ym.rule_name,
                     namespace=ym.namespace,
                     tags=ym.tags,
                     description=ym.description,
+                    rule_version_id=ym.rule_version_id,
                 )
                 db.add(db_ym)
 

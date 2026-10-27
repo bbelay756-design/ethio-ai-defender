@@ -42,6 +42,11 @@ from app.analyzers.ethiopian_context import (
     ENVIRONMENTS,
     ethiopian_context_engine_service,
 )
+from app.analyzers.ml_analyzer import (
+    MLAnalyzer,
+    MLAnalysisResult,
+    ml_analyzer_service,
+)
 
 __all__ = [
     "SecureFileIntake",
@@ -86,4 +91,7 @@ __all__ = [
     "EthiopianContextAnalysisResult",
     "ENVIRONMENTS",
     "ethiopian_context_engine_service",
+    "MLAnalyzer",
+    "MLAnalysisResult",
+    "ml_analyzer_service",
 ]

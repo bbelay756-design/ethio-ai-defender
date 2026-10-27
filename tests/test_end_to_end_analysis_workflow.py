@@ -22,7 +22,14 @@ import io
 import os
 import sys
 import struct
+import tempfile
 import unittest
+
+# Set up isolated test database BEFORE any app imports
+_tmp_dir = tempfile.mkdtemp()
+_tmp_db_path = os.path.join(_tmp_dir, "test_e2e.db")
+os.environ["DATABASE_URL"] = f"sqlite:///{_tmp_db_path}"
+os.environ["ALEMBIC_DATABASE_URL"] = f"sqlite:///{_tmp_db_path}"
 
 # Ensure repo root is on sys.path
 sys.path.insert(0, os.path.abspath("."))
@@ -30,6 +37,7 @@ sys.path.insert(0, os.path.abspath("."))
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db.session import SessionLocal, init_db
+from sqlalchemy.orm import sessionmaker
 from app.db.models import (
     UserModel,
     SampleModel,
@@ -148,8 +156,10 @@ def create_synthetic_pe(
 class TestEndToEndAnalysisWorkflow(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        from app.db.session import SessionLocal, init_db
         init_db()
         db = SessionLocal()
+
         # Seed test admin & analyst
         admin = db.query(UserModel).filter(UserModel.username == "test_soc_admin").first()
         if not admin:

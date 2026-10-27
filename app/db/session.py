@@ -157,6 +157,42 @@ def init_db() -> None:
                 cursor.execute("CREATE INDEX ix_failed_login_identifier ON failed_login_attempts(identifier)")
                 conn.connection.commit()
 
+            # M02B lightweight migration: YARA rule versioning columns.
+            # Mirrors alembic revision a1b2c3d4e5f6 (structure only; the one-time
+            # data seeding of yara_rule_versions is owned by the alembic migration).
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='yara_rule_versions'")
+            if not cursor.fetchone():
+                cursor.execute("""
+                    CREATE TABLE yara_rule_versions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        rule_id INTEGER NOT NULL REFERENCES yara_rules(id) ON DELETE CASCADE,
+                        version INTEGER NOT NULL,
+                        source TEXT NOT NULL,
+                        source_hash VARCHAR(64) NOT NULL,
+                        description TEXT,
+                        author VARCHAR(128),
+                        tags TEXT,
+                        severity VARCHAR(32),
+                        category VARCHAR(64),
+                        published_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                        published_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                        is_published BOOLEAN DEFAULT 1 NOT NULL
+                    )
+                """)
+                cursor.execute("CREATE INDEX ix_yara_rule_versions_rule_id ON yara_rule_versions(rule_id)")
+                cursor.execute("CREATE UNIQUE INDEX ix_yara_rule_versions_rule_version ON yara_rule_versions(rule_id, version)")
+            cursor.execute("PRAGMA table_info(yara_rules)")
+            yara_rule_cols = [row[1] for row in cursor.fetchall()]
+            if yara_rule_cols and "current_version_id" not in yara_rule_cols:
+                cursor.execute("ALTER TABLE yara_rules ADD COLUMN current_version_id INTEGER REFERENCES yara_rule_versions(id) ON DELETE SET NULL")
+                conn.connection.commit()
+            cursor.execute("PRAGMA table_info(yara_matches)")
+            yara_match_cols = [row[1] for row in cursor.fetchall()]
+            if yara_match_cols and "rule_version_id" not in yara_match_cols:
+                cursor.execute("ALTER TABLE yara_matches ADD COLUMN rule_version_id INTEGER REFERENCES yara_rule_versions(id) ON DELETE RESTRICT")
+                cursor.execute("CREATE INDEX IF NOT EXISTS ix_yara_matches_rule_version ON yara_matches(rule_version_id)")
+                conn.connection.commit()
+
             cursor.close()
 
     logger.info("Database tables initialized successfully.")

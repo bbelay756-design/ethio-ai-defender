@@ -1,0 +1,55 @@
+{
+  "files": {
+    "test_features.jsonl": {
+      "split": "test",
+      "size_bytes": 1869447260,
+      "line_count": 200000,
+      "labels": {
+        "1": 100000,
+        "0": 100000
+      },
+      "local_duplicates": 0,
+      "invalid_labels": 0,
+      "elapsed_seconds": 19.739912509918213
+    },
+    "train_features_0.jsonl": {
+      "split": "train",
+      "size_bytes": 566173907,
+      "line_count": 50000,
+      "labels": {
+        "0": 50000
+      },
+      "local_duplicates": 0,
+      "invalid_labels": 0,
+      "elapsed_seconds": 5.170159101486206
+    },
+    "train_features_1.jsonl": {
+      "split": "train",
+      "size_bytes": 1659892947,
+      "line_count": 158158,
+      "labels": {
+        "1": 63713,
+        "-1": 42107,
+        "0": 52338
+      },
+      "local_duplicates": 0,
+      "invalid_labels": 0,
+      "elapsed_seconds": 14.789895057678223
+    },
+    "train_features_3.jsonl": {
+      "split": "train",
+      "size_bytes": 1376529640,
+      "line_count": 129195,
+      "labels": {
+        "0": 47004,
+        "-1": 34882,
+        "1": 47309
+      },
+      "local_duplicates": 0,
+      "invalid_labels": 0,
+      "elapsed_seconds": 15.070091962814331
+    }
+  },
+  "total_unique_sha": 537353,
+  "cross_split_duplicates": 0
+}

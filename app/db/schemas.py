@@ -148,6 +148,85 @@ class YaraMatchCreate(BaseModel):
     namespace: str = Field("default", max_length=64)
     tags: Optional[str] = None
     description: Optional[str] = None
+    rule_version_id: Optional[int] = None
+    rule_id: Optional[int] = None  # Internal: exact DB rule identity for ownership validation
+
+
+class YaraRuleCreate(BaseModel):
+    """Schema for creating a stable rule identity (Phase 2 & Phase 3C)."""
+
+    name: str = Field(..., max_length=255)
+    namespace: str = Field("default", max_length=64)
+    source: Optional[str] = Field(None, max_length=65535, description="YARA rule source text")
+    description: Optional[str] = None
+    author: Optional[str] = None
+    tags: Optional[str] = None
+
+
+class YaraRulePublish(BaseModel):
+    """Schema for publishing a new immutable rule version (Phase 2 & Phase 3C)."""
+
+    source: str = Field(..., max_length=65535, description="YARA rule source text")
+    author: Optional[str] = None
+    severity: Optional[str] = Field(None, max_length=32)
+    category: Optional[str] = Field(None, max_length=64)
+    tags: Optional[str] = None
+
+
+class YaraRuleVersionRead(BaseModel):
+    """Read schema for a published rule version."""
+
+    id: int
+    rule_id: Optional[int] = None
+    version: int
+    source_hash: str
+    source: Optional[str] = None
+    description: Optional[str] = None
+    author: Optional[str] = None
+    tags: Optional[str] = None
+    severity: Optional[str] = None
+    category: Optional[str] = None
+    published_by: Optional[int] = None
+    published_at: datetime
+    is_published: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class YaraRuleRead(BaseModel):
+    """Read schema for a stable YARA rule identity."""
+
+    id: int
+    name: str
+    namespace: str
+    is_active: bool
+    description: Optional[str] = None
+    author: Optional[str] = None
+    tags: Optional[str] = None
+    current_version_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    current_version: Optional[YaraRuleVersionRead] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class YaraRuleListResponse(BaseModel):
+    """Paginated list of YARA rules."""
+
+    items: List[YaraRuleRead]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class YaraRuleVersionListResponse(BaseModel):
+    """Ordered version history for a YARA rule."""
+
+    rule: YaraRuleRead
+    versions: List[YaraRuleVersionRead]
+    total_versions: int
 
 
 class YaraMatchRead(YaraMatchCreate):
