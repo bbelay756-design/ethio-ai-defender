@@ -78,6 +78,12 @@ class Settings:
     # Retain the isolated Ghidra workspace after analysis for troubleshooting (default: cleaned up).
     GHIDRA_KEEP_WORKSPACE: bool = os.getenv("GHIDRA_KEEP_WORKSPACE", "false").lower() in ("true", "1", "yes")
 
+    # Machine Learning Static Analysis Configuration (Milestone ML-04 Shadow Mode)
+    # Defaults to disabled (False) or safe shadow mode (True); does not alter blocking decisions.
+    ML_ENABLED: bool = os.getenv("ML_ENABLED", "false").lower() in ("true", "1", "yes")
+    ML_SHADOW_MODE: bool = os.getenv("ML_SHADOW_MODE", "true").lower() in ("true", "1", "yes")
+    ML_TIMEOUT_SECONDS: int = int(os.getenv("ML_TIMEOUT_SECONDS", "10"))
+
     # Database Configuration (SQLite default)
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'storage' / 'defender.db'}")
 

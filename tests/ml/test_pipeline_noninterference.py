@@ -72,11 +72,11 @@ class TestPipelineNonInterference(unittest.TestCase):
 
         # Build context and baseline threat score
         ctx = AnalysisContext(
-            pe_result=pe_static_analyzer_service.analyze_bytes(bytez),
-            section_result=pe_section_analyzer_service.analyze_bytes(bytez),
-            entropy_result=entropy_analyzer_service.analyze_bytes(bytez),
-            string_result=string_analyzer_service.analyze_bytes(bytez),
-            import_result=windows_api_import_analyzer_service.analyze_bytes(bytez),
+            pe=pe_static_analyzer_service.analyze_bytes(bytez),
+            sections=pe_section_analyzer_service.analyze_bytes(bytez),
+            entropy=entropy_analyzer_service.analyze_bytes(bytez),
+            strings=string_analyzer_service.analyze_bytes(bytez),
+            imports=windows_api_import_analyzer_service.analyze_bytes(bytez),
         )
         indicators_base = suspicious_indicator_engine_service.evaluate(ctx)
         score_base = threat_scoring_engine_service.calculate_score(indicators_base.indicators).to_dict()
@@ -100,7 +100,7 @@ class TestPipelineNonInterference(unittest.TestCase):
         self.assertEqual(sec_base, sec_after)
         self.assertEqual(ent_base, ent_after)
         self.assertEqual(str_base, str_after)
-        self.assertEqual(score_base["final_score"], score_after["final_score"])
+        self.assertEqual(score_base["score"], score_after["score"])
         self.assertEqual(score_base["risk_level"], score_after["risk_level"])
 
     def test_fault_simulation_records_explicit_unavailable(self):

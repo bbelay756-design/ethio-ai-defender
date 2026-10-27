@@ -334,6 +334,35 @@ class UnifiedPipelineOrchestrator:
             }
 
         # =========================================================================
+        # Stage 11d: Machine Learning Offline Static Analysis (Shadow Mode)
+        # =========================================================================
+        ml_data = {
+            "available": False,
+            "status": "DISABLED",
+            "message": "ML analysis is disabled by default configuration (ML_ENABLED=false).",
+            "malicious_score": None,
+            "is_malicious": None,
+            "is_reliable": False,
+        }
+        if getattr(settings, "ML_ENABLED", False):
+            try:
+                from app.analyzers.ml_analyzer import ml_analyzer_service
+                ml_res = ml_analyzer_service.analyze_pe_bytes(content)
+                ml_data = ml_res.to_dict()
+            except Exception as e:
+                logger.warning("ML Analyzer warning during analysis.")
+                clean_err = f"ML execution failed: {type(e).__name__}"
+                ml_data = {
+                    "available": False,
+                    "status": "FAILED",
+                    "message": "ML analysis encountered an internal error.",
+                    "malicious_score": None,
+                    "is_malicious": None,
+                    "is_reliable": False,
+                    "error": clean_err,
+                }
+
+        # =========================================================================
         # Stage 11c: IOC Extraction & MITRE ATT&CK Mapping
         # =========================================================================
         iocs_list = []
@@ -746,6 +775,7 @@ class UnifiedPipelineOrchestrator:
             "ai_assessment": ai_data,
             "report": report_dict,
             "errors": errors,
+            "ml_analysis": ml_data,
 
             # Backward-Compatibility Aliases:
             "filename": safe_filename,
@@ -755,6 +785,9 @@ class UnifiedPipelineOrchestrator:
             "threat_score": score_data,
             "learning_mode": learning_data,
         }
+
+    # Standard analysis alias
+    analyze_bytes = execute_pipeline
 
 
 # Global singleton instance
