@@ -336,6 +336,7 @@ class UnifiedPipelineOrchestrator:
         # =========================================================================
         # Stage 11d: Machine Learning Offline Static Analysis (Shadow Mode)
         # =========================================================================
+        shadow_mode = getattr(settings, "ML_SHADOW_MODE", True)
         ml_data = {
             "available": False,
             "status": "DISABLED",
@@ -343,12 +344,20 @@ class UnifiedPipelineOrchestrator:
             "malicious_score": None,
             "is_malicious": None,
             "is_reliable": False,
+            "shadow_mode": shadow_mode,
         }
         if getattr(settings, "ML_ENABLED", False):
             try:
                 from app.analyzers.ml_analyzer import ml_analyzer_service
                 ml_res = ml_analyzer_service.analyze_pe_bytes(content)
                 ml_data = ml_res.to_dict()
+                ml_data["shadow_mode"] = shadow_mode
+                if not shadow_mode:
+                    ml_data["active_blocking_inhibited"] = True
+                    ml_data["policy_notice"] = (
+                        "Active blocking via ML is prohibited while raw-PE feature parity remains unverified. "
+                        "Execution constrained safely to non-blocking telemetry."
+                    )
             except Exception as e:
                 logger.warning("ML Analyzer warning during analysis.")
                 clean_err = f"ML execution failed: {type(e).__name__}"
@@ -359,6 +368,7 @@ class UnifiedPipelineOrchestrator:
                     "malicious_score": None,
                     "is_malicious": None,
                     "is_reliable": False,
+                    "shadow_mode": shadow_mode,
                     "error": clean_err,
                 }
 

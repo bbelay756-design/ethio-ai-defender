@@ -56,3 +56,7 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Vendor directories (Upstream references)
+vendor/
+

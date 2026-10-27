@@ -12,11 +12,17 @@ Verifies:
 """
 
 import os
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from app.core.config import settings
+from app.db.models import *
+from app.db.session import Base
 from app.pipeline.orchestrator import unified_pipeline_service
 from tests.test_pe_analyzer import build_synthetic_pe
 
@@ -28,6 +34,25 @@ class TestShadowModeIntegration(unittest.TestCase):
     def setUpClass(cls):
         # Build safe in-memory synthetic PE fixture (never executed)
         cls.synthetic_pe = build_synthetic_pe(is_64bit=True, is_dll=False)
+
+        # Set up strictly isolated temporary database fixture to protect storage/defender.db
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.db_path = os.path.join(cls.temp_dir.name, "test_shadow.db")
+        cls.test_engine = create_engine(f"sqlite:///{cls.db_path}")
+        Base.metadata.create_all(cls.test_engine)
+        cls.TestSession = sessionmaker(bind=cls.test_engine, autocommit=False, autoflush=False, expire_on_commit=False)
+
+        cls._session_patcher = patch("app.db.session.SessionLocal", cls.TestSession)
+        cls._orch_patcher = patch("app.pipeline.orchestrator.SessionLocal", cls.TestSession)
+        cls._session_patcher.start()
+        cls._orch_patcher.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._session_patcher.stop()
+        cls._orch_patcher.stop()
+        cls.test_engine.dispose()
+        cls.temp_dir.cleanup()
 
     def test_01_feature_flag_disabled_by_default(self):
         """Verify that when ML_ENABLED is False, orchestrator returns DISABLED without running ML."""
@@ -114,6 +139,23 @@ class TestShadowModeIntegration(unittest.TestCase):
 
                 err_msg = str(result["ml_analysis"].get("error", ""))
                 self.assertNotIn("secret\\model.dat", err_msg)
+
+    def test_05_active_mode_safely_inhibited(self):
+        """Verify that when ML_ENABLED is True but ML_SHADOW_MODE is False, blocking is inhibited."""
+        with patch.object(settings, "ML_ENABLED", True), patch.object(settings, "ML_SHADOW_MODE", False):
+            result = unified_pipeline_service.analyze_bytes(
+                content=self.synthetic_pe,
+                filename="test_sample_active_inhibited.exe"
+            )
+
+            self.assertIn("ml_analysis", result)
+            ml = result["ml_analysis"]
+            self.assertFalse(ml["shadow_mode"])
+            self.assertTrue(ml.get("active_blocking_inhibited"))
+            self.assertIn("prohibited", ml.get("policy_notice", "").lower())
+            # Verdict, risk score, and quarantine must remain determined solely by deterministic analyzers
+            self.assertFalse(ml["is_reliable"])
+            self.assertEqual(result["status"], "COMPLETED")
 
 
 if __name__ == "__main__":

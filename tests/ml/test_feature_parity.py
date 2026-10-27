@@ -14,6 +14,7 @@ from typing import Dict, Any, Tuple
 import numpy as np
 
 from app.ml.ember_v2 import EMBERFeatureExtractor, EMBER_V2_TOTAL_DIM, EMBER_V2_FEATURE_GROUPS
+from app.ml.ember_adapter import EmberDatasetAdapter
 from tests.ml.reference_ember import ReferencePEFeatureExtractor
 from tests.test_pe_analyzer import build_synthetic_pe
 
@@ -125,6 +126,60 @@ class TestFeatureParity(unittest.TestCase):
         # Verify close matches across real executable
         self.assertEqual(report["close_matches"], EMBER_V2_TOTAL_DIM)
         self.assertLess(report["max_error"], 1e-5)
+
+    def test_three_way_parity_synthetic_pe(self):
+        """Verify 3-way exact parity between raw-PE extractor, reference extractor, and dataset adapter."""
+        bytez = build_synthetic_pe(is_64bit=True, is_dll=False, is_driver=False)
+        ref_ext = ReferencePEFeatureExtractor()
+        local_ext = EMBERFeatureExtractor(print_warning=False)
+        adapter = EmberDatasetAdapter()
+
+        v_ref = ref_ext.feature_vector(bytez)
+        v_local = local_ext.feature_vector(bytez)
+        raw_dict = ref_ext.raw_features(bytez)
+        raw_dict["sha256"] = "0" * 64
+        raw_dict["appeared"] = "2018-01"
+        raw_dict["label"] = 0
+        v_adapter, _ = adapter.parse_record(raw_dict)
+
+        np.testing.assert_allclose(v_local, v_ref, atol=1e-5)
+        np.testing.assert_allclose(v_adapter, v_ref, atol=1e-5)
+        np.testing.assert_allclose(v_local, v_adapter, atol=1e-5)
+
+    def test_three_way_parity_real_binary(self):
+        """Verify 3-way exact parity on a real host PE executable (python.exe)."""
+        bytez = Path(sys.executable).read_bytes()
+        ref_ext = ReferencePEFeatureExtractor()
+        local_ext = EMBERFeatureExtractor(print_warning=False)
+        adapter = EmberDatasetAdapter()
+
+        v_ref = ref_ext.feature_vector(bytez)
+        v_local = local_ext.feature_vector(bytez)
+        raw_dict = ref_ext.raw_features(bytez)
+        raw_dict["sha256"] = "0" * 64
+        raw_dict["appeared"] = "2018-01"
+        raw_dict["label"] = 0
+        v_adapter, _ = adapter.parse_record(raw_dict)
+
+        np.testing.assert_allclose(v_local, v_ref, atol=1e-5)
+        np.testing.assert_allclose(v_adapter, v_ref, atol=1e-5)
+        np.testing.assert_allclose(v_local, v_adapter, atol=1e-5)
+
+    def test_malformed_inputs_produce_finite_vectors_and_safe_rejections(self):
+        """Verify that malformed and non-PE inputs produce finite vectors without exceptions."""
+        local_ext = EMBERFeatureExtractor(print_warning=False)
+        malformed_inputs = [
+            b"",
+            b"MZ",
+            b"MZ\x00\x01\x02\x03",
+            b"\x42" * 1024,
+            b"MZ" + b"\x00" * 58 + b"\x80\x00\x00\x00" + b"\x00" * 64 + b"PE\x00\x00",
+        ]
+        for bad_input in malformed_inputs:
+            vec = local_ext.feature_vector(bad_input)
+            self.assertEqual(vec.shape, (EMBER_V2_TOTAL_DIM,))
+            self.assertEqual(vec.dtype, np.float32)
+            self.assertTrue(np.all(np.isfinite(vec)))
 
 
 if __name__ == "__main__":
