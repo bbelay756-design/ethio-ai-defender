@@ -345,6 +345,11 @@ class UnifiedPipelineOrchestrator:
             "is_malicious": None,
             "is_reliable": False,
             "shadow_mode": shadow_mode,
+            "model_name": "ember-v2-baseline-hgb-subset80k",
+            "model_version": "1.0.0",
+            "model_sha256": "f2fd3ed4e4fc0b482600bb92fe24e36d23a93617bf214f62019def5c352bd684",
+            "active_threshold": 0.800395,
+            "thresholds": {"default_05": 0.500000, "target_1pct_fpr": 0.800395, "target_01pct_fpr": 0.966365},
         }
         if getattr(settings, "ML_ENABLED", False):
             try:
@@ -369,8 +374,28 @@ class UnifiedPipelineOrchestrator:
                     "is_malicious": None,
                     "is_reliable": False,
                     "shadow_mode": shadow_mode,
+                    "model_name": "ember-v2-baseline-hgb-subset80k",
+                    "model_version": "1.0.0",
+                    "model_sha256": "f2fd3ed4e4fc0b482600bb92fe24e36d23a93617bf214f62019def5c352bd684",
+                    "active_threshold": 0.800395,
+                    "thresholds": {"default_05": 0.500000, "target_1pct_fpr": 0.800395, "target_01pct_fpr": 0.966365},
                     "error": clean_err,
                 }
+
+        # Enrich with advisory contract attributes
+        mal_score = ml_data.get("malicious_score")
+        if ml_data.get("available") and mal_score is not None:
+            review_priority = "ELEVATED" if mal_score >= 0.800395 else "NORMAL"
+        else:
+            review_priority = "NOT_EVALUATED"
+
+        ml_data["advisory_only"] = True
+        ml_data["advisory_label"] = "EXPERIMENTAL_ADVISORY_PRIORITY"
+        ml_data["review_priority"] = review_priority
+        ml_data["disclaimer"] = (
+            "Advisory-only analyst prioritization signal. Experimental model score is not a confirmed "
+            "malware verdict and does not alter heuristic risk scores or trigger autonomous actions."
+        )
 
         # =========================================================================
         # Stage 11c: IOC Extraction & MITRE ATT&CK Mapping
