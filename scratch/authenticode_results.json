@@ -1,0 +1,1257 @@
+﻿[
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\capstone\\lib\\capstone.dll",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\httptools\\parser\\parser.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\httptools\\parser\\url_parser.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\lief\\_lief.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\markupsafe\\_speedups.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\fft\\_pocketfft_umath.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\linalg\\lapack_lite.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\linalg\\_umath_linalg.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\bit_generator.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\mtrand.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\_bounded_integers.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\_common.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\_generator.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\_mt19937.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\_pcg64.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\_philox.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\random\\_sfc64.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\_core\\_multiarray_tests.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\_core\\_multiarray_umath.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\_core\\_operand_flag_tests.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\_core\\_rational_tests.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\_core\\_simd.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\_core\\_struct_ufunc_tests.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy\\_core\\_umath_tests.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy.libs\\libscipy_openblas64_-ed4f167a5330424524f45258e7ca2c8d.dll",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\numpy.libs\\msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+        "Status":  "Valid",
+        "Signer":  "CN=Microsoft Windows Software Compatibility Publisher, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\pip\\_vendor\\distlib\\t32.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\pip\\_vendor\\distlib\\t64-arm.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\pip\\_vendor\\distlib\\t64.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\pip\\_vendor\\distlib\\w32.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\pip\\_vendor\\distlib\\w64-arm.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\pip\\_vendor\\distlib\\w64.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\pydantic_core\\_pydantic_core.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\cluster\\hierarchy\\_hierarchy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\cluster\\hierarchy\\_optimal_leaf_ordering.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\cluster\\vq\\_vq.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\fft\\_duccfft\\pyduccfft.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\fftpack\\convolve.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\integrate\\_dop.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\integrate\\_odepack.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\integrate\\_quadpack.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\integrate\\_test_multivariate.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\integrate\\_vode.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\interpolate\\_dierckx.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\interpolate\\_fitpack.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\interpolate\\_interpnd.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\interpolate\\_ppoly.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\interpolate\\_rbfinterp_pythran.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\interpolate\\_rgi_cython.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\io\\matlab\\_mio5_utils.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\io\\matlab\\_mio_utils.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\io\\matlab\\_streams.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\io\\_fast_matrix_market\\_fmm_core.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\cython_blas.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\cython_lapack.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_batched_linalg.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_cythonized_array_utils.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_decomp_interpolative.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_decomp_update.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_fblas.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_flapack.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_internal_matfuncs.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_linalg_pythran.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_matfuncs_sqrtm_triu.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\linalg\\_solve_toeplitz.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\ndimage\\_ctest.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\ndimage\\_cytest.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\ndimage\\_nd_image.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\ndimage\\_ni_label.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\ndimage\\_rank_filter_1d.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\odr\\__odrpack.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\cython_optimize\\_zeros.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_highspy\\_core.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_highspy\\_highs_options.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_lsq\\givens_elimination.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_trlib\\_trlib.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_bglu_dense.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_direct.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_group_columns.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_lbfgsb.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_lsap.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_minpack.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_moduleTNC.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_pava_pybind.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_slsqplib.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\optimize\\_zeros.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\signal\\_max_len_seq_inner.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\signal\\_peak_finding_utils.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\signal\\_sigtools.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\signal\\_sosfilt.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\signal\\_spline.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\signal\\_upfirdn_apply.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\csgraph\\_flow.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\csgraph\\_matching.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\csgraph\\_min_spanning_tree.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\csgraph\\_reordering.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\csgraph\\_shortest_path.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\csgraph\\_tools.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\csgraph\\_traversal.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\linalg\\_dsolve\\_superlu.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\linalg\\_eigen\\arpack\\_arpacklib.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\linalg\\_propack.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\_csparsetools.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\sparse\\_sparsetools.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\spatial\\transform\\_rigid_transform_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\spatial\\transform\\_rotation_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\spatial\\_ckdtree.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\spatial\\_distance_pybind.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\spatial\\_distance_wrap.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\spatial\\_hausdorff.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\spatial\\_qhull.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\spatial\\_voronoi.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\cython_special.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\_comb.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\_ellip_harm_2.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\_gufuncs.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\_specfun.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\_special_ufuncs.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\_test_internal.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\_ufuncs.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\special\\_ufuncs_cxx.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_levy_stable\\levyst.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_rcont\\rcont.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_unuran\\unuran_wrapper.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_ansari_swilk_statistics.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_biasedurn.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_qmc_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_qmvnt_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_sobol.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_stats.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\stats\\_stats_pythran.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\_lib\\_uarray\\_uarray.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\_lib\\messagestream.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\_lib\\_ccallback_c.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\_lib\\_fpumode.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\_lib\\_test_ccallback.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\_lib\\_test_deprecation_call.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\_lib\\_test_deprecation_def.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy\\_cyutility.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\scipy.libs\\libscipy_openblas-197ee2fc9b4d071f7e048078cac74115.dll",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\setuptools\\cli-32.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\setuptools\\cli-64.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\setuptools\\cli-arm64.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\setuptools\\cli.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\setuptools\\gui-32.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\setuptools\\gui-64.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\setuptools\\gui-arm64.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\setuptools\\gui.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\.libs\\msvcp140.dll",
+        "Status":  "Valid",
+        "Signer":  "CN=Microsoft Windows Software Compatibility Publisher, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\.libs\\vcomp140.dll",
+        "Status":  "Valid",
+        "Signer":  "CN=Microsoft Windows Software Compatibility Publisher, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_hdbscan\\_linkage.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_hdbscan\\_reachability.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_hdbscan\\_tree.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_dbscan_inner.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_hierarchical_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_k_means_common.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_k_means_elkan.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_k_means_lloyd.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\cluster\\_k_means_minibatch.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\datasets\\_svmlight_format_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\decomposition\\_cdnmf_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\decomposition\\_online_lda_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\common.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\histogram.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\splitting.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\_binning.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\_gradient_boosting.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\ensemble\\_hist_gradient_boosting\\_predictor.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\ensemble\\_gradient_boosting.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\feature_extraction\\_hashing_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\linear_model\\_cd_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\linear_model\\_sag_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\linear_model\\_sgd_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\manifold\\_barnes_hut_tsne.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\manifold\\_utils.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\cluster\\_expected_mutual_info_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_pairwise_distances_reduction\\_argkmin.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_pairwise_distances_reduction\\_argkmin_classmode.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_pairwise_distances_reduction\\_base.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_pairwise_distances_reduction\\_datasets_pair.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_pairwise_distances_reduction\\_middle_term_computer.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_pairwise_distances_reduction\\_radius_neighbors.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_pairwise_distances_reduction\\_radius_neighbors_classmode.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_dist_metrics.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\metrics\\_pairwise_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\neighbors\\_ball_tree.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\neighbors\\_kd_tree.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\neighbors\\_partition_nodes.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\neighbors\\_quad_tree.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\preprocessing\\_csr_polynomial_expansion.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\preprocessing\\_target_encoder_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\svm\\_liblinear.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\svm\\_libsvm.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\svm\\_libsvm_sparse.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\svm\\_newrand.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\tree\\_criterion.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\tree\\_partitioner.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\tree\\_splitter.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\tree\\_tree.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\tree\\_utils.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\arrayfuncs.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\murmurhash.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\sparsefuncs_fast.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_bitset.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_cython_blas.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_fast_dict.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_heap.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_isfinite.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_openmp_helpers.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_random.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_seq_dataset.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_sorting.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_typedefs.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_vector_sentinel.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\utils\\_weight_vector.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\_loss\\_loss.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\__check_build\\_check_build.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\_cyutility.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sklearn\\_isotonic.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sqlalchemy\\engine\\_processors_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sqlalchemy\\engine\\_result_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sqlalchemy\\engine\\_row_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sqlalchemy\\engine\\_util_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sqlalchemy\\sql\\_cache_key_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sqlalchemy\\sql\\_util_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sqlalchemy\\util\\_collections_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\sqlalchemy\\util\\_immutabledict_cy.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\watchfiles\\_rust_notify.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\websockets\\speedups.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\yaml\\_yaml.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Lib\\site-packages\\yara.cp314-win_amd64.pyd",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\alembic.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\dotenv.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\f2py.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\fastapi.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\httpx2.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\idna.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\mako-render.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\numpy-config.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\pip.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\pip3.14.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\pip3.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\py.test.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\pygmentize.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\pytest.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\python.exe",
+        "Status":  "Valid",
+        "Signer":  "CN=Python Software Foundation, O=Python Software Foundation, L=Beaverton, S=Oregon, C=US"
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\pythonw.exe",
+        "Status":  "Valid",
+        "Signer":  "CN=Python Software Foundation, O=Python Software Foundation, L=Beaverton, S=Oregon, C=US"
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\uvicorn.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\watchfiles.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\websockets.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    },
+    {
+        "Path":  "C:\\Users\\MILKWAY\\ethio-ai-defender\\venv\\Scripts\\wheel.exe",
+        "Status":  "NotSigned",
+        "Signer":  null
+    }
+]

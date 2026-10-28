@@ -66,7 +66,7 @@ class TestPlatformWorkspaces(unittest.TestCase):
                 email="student_ws@defender.et",
                 hashed_password=h,
                 salt=s,
-                role=UserRole.STUDENT.value
+                role=UserRole.VIEWER.value
             )
             cls.db.add(cls.student_user)
             cls.db.commit()

@@ -685,6 +685,12 @@
                                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
                                         <span>Database</span> <span style="color: var(--sev-low); font-weight: 700;">✓ ONLINE</span>
                                     </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
+                                        <span>Ghidra RE</span> <span style="color: var(--text-muted); font-weight: 700;">⚠ UNAVAILABLE</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-card-alt); border-radius: 4px; border: 1px solid var(--border-subtle);">
+                                        <span>ML Shadow</span> <span style="color: #f59e0b; font-weight: 700;">⚡ SHADOW (EXPERIMENTAL)</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1303,6 +1309,40 @@
                                     </div>
 
                                     <div id="ask-ai-response-box" style="display: none; margin-top: 12px; padding: 12px 14px; background: rgba(14, 165, 233, 0.06); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 6px; font-size: 12px; line-height: 1.5; color: var(--text-primary);">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Experimental Machine Learning Shadow Analysis Card -->
+                        <div class="soc-card" style="margin-bottom: 20px; border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.02);" id="sec-ml-shadow">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon">🤖</span>
+                                    <h3 class="card-heading" style="color: #f59e0b;">EXPERIMENTAL ML SHADOW ANALYSIS</h3>
+                                </div>
+                                <span class="badge badge-susp" id="ov-ml-badge">NON-AUTHORITATIVE</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; padding: 10px 14px; border-radius: 4px; font-size: 11px; color: var(--text-primary); margin-bottom: 14px;" id="ov-ml-warning">
+                                    <strong>⚠️ PARITY GATE CLOSED:</strong> Machine learning model inference runs in non-blocking shadow mode for telemetry and offline calibration only. Scores are experimental, non-authoritative, and do NOT affect deterministic risk scoring, classifications, or automated quarantine.
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; font-size: 12px;">
+                                    <div style="background: rgba(255, 255, 255, 0.02); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Pipeline Status</div>
+                                        <div style="font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="ov-ml-status">OFFLINE_TEST_UNVERIFIED_PARITY</div>
+                                    </div>
+                                    <div style="background: rgba(255, 255, 255, 0.02); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Model Artifact</div>
+                                        <div style="font-weight: 700; color: var(--accent-cyan); margin-top: 4px; font-family: var(--font-mono);" id="ov-ml-model">EMBERSyntheticBaseline (v1.0.0)</div>
+                                    </div>
+                                    <div style="background: rgba(255, 255, 255, 0.02); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Calibrated Malicious Prob</div>
+                                        <div style="font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="ov-ml-score">N/A (Pending Verification)</div>
+                                    </div>
+                                    <div style="background: rgba(255, 255, 255, 0.02); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Worker Latency & RAM</div>
+                                        <div style="font-weight: 700; color: var(--text-secondary); margin-top: 4px; font-family: var(--font-mono);" id="ov-ml-latency">-</div>
                                     </div>
                                 </div>
                             </div>

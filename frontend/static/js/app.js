@@ -2588,6 +2588,11 @@ function renderSampleData(data) {
 
     const hashes = data.hashes || {};
 
+    const item = {
+        analysis_id: data.analysis_id || data.id || '',
+        sha256: (data.hashes && data.hashes.sha256) || data.sha256 || ''
+    };
+
     const ts = data.threat_score || data.risk || data.risk_score || { score: 0, risk_level: "LOW" };
 
     const pe = data.pe_information || data.pe || {};
@@ -3161,6 +3166,43 @@ function renderSampleData(data) {
 
 
     renderAnalystNotesList(data.notes || []);
+
+    // Render ML Shadow Telemetry (Non-Authoritative)
+    const ml = data.ml_analysis || {};
+    const mlStatusEl = document.getElementById('ov-ml-status');
+    const mlModelEl = document.getElementById('ov-ml-model');
+    const mlScoreEl = document.getElementById('ov-ml-score');
+    const mlLatencyEl = document.getElementById('ov-ml-latency');
+    const mlWarningEl = document.getElementById('ov-ml-warning');
+
+    if (mlStatusEl) {
+        mlStatusEl.textContent = ml.status || (ml.enabled ? 'ACTIVE_SHADOW' : 'DISABLED');
+        if (ml.status === 'SUCCESS') {
+            mlStatusEl.style.color = 'var(--sev-low)';
+        } else if (ml.status === 'TIMEOUT' || ml.status === 'FAILED') {
+            mlStatusEl.style.color = 'var(--sev-crit)';
+        } else {
+            mlStatusEl.style.color = '#f59e0b';
+        }
+    }
+    if (mlModelEl) {
+        mlModelEl.textContent = ml.model_name ? ${ml.model_name} () : 'EMBERSyntheticBaseline (v1.0.0)';
+    }
+    if (mlScoreEl) {
+        if (ml.calibrated_probability !== undefined && ml.calibrated_probability !== null) {
+            mlScoreEl.textContent = ${(ml.calibrated_probability * 100).toFixed(2)}% (Threshold: %);
+        } else if (ml.raw_score !== undefined && ml.raw_score !== null) {
+            mlScoreEl.textContent = Raw: ;
+        } else {
+            mlScoreEl.textContent = 'N/A (Shadow Mode Telemetry)';
+        }
+    }
+    if (mlLatencyEl) {
+        mlLatencyEl.textContent = ml.latency_ms ? ${ml.latency_ms.toFixed(1)} ms (Worker IPC) : 'N/A';
+    }
+    if (mlWarningEl && ml.warning) {
+        mlWarningEl.innerHTML = <strong>⚠️ </strong>;
+    }
 
 }
 

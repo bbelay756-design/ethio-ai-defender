@@ -19,11 +19,13 @@ from pathlib import Path
 from unittest import mock
 
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 from app.analyzers.ghidra_analyzer import GhidraAnalyzerService
 from app.main import app
-from app.db.session import SessionLocal, init_db
+from app.db.session import SessionLocal, init_db, get_db, Base
 from app.db.repository import SampleRepository
 from app.db.schemas import (
     SampleCreate,
@@ -192,35 +194,62 @@ class TestGhidraEndpoint(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        init_db()
-        cls.client = TestClient(app)
-        cls.db = SessionLocal()
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.test_db_path = Path(cls._tmp.name) / "test_ghidra_endpoint.db"
+        cls.engine = create_engine(
+            f"sqlite:///{cls.test_db_path}",
+            connect_args={"check_same_thread": False},
+        )
+        @event.listens_for(cls.engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
 
-        cls.analyst_user = cls.db.query(UserModel).filter(UserModel.username == "test_ghidra_analyst").first()
-        if not cls.analyst_user:
-            s, h = hash_password("GhidraPass123!")
-            cls.analyst_user = UserModel(
-                username="test_ghidra_analyst",
-                email="ghidra_analyst@defender.et",
-                hashed_password=h,
-                salt=s,
-                role=UserRole.ANALYST.value,
-            )
-            cls.db.add(cls.analyst_user)
-            cls.db.commit()
-            cls.db.refresh(cls.analyst_user)
+        cls.TestSession = sessionmaker(
+            bind=cls.engine, autocommit=False, autoflush=False, expire_on_commit=False
+        )
+        Base.metadata.create_all(bind=cls.engine)
+
+        def override_get_db():
+            db = cls.TestSession()
+            try:
+                yield db
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+            finally:
+                db.close()
+
+        app.dependency_overrides[get_db] = override_get_db
+        cls.patchers = [
+            mock.patch("app.db.session.SessionLocal", cls.TestSession),
+            mock.patch("app.api.analyses.SessionLocal", cls.TestSession),
+        ]
+        for p in cls.patchers:
+            p.start()
+
+        cls.client = TestClient(app)
+        cls.db = cls.TestSession()
+
+        s, h = hash_password("GhidraPass123!")
+        cls.analyst_user = UserModel(
+            username="test_ghidra_analyst",
+            email="ghidra_analyst@defender.et",
+            hashed_password=h,
+            salt=s,
+            role=UserRole.ANALYST.value,
+        )
+        cls.db.add(cls.analyst_user)
+        cls.db.commit()
+        cls.db.refresh(cls.analyst_user)
 
         cls.analyst_token, _, _ = create_access_token(
             {"sub": str(cls.analyst_user.id), "username": cls.analyst_user.username, "role": cls.analyst_user.role}
         )
 
         cls.analysis_id = "ANL-TEST-GHIDRA-001"
-        # Reset any state from a previous run so the fixture is idempotent.
-        stale = cls.db.query(SampleModel).filter(SampleModel.analysis_id == cls.analysis_id).first()
-        if stale:
-            cls.db.delete(stale)
-            cls.db.commit()
-
         cls.sample = SampleModel(
             analysis_id=cls.analysis_id,
             filename="ghidra_sample.exe",
@@ -271,6 +300,11 @@ class TestGhidraEndpoint(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.db.close()
+        for p in reversed(cls.patchers):
+            p.stop()
+        app.dependency_overrides.pop(get_db, None)
+        cls.engine.dispose()
+        cls._tmp.cleanup()
 
     def test_01_endpoint_returns_stored_results(self):
         headers = {"Authorization": f"Bearer {self.analyst_token}"}
@@ -329,20 +363,32 @@ class TestGhidraTransactionPersistence(unittest.TestCase):
     """Verifies the atomic transaction persists Ghidra functions and relationships."""
 
     def setUp(self):
-        init_db()
-        self.db = SessionLocal()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.test_db_path = Path(self._tmp.name) / "test_ghidra_tx.db"
+        self.engine = create_engine(
+            f"sqlite:///{self.test_db_path}",
+            connect_args={"check_same_thread": False},
+        )
+        @event.listens_for(self.engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+        self.TestSession = sessionmaker(
+            bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False
+        )
+        Base.metadata.create_all(bind=self.engine)
+        self.patcher = mock.patch("app.db.session.SessionLocal", self.TestSession)
+        self.patcher.start()
+        self.db = self.TestSession()
         self.analysis_id = "ANL-TEST-GHIDRA-TX"
-        stale = self.db.query(SampleModel).filter(SampleModel.analysis_id == self.analysis_id).first()
-        if stale:
-            self.db.delete(stale)
-            self.db.commit()
 
     def tearDown(self):
-        stale = self.db.query(SampleModel).filter(SampleModel.analysis_id == self.analysis_id).first()
-        if stale:
-            self.db.delete(stale)
-            self.db.commit()
         self.db.close()
+        self.patcher.stop()
+        self.engine.dispose()
+        self._tmp.cleanup()
 
     def test_relationships_persisted_atomically(self):
         SampleRepository.save_full_analysis_transaction(

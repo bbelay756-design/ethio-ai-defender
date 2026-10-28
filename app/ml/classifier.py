@@ -123,6 +123,7 @@ class EmberModelClassifier:
             self.model_dir = Path(model_dir).resolve()
 
         self.allow_custom_path = allow_custom_path
+        self.verify_checksum = verify_checksum
         self._validate_path_security(self.model_dir, allow_custom_path=allow_custom_path)
 
         self.model_path = self.model_dir / "model.joblib"
@@ -295,6 +296,16 @@ class EmberModelClassifier:
     def is_loaded(self) -> bool:
         """Returns True if a model has been successfully loaded and verified."""
         return self.model is not None
+
+    @property
+    def model_name(self) -> str:
+        """Name of the loaded model from metadata or fallback default."""
+        return self.metadata.get("model_name", "ember-baseline-hgb")
+
+    @property
+    def model_version(self) -> str:
+        """Version of the loaded model from metadata or fallback default."""
+        return self.metadata.get("model_version", "1.0.0")
 
     @property
     def calibrated_thresholds(self) -> Dict[str, float]:
