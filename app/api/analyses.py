@@ -555,6 +555,29 @@ def get_analysis_by_id(
                 }
                 for n in (sample.notes or [])
             ],
+            "ml_analysis": {
+                "available": False,
+                "status": "UNAVAILABLE",
+                "message": "ML advisory signal is not available for this historical record.",
+                "malicious_score": None,
+                "is_malicious": None,
+                "is_malicious_1pct_fpr": None,
+                "is_malicious_01pct_fpr": None,
+                "active_threshold": 0.800395,
+                "thresholds": {"default_05": 0.500000, "target_1pct_fpr": 0.800395, "target_01pct_fpr": 0.966365},
+                "model_name": "ember-v2-baseline-hgb-subset80k",
+                "model_version": "1.0.0",
+                "model_sha256": "f2fd3ed4e4fc0b482600bb92fe24e36d23a93617bf214f62019def5c352bd684",
+                "feature_parity_status": "EXPERIMENTAL_UNVERIFIED_PARITY",
+                "is_reliable": False,
+                "advisory_only": True,
+                "advisory_label": "EXPERIMENTAL_ADVISORY_PRIORITY",
+                "review_priority": "NOT_EVALUATED",
+                "disclaimer": (
+                    "Advisory-only analyst prioritization signal. Experimental model score is not a confirmed "
+                    "malware verdict and does not alter heuristic risk scores or trigger autonomous actions."
+                ),
+            },
         }
     finally:
         db.close()

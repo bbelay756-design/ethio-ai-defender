@@ -349,6 +349,11 @@ class AnalysisSummaryResponse(BaseModel):
     classification: str = "LOW"
     created_at: Optional[str] = None
     completed_at: Optional[str] = None
+    # Advisory Machine Learning Signal (Experimental / Non-Authoritative)
+    ml_score: Optional[float] = None
+    ml_status: Optional[str] = "UNAVAILABLE"
+    ml_review_priority: Optional[str] = "NOT_EVALUATED"
+    is_reliable: bool = False
 
 
 class SampleWithRelations(SampleRead):
