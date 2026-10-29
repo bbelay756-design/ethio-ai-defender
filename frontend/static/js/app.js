@@ -3167,43 +3167,237 @@ function renderSampleData(data) {
 
     renderAnalystNotesList(data.notes || []);
 
-    // Render ML Shadow Telemetry (Non-Authoritative)
+    // Render ML Advisory Telemetry (Non-Authoritative / Advisory Only)
     const ml = data.ml_analysis || {};
     const mlStatusEl = document.getElementById('ov-ml-status');
     const mlModelEl = document.getElementById('ov-ml-model');
     const mlScoreEl = document.getElementById('ov-ml-score');
+    const mlPriorityEl = document.getElementById('ov-ml-priority');
+    const mlGateEl = document.getElementById('ov-ml-gate');
     const mlLatencyEl = document.getElementById('ov-ml-latency');
     const mlWarningEl = document.getElementById('ov-ml-warning');
 
+    const isAvailable = Boolean(ml.available);
+    const score = (ml.malicious_score !== undefined && ml.malicious_score !== null)
+        ? Number(ml.malicious_score)
+        : null;
+    const activeTh = Number(ml.active_threshold || 0.800395);
+
     if (mlStatusEl) {
-        mlStatusEl.textContent = ml.status || (ml.enabled ? 'ACTIVE_SHADOW' : 'DISABLED');
-        if (ml.status === 'SUCCESS') {
+        const statusText = ml.status || (isAvailable ? 'SUCCESS' : 'DISABLED');
+        mlStatusEl.textContent = statusText;
+        if (statusText === 'SUCCESS') {
             mlStatusEl.style.color = 'var(--sev-low)';
-        } else if (ml.status === 'TIMEOUT' || ml.status === 'FAILED') {
+        } else if (statusText === 'FAILED' || statusText === 'TIMEOUT') {
             mlStatusEl.style.color = 'var(--sev-crit)';
         } else {
             mlStatusEl.style.color = '#f59e0b';
         }
     }
-    if (mlModelEl) {
-        mlModelEl.textContent = ml.model_name ? ${ml.model_name} () : 'EMBERSyntheticBaseline (v1.0.0)';
-    }
-    if (mlScoreEl) {
-        if (ml.calibrated_probability !== undefined && ml.calibrated_probability !== null) {
-            mlScoreEl.textContent = ${(ml.calibrated_probability * 100).toFixed(2)}% (Threshold: %);
-        } else if (ml.raw_score !== undefined && ml.raw_score !== null) {
-            mlScoreEl.textContent = Raw: ;
+
+    if (mlPriorityEl) {
+        if (isAvailable && score !== null) {
+            if (score >= activeTh) {
+                mlPriorityEl.textContent = '⚡ ELEVATED REVIEW PRIORITY';
+                mlPriorityEl.style.color = '#f59e0b';
+            } else {
+                mlPriorityEl.textContent = '✓ NORMAL REVIEW PRIORITY';
+                mlPriorityEl.style.color = 'var(--sev-low)';
+            }
         } else {
-            mlScoreEl.textContent = 'N/A (Shadow Mode Telemetry)';
+            mlPriorityEl.textContent = 'NOT_EVALUATED';
+            mlPriorityEl.style.color = 'var(--text-muted)';
         }
     }
-    if (mlLatencyEl) {
-        mlLatencyEl.textContent = ml.latency_ms ? ${ml.latency_ms.toFixed(1)} ms (Worker IPC) : 'N/A';
-    }
-    if (mlWarningEl && ml.warning) {
-        mlWarningEl.innerHTML = <strong>⚠️ </strong>;
+
+    if (mlScoreEl) {
+        if (isAvailable && score !== null) {
+            const scorePct = (score * 100).toFixed(2);
+            const thPct = (activeTh * 100).toFixed(2);
+            mlScoreEl.textContent = `${score.toFixed(6)} (${scorePct}%) [Threshold: ${thPct}%]`;
+            mlScoreEl.style.color = score >= activeTh ? '#f59e0b' : 'var(--text-primary)';
+        } else {
+            mlScoreEl.textContent = 'N/A (Inference Unavailable)';
+            mlScoreEl.style.color = 'var(--text-muted)';
+        }
     }
 
+    if (mlModelEl) {
+        const mName = ml.model_name || 'ember-v2-baseline-hgb-subset80k';
+        const mVer = ml.model_version || '1.0.0';
+        mlModelEl.textContent = `${mName} (v${mVer})`;
+    }
+
+    if (mlGateEl) {
+        mlGateEl.textContent = 'CLOSED (is_reliable = false)';
+        mlGateEl.style.color = '#f59e0b';
+    }
+
+    if (mlLatencyEl) {
+        const ms = ml.execution_time_ms || ml.latency_ms;
+        mlLatencyEl.textContent = (ms !== undefined && ms !== null) ? `${Number(ms).toFixed(1)} ms (Worker IPC)` : '-';
+    }
+
+    if (mlWarningEl && ml.disclaimer) {
+        mlWarningEl.innerHTML = `<strong>⚠️ ADVISORY ONLY (PARITY GATE CLOSED):</strong> ${escapeHtml(ml.disclaimer)}`;
+    }
+
+    // ML-13 Rejection Gate & Review State Elements
+    const mlGateStateEl = document.getElementById('ov-ml-gate-state');
+    const mlReviewStatusEl = document.getElementById('ov-ml-review-status');
+    const mlGateExplEl = document.getElementById('ov-ml-gate-explanation');
+    const mlReviewBadgeEl = document.getElementById('ov-ml-review-badge');
+    const mlReviewHistoryEl = document.getElementById('ml-review-history-display');
+    const mlReviewFormEl = document.getElementById('ml-review-active-form');
+
+    const gateState = ml.rejection_gate_state || 'NOT_EVALUATED';
+    const revStatus = ml.review_status || 'NOT_EVALUATED';
+    const gateReason = ml.rejection_gate_reason || ml.disclaimer || 'Advisory ML telemetry only.';
+
+    if (mlGateStateEl) {
+        mlGateStateEl.textContent = gateState;
+        if (gateState === 'PENDING_REVIEW') {
+            mlGateStateEl.style.color = '#ef4444';
+        } else if (gateState === 'DETERMINISTIC_ALERT') {
+            mlGateStateEl.style.color = 'var(--sev-high)';
+        } else if (gateState === 'ANALYST_CONFIRMED') {
+            mlGateStateEl.style.color = '#ef4444';
+        } else if (gateState === 'ANALYST_REJECTED' || gateState === 'BENIGN_CONFIRMED') {
+            mlGateStateEl.style.color = 'var(--sev-low)';
+        } else {
+            mlGateStateEl.style.color = '#f59e0b';
+        }
+    }
+
+    if (mlReviewStatusEl) {
+        mlReviewStatusEl.textContent = revStatus;
+        if (revStatus === 'PENDING_REVIEW') {
+            mlReviewStatusEl.style.color = '#ef4444';
+        } else if (revStatus === 'ANALYST_CONFIRMED') {
+            mlReviewStatusEl.style.color = '#ef4444';
+        } else if (revStatus === 'ANALYST_REJECTED' || revStatus === 'BENIGN_CONFIRMED') {
+            mlReviewStatusEl.style.color = 'var(--sev-low)';
+        } else {
+            mlReviewStatusEl.style.color = 'var(--text-muted)';
+        }
+    }
+
+    if (mlGateExplEl) {
+        if (gateState === 'PENDING_REVIEW') {
+            mlGateExplEl.style.background = 'rgba(239, 68, 68, 0.08)';
+            mlGateExplEl.style.borderLeft = '3px solid #ef4444';
+            mlGateExplEl.innerHTML = `<strong>⚠️ ML-13 GATE HOLD (ACTION REQUIRED):</strong> ${escapeHtml(gateReason)}`;
+        } else if (gateState === 'ANALYST_CONFIRMED') {
+            mlGateExplEl.style.background = 'rgba(239, 68, 68, 0.08)';
+            mlGateExplEl.style.borderLeft = '3px solid #ef4444';
+            mlGateExplEl.innerHTML = `<strong>⚠️ ANALYST CONFIRMED THREAT:</strong> ${escapeHtml(gateReason)}`;
+        } else if (gateState === 'ANALYST_REJECTED' || gateState === 'BENIGN_CONFIRMED') {
+            mlGateExplEl.style.background = 'rgba(16, 185, 129, 0.08)';
+            mlGateExplEl.style.borderLeft = '3px solid #10b981';
+            mlGateExplEl.innerHTML = `<strong>🛡️ ANALYST REJECTED (FALSE POSITIVE):</strong> ${escapeHtml(gateReason)}`;
+        } else {
+            mlGateExplEl.style.background = 'rgba(59, 130, 246, 0.06)';
+            mlGateExplEl.style.borderLeft = '3px solid #3b82f6';
+            mlGateExplEl.innerHTML = `<strong>GATE STATUS:</strong> ${escapeHtml(gateReason)}`;
+        }
+    }
+
+    const reviews = data.reviews || [];
+    if (reviews.length > 0) {
+        const latest = reviews[0];
+        if (mlReviewBadgeEl) {
+            mlReviewBadgeEl.textContent = `REVIEWED: ${latest.verdict}`;
+            mlReviewBadgeEl.className = latest.review_state === 'ANALYST_CONFIRMED' ? 'badge badge-crit' : 'badge badge-low';
+        }
+        if (mlReviewHistoryEl) {
+            mlReviewHistoryEl.innerHTML = `<strong>Decision Recorded:</strong> ${escapeHtml(latest.verdict)} by <code>${escapeHtml(latest.reviewer)}</code> on ${new Date(latest.created_at).toLocaleString()}<br/><em>"${escapeHtml(latest.rationale)}"</em>`;
+        }
+        if (mlReviewFormEl) {
+            mlReviewFormEl.style.display = 'none';
+        }
+    } else {
+        if (mlReviewBadgeEl) {
+            if (gateState === 'PENDING_REVIEW') {
+                mlReviewBadgeEl.textContent = '⚡ CONFIRMATION REQUIRED';
+                mlReviewBadgeEl.className = 'badge badge-crit';
+            } else {
+                mlReviewBadgeEl.textContent = 'NO ACTION REQUIRED';
+                mlReviewBadgeEl.className = 'badge badge-low';
+            }
+        }
+        if (mlReviewHistoryEl) {
+            mlReviewHistoryEl.textContent = gateState === 'PENDING_REVIEW'
+                ? 'Sample flagged with elevated ML confidence lacking signatures. Awaiting analyst determination.'
+                : 'No manual review decision has been recorded for this sample.';
+        }
+        if (mlReviewFormEl) {
+            mlReviewFormEl.style.display = 'flex';
+        }
+    }
+}
+
+async function submitAnalystReview() {
+    const analysisId = (typeof currentAnalysisId !== 'undefined' && currentAnalysisId) 
+        ? currentAnalysisId 
+        : (document.getElementById('ov-analysis-id')?.textContent || '').trim();
+    if (!analysisId) {
+        if (typeof showSocNotification === 'function') {
+            showSocNotification('Review Error', 'No active analysis selected.', 'error');
+        }
+        return;
+    }
+    const verdictSelect = document.getElementById('ml-review-verdict-select');
+    const rationaleInput = document.getElementById('ml-review-rationale-input');
+    const verdict = verdictSelect ? verdictSelect.value : '';
+    const rationale = rationaleInput ? rationaleInput.value.trim() : '';
+
+    if (!rationale) {
+        if (typeof showSocNotification === 'function') {
+            showSocNotification('Validation Error', 'Analyst rationale is mandatory.', 'warning');
+        }
+        if (rationaleInput) rationaleInput.focus();
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('auth_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const resp = await fetch(`/api/analyses/${encodeURIComponent(analysisId)}/reviews`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ verdict, rationale })
+        });
+
+        if (resp.status === 201) {
+            if (typeof showSocNotification === 'function') {
+                showSocNotification('Review Recorded', `Decision '${verdict}' registered successfully.`, 'success');
+            }
+            if (rationaleInput) rationaleInput.value = '';
+            if (typeof loadAnalysisDetails === 'function') {
+                loadAnalysisDetails(analysisId);
+            }
+        } else if (resp.status === 409) {
+            const err = await resp.json().catch(() => ({}));
+            if (typeof showSocNotification === 'function') {
+                showSocNotification('Review Conflict', err.detail || 'Sample has already been reviewed.', 'warning');
+            }
+        } else if (resp.status === 403) {
+            if (typeof showSocNotification === 'function') {
+                showSocNotification('Access Denied', 'Analyst or Administrator permission required.', 'error');
+            }
+        } else {
+            const err = await resp.json().catch(() => ({}));
+            if (typeof showSocNotification === 'function') {
+                showSocNotification('Submission Failed', err.detail || 'Could not record review.', 'error');
+            }
+        }
+    } catch (e) {
+        if (typeof showSocNotification === 'function') {
+            showSocNotification('Network Error', `Could not reach server: ${e.message}`, 'error');
+        }
+    }
 }
 
 
@@ -3931,7 +4125,7 @@ async function loadAnalysisHistory() {
 
     if (tbody) {
 
-        tbody.innerHTML = `<tr data-analysis-id="${escapeHtml(item.analysis_id)}" data-sha256="${escapeHtml(item.sha256)}" data-url="/api/analyses/${encodeURIComponent(item.analysis_id)}/report?format=html&language=${state.currentLanguage}"><td colspan="7" class="empty-state-cell">Loading analysis records from database...</td></tr>`;
+        tbody.innerHTML = `<tr data-analysis-id="${escapeHtml(item.analysis_id)}" data-sha256="${escapeHtml(item.sha256)}" data-url="/api/analyses/${encodeURIComponent(item.analysis_id)}/report?format=html&language=${state.currentLanguage}"><td colspan="8" class="empty-state-cell">Loading analysis records from database...</td></tr>`;
 
     }
 
@@ -3995,6 +4189,8 @@ function filterHistoryTable() {
 
     const statusSelect = document.getElementById('history-filter-status');
 
+    const mlSelect = document.getElementById('history-filter-ml');
+
 
 
     const search = (searchInput ? searchInput.value : '').toLowerCase().trim();
@@ -4002,6 +4198,8 @@ function filterHistoryTable() {
     const risk = (riskSelect ? riskSelect.value : '').toUpperCase();
 
     const stat = (statusSelect ? statusSelect.value : '').toUpperCase();
+
+    const mlFilter = (mlSelect ? mlSelect.value : '').toUpperCase();
 
 
 
@@ -4023,7 +4221,21 @@ function filterHistoryTable() {
 
 
 
-        return matchSearch && matchRisk && matchStatus;
+        let matchMl = true;
+        const score = (item.ml_score !== undefined && item.ml_score !== null) ? Number(item.ml_score) : null;
+        if (mlFilter === 'ELEVATED') {
+            matchMl = score !== null && score >= 0.800395;
+        } else if (mlFilter === 'NORMAL') {
+            matchMl = score !== null && score < 0.800395;
+        } else if (mlFilter === 'AVAILABLE') {
+            matchMl = score !== null;
+        } else if (mlFilter === 'UNAVAILABLE') {
+            matchMl = score === null;
+        }
+
+
+
+        return matchSearch && matchRisk && matchStatus && matchMl;
 
     });
 
@@ -4031,7 +4243,7 @@ function filterHistoryTable() {
 
     if (items.length === 0) {
 
-        tbody.innerHTML = `<tr data-analysis-id="${escapeHtml(item.analysis_id)}" data-sha256="${escapeHtml(item.sha256)}" data-url="/api/analyses/${encodeURIComponent(item.analysis_id)}/report?format=html&language=${state.currentLanguage}"><td colspan="7" class="empty-state-cell">No analysis records match your search filter.</td></tr>`;
+        tbody.innerHTML = `<tr data-analysis-id="${escapeHtml(item.analysis_id)}" data-sha256="${escapeHtml(item.sha256)}" data-url="/api/analyses/${encodeURIComponent(item.analysis_id)}/report?format=html&language=${state.currentLanguage}"><td colspan="8" class="empty-state-cell">No analysis records match your search filter.</td></tr>`;
 
         return;
 
@@ -4081,6 +4293,21 @@ function filterHistoryTable() {
 
                     <span class="badge ${riskBadge}">${riskLevel} (${score}/100)</span>
 
+                </td>
+
+                <td>
+                    ${(() => {
+                        const s = (item.ml_score !== undefined && item.ml_score !== null) ? Number(item.ml_score) : null;
+                        if (s !== null) {
+                            const pct = (s * 100).toFixed(1);
+                            if (s >= 0.800395) {
+                                return `<span class="badge badge-susp" title="Advisory Model Score: ${s.toFixed(4)}">⚡ Elevated (${pct}%)</span>`;
+                            } else {
+                                return `<span class="badge badge-low" title="Advisory Model Score: ${s.toFixed(4)}">Normal (${pct}%)</span>`;
+                            }
+                        }
+                        return '<span class="badge badge-rule" style="opacity: 0.6;">N/A</span>';
+                    })()}
                 </td>
 
                 <td style="font-size: 12px; color: var(--text-secondary);">${dateStr}</td>

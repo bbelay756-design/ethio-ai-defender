@@ -98,6 +98,7 @@ def _ml_worker_loop(
             "model_sha256": classifier.model_file_sha256,
             "thresholds": classifier.calibrated_thresholds,
             "is_loaded": classifier.is_loaded,
+            "backend": "onnx" if classifier.onnx_session is not None else "sklearn",
         })
     except Exception as exc:
         try:

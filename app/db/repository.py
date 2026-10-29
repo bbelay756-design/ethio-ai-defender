@@ -8,6 +8,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from app.core.logger import logger
 from app.db.models import (
     SampleModel,
@@ -23,6 +24,7 @@ from app.db.models import (
     GhidraAnalysisModel,
     GhidraFunctionModel,
     GhidraRelationshipModel,
+    AnalystReviewModel,
 )
 from app.db.schemas import (
     SampleCreate,
@@ -38,6 +40,11 @@ from app.db.schemas import (
     GhidraFunctionCreate,
     GhidraRelationshipCreate,
 )
+
+
+class DuplicateReviewError(Exception):
+    """Raised when an analyst review already exists for an analysis (uniqueness constraint violation)."""
+    pass
 
 
 class SampleRepository:
@@ -85,6 +92,7 @@ class SampleRepository:
                 joinedload(SampleModel.ghidra_analysis),
                 joinedload(SampleModel.ghidra_functions),
                 joinedload(SampleModel.ghidra_relationships),
+                joinedload(SampleModel.reviews),
             )
             .filter(SampleModel.id == sample_id)
             .first()
@@ -107,6 +115,7 @@ class SampleRepository:
                 joinedload(SampleModel.ghidra_analysis),
                 joinedload(SampleModel.ghidra_functions),
                 joinedload(SampleModel.ghidra_relationships),
+                joinedload(SampleModel.reviews),
             )
             .filter(SampleModel.analysis_id == analysis_id)
             .first()
@@ -131,12 +140,18 @@ class SampleRepository:
         status_filter: Optional[str] = None,
         risk_filter: Optional[str] = None,
         user_id: Optional[int] = None,
+        include_unassigned: bool = False,
     ) -> List[SampleModel]:
         """Lists samples ordered by creation date descending with optional filtering."""
         query = db.query(SampleModel)
 
         if user_id is not None:
-            query = query.filter(SampleModel.user_id == user_id)
+            if include_unassigned:
+                query = query.filter(
+                    or_(SampleModel.user_id == user_id, SampleModel.user_id.is_(None))
+                )
+            else:
+                query = query.filter(SampleModel.user_id == user_id)
 
         if search:
             search_term = f"%{search.strip()}%"
@@ -169,11 +184,17 @@ class SampleRepository:
         status_filter: Optional[str] = None,
         risk_filter: Optional[str] = None,
         user_id: Optional[int] = None,
+        include_unassigned: bool = False,
     ) -> int:
         """Counts total samples matching filter."""
         query = db.query(SampleModel)
         if user_id is not None:
-            query = query.filter(SampleModel.user_id == user_id)
+            if include_unassigned:
+                query = query.filter(
+                    or_(SampleModel.user_id == user_id, SampleModel.user_id.is_(None))
+                )
+            else:
+                query = query.filter(SampleModel.user_id == user_id)
         if search:
             search_term = f"%{search.strip()}%"
             query = query.filter(
@@ -635,4 +656,80 @@ class SampleRepository:
         db.commit()
         db.refresh(sample)
         return sample
+
+    @staticmethod
+    def add_analyst_review(
+        db: Session,
+        sample_id: int,
+        analysis_id: str,
+        user_id: Optional[int],
+        reviewer_username: str,
+        verdict: str,
+        rationale: str,
+        previous_state: str = "PENDING_REVIEW"
+    ) -> AnalystReviewModel:
+        """
+        ML-13: Records an auditable analyst review decision.
+        Enforces valid verdict transitions and updates sample status safely
+        without altering deterministic heuristic risk score or YARA evidence.
+        """
+        verdict_norm = verdict.upper().strip()
+        if verdict_norm in ("CONFIRMED_MALWARE", "CONFIRMED_THREAT"):
+            review_state = "ANALYST_CONFIRMED"
+            verdict_norm = "CONFIRMED_MALWARE"
+        elif verdict_norm in ("REJECTED_FALSE_POSITIVE", "REJECTED", "FALSE_POSITIVE"):
+            review_state = "ANALYST_REJECTED"
+            verdict_norm = "REJECTED_FALSE_POSITIVE"
+        elif verdict_norm in ("BENIGN_UTILITY", "BENIGN", "BENIGN_CONFIRMED"):
+            review_state = "BENIGN_CONFIRMED"
+            verdict_norm = "BENIGN_UTILITY"
+        else:
+            raise ValueError(f"Invalid review verdict '{verdict}'. Must be CONFIRMED_MALWARE, REJECTED_FALSE_POSITIVE, or BENIGN_UTILITY.")
+
+        review = AnalystReviewModel(
+            sample_id=sample_id,
+            analysis_id=analysis_id,
+            user_id=user_id,
+            reviewer_username=reviewer_username,
+            verdict=verdict_norm,
+            review_state=review_state,
+            previous_state=previous_state,
+            rationale=rationale.strip(),
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(review)
+
+        # Update sample status reflecting review outcome
+        sample = db.query(SampleModel).filter(SampleModel.id == sample_id).first()
+        if sample:
+            if review_state == "ANALYST_CONFIRMED":
+                sample.status = "CONFIRMED_SUSPICIOUS"
+            elif review_state in ("ANALYST_REJECTED", "BENIGN_CONFIRMED"):
+                sample.status = "ANALYSIS_COMPLETE"
+            else:
+                sample.status = "ANALYST_REVIEW"
+
+        try:
+            db.commit()
+            db.refresh(review)
+            return review
+        except IntegrityError as exc:
+            db.rollback()
+            raise DuplicateReviewError(
+                f"Analysis '{analysis_id}' has already been reviewed."
+            ) from exc
+
+    @staticmethod
+    def get_reviews_for_sample(db: Session, sample_id: int) -> List[AnalystReviewModel]:
+        """Fetches all reviews for a sample ordered by creation time descending."""
+        return db.query(AnalystReviewModel).filter(
+            AnalystReviewModel.sample_id == sample_id
+        ).order_by(AnalystReviewModel.created_at.desc()).all()
+
+    @staticmethod
+    def get_latest_review_for_analysis_id(db: Session, analysis_id: str) -> Optional[AnalystReviewModel]:
+        """Fetches the latest review record for an analysis ID."""
+        return db.query(AnalystReviewModel).filter(
+            AnalystReviewModel.analysis_id == analysis_id
+        ).order_by(AnalystReviewModel.created_at.desc()).first()
 

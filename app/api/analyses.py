@@ -9,25 +9,44 @@ Provides complete REST CRUD interface:
 - DELETE /api/analyses/{id}      -> Delete an analysis record (Owner or Admin)
 """
 
+import html
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends, status
 from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse
 from pydantic import BaseModel
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from app.core.logger import logger
 from app.core.config import settings
 from app.db.session import SessionLocal
-from app.db.models import UserModel, SampleModel
-from app.db.repository import SampleRepository
+from app.db.models import UserModel, SampleModel, AnalystNoteModel
+from app.db.repository import SampleRepository, DuplicateReviewError
 from app.auth.roles import UserRole, Permission
 from app.auth.dependencies import get_current_user, get_optional_current_user, require_permissions
 from app.pipeline.orchestrator import unified_pipeline_service
 from app.audit.logger import audit_logger
-from app.audit.events import AuditResult
-from app.db.schemas import AnalysisSummaryResponse
+from app.audit.events import AuditResult, AuditEventType
+from app.db.schemas import AnalysisSummaryResponse, AnalystReviewCreate, AnalystReviewResponse
 from app.utils.upload_guard import read_upload_bounded
 
 router = APIRouter(prefix="/api/analyses", tags=["Static Binary Analyses"])
+
+
+def _verify_sample_access(sample: SampleModel, current_user: UserModel) -> None:
+    """Enforces object-level authorization (BOLA / IDOR protection).
+
+    - Admin users may view/access any sample.
+    - Non-admin users may view/access samples they uploaded (sample.user_id == current_user.id)
+      or unassigned samples (sample.user_id is None).
+    - If a non-admin user requests a sample owned by another user, raises HTTP 403 Forbidden.
+    """
+    if sample.user_id is not None:
+        if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You do not have permission to access this analysis."
+            )
 
 
 class AnalysisUploadResponse(BaseModel):
@@ -148,22 +167,25 @@ def list_analyses(
     search: Optional[str] = Query(None, description="Search by filename, hash, or analysis ID"),
     status: Optional[str] = Query(None, description="Filter by status (COMPLETED, FAILED)"),
     risk: Optional[str] = Query(None, description="Filter by risk tier (LOW, MODERATE, SUSPICIOUS, HIGH, CRITICAL)"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Lists historical static analysis records with RBAC scoping."""
     db = SessionLocal()
     try:
-        # Determine scoping: ADMIN sees all; normal user sees their own or unauthenticated samples
+        # Determine scoping: ADMIN sees all; non-admin sees their own plus unassigned samples
         filter_user_id = None
-        if current_user and current_user.role != UserRole.ADMIN.value:
+        include_unassigned = False
+        if current_user.role != UserRole.ADMIN.value:
             filter_user_id = current_user.id
+            include_unassigned = True
 
         total_count = SampleRepository.count_samples(
             db=db,
             search=search,
             status_filter=status,
             risk_filter=risk,
-            user_id=filter_user_id
+            user_id=filter_user_id,
+            include_unassigned=include_unassigned
         )
 
         samples = SampleRepository.list_samples(
@@ -173,7 +195,8 @@ def list_analyses(
             search=search,
             status_filter=status,
             risk_filter=risk,
-            user_id=filter_user_id
+            user_id=filter_user_id,
+            include_unassigned=include_unassigned
         )
 
         items = [
@@ -212,36 +235,62 @@ def list_analyses(
     description="Returns real platform-wide counts, risk distribution, top indicator categories, IOC totals, and recent activity."
 )
 def get_analysis_overview_stats(
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Computes real aggregated threat overview metrics for dashboard HUD."""
     from app.db.models import IOCModel, IndicatorModel, ImportModel, StringModel
 
     db = SessionLocal()
     try:
-        total_samples = db.query(SampleModel).count()
-        low_count = db.query(SampleModel).filter(SampleModel.risk_score < 40).count()
-        med_count = db.query(SampleModel).filter(SampleModel.risk_score >= 40, SampleModel.risk_score < 70).count()
-        high_count = db.query(SampleModel).filter(SampleModel.risk_score >= 70, SampleModel.risk_score < 85).count()
-        crit_count = db.query(SampleModel).filter(SampleModel.risk_score >= 85).count()
+        if current_user.role == UserRole.ADMIN.value:
+            sample_query = db.query(SampleModel)
+            total_samples = sample_query.count()
+            low_count = sample_query.filter(SampleModel.risk_score < 40).count()
+            med_count = sample_query.filter(SampleModel.risk_score >= 40, SampleModel.risk_score < 70).count()
+            high_count = sample_query.filter(SampleModel.risk_score >= 70, SampleModel.risk_score < 85).count()
+            crit_count = sample_query.filter(SampleModel.risk_score >= 85).count()
 
-        # IOC counts
-        ioc_total = db.query(IOCModel).count()
-        ioc_domains = db.query(IOCModel).filter(IOCModel.type.ilike("%domain%")).count()
-        ioc_ips = db.query(IOCModel).filter(IOCModel.type.ilike("%ip%")).count()
-        ioc_urls = db.query(IOCModel).filter(IOCModel.type.ilike("%url%")).count()
-        ioc_hashes = db.query(IOCModel).filter(IOCModel.type.ilike("%hash%")).count()
-        ioc_registry = db.query(IOCModel).filter(IOCModel.type.ilike("%registry%")).count()
+            # IOC counts
+            ioc_total = db.query(IOCModel).count()
+            ioc_domains = db.query(IOCModel).filter(IOCModel.type.ilike("%domain%")).count()
+            ioc_ips = db.query(IOCModel).filter(IOCModel.type.ilike("%ip%")).count()
+            ioc_urls = db.query(IOCModel).filter(IOCModel.type.ilike("%url%")).count()
+            ioc_hashes = db.query(IOCModel).filter(IOCModel.type.ilike("%hash%")).count()
+            ioc_registry = db.query(IOCModel).filter(IOCModel.type.ilike("%registry%")).count()
 
-        # Indicator categories counts
-        susp_apis = db.query(ImportModel).filter(ImportModel.risk_relevance.in_(["HIGH", "CRITICAL"])).count()
-        susp_strings = db.query(StringModel).filter(StringModel.severity.in_(["HIGH", "CRITICAL"])).count()
-        net_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "NETWORK").count()
-        reg_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "REGISTRY").count()
-        entropy_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "ENTROPY").count()
+            # Indicator categories counts
+            susp_apis = db.query(ImportModel).filter(ImportModel.risk_relevance.in_(["HIGH", "CRITICAL"])).count()
+            susp_strings = db.query(StringModel).filter(StringModel.severity.in_(["HIGH", "CRITICAL"])).count()
+            net_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "NETWORK").count()
+            reg_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "REGISTRY").count()
+            entropy_indicators = db.query(IndicatorModel).filter(IndicatorModel.category == "ENTROPY").count()
 
-        # Recent 6 analyses
-        recent_samples = db.query(SampleModel).order_by(SampleModel.created_at.desc()).limit(6).all()
+            recent_samples = db.query(SampleModel).order_by(SampleModel.created_at.desc()).limit(6).all()
+        else:
+            sample_query = db.query(SampleModel).filter(
+                or_(SampleModel.user_id == current_user.id, SampleModel.user_id.is_(None))
+            )
+            total_samples = sample_query.count()
+            low_count = sample_query.filter(SampleModel.risk_score < 40).count()
+            med_count = sample_query.filter(SampleModel.risk_score >= 40, SampleModel.risk_score < 70).count()
+            high_count = sample_query.filter(SampleModel.risk_score >= 70, SampleModel.risk_score < 85).count()
+            crit_count = sample_query.filter(SampleModel.risk_score >= 85).count()
+
+            auth_sample_ids = sample_query.with_entities(SampleModel.id)
+            ioc_total = db.query(IOCModel).filter(IOCModel.sample_id.in_(auth_sample_ids)).count()
+            ioc_domains = db.query(IOCModel).filter(IOCModel.sample_id.in_(auth_sample_ids), IOCModel.type.ilike("%domain%")).count()
+            ioc_ips = db.query(IOCModel).filter(IOCModel.sample_id.in_(auth_sample_ids), IOCModel.type.ilike("%ip%")).count()
+            ioc_urls = db.query(IOCModel).filter(IOCModel.sample_id.in_(auth_sample_ids), IOCModel.type.ilike("%url%")).count()
+            ioc_hashes = db.query(IOCModel).filter(IOCModel.sample_id.in_(auth_sample_ids), IOCModel.type.ilike("%hash%")).count()
+            ioc_registry = db.query(IOCModel).filter(IOCModel.sample_id.in_(auth_sample_ids), IOCModel.type.ilike("%registry%")).count()
+
+            susp_apis = db.query(ImportModel).filter(ImportModel.sample_id.in_(auth_sample_ids), ImportModel.risk_relevance.in_(["HIGH", "CRITICAL"])).count()
+            susp_strings = db.query(StringModel).filter(StringModel.sample_id.in_(auth_sample_ids), StringModel.severity.in_(["HIGH", "CRITICAL"])).count()
+            net_indicators = db.query(IndicatorModel).filter(IndicatorModel.sample_id.in_(auth_sample_ids), IndicatorModel.category == "NETWORK").count()
+            reg_indicators = db.query(IndicatorModel).filter(IndicatorModel.sample_id.in_(auth_sample_ids), IndicatorModel.category == "REGISTRY").count()
+            entropy_indicators = db.query(IndicatorModel).filter(IndicatorModel.sample_id.in_(auth_sample_ids), IndicatorModel.category == "ENTROPY").count()
+
+            recent_samples = sample_query.order_by(SampleModel.created_at.desc()).limit(6).all()
         recent_activity = [
             {
                 "analysis_id": s.analysis_id,
@@ -292,6 +341,10 @@ class CaseUpdateRequest(BaseModel):
     case_priority: Optional[str] = None
 
 
+VALID_CASE_STATUSES = {"OPEN", "INVESTIGATING", "CONTAINED", "RESOLVED"}
+VALID_CASE_PRIORITIES = {"LOW", "MEDIUM", "HIGH", "CRITICAL"}
+
+
 class AskAIRequest(BaseModel):
     question: str
     language: str = "en"
@@ -305,7 +358,7 @@ class AskAIRequest(BaseModel):
 def compare_analyses(
     id1: str = Query(..., description="First analysis ID"),
     id2: str = Query(..., description="Second analysis ID"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Compares two analysis records side-by-side."""
     db = SessionLocal()
@@ -314,6 +367,9 @@ def compare_analyses(
         s2 = SampleRepository.get_by_analysis_id(db, id2)
         if not s1 or not s2:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or both analyses not found for comparison.")
+
+        _verify_sample_access(s1, current_user)
+        _verify_sample_access(s2, current_user)
 
         # Compute summary metrics for sample 1
         s1_susp_apis = sum(1 for imp in s1.imports if (imp.risk_relevance or "").upper() in ("HIGH", "CRITICAL"))
@@ -375,7 +431,7 @@ def compare_analyses(
 def get_analysis_by_id(
     analysis_id: str,
     language: str = Query("en", description="'en' or 'am'"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Fetches complete structured analysis record with object-level authorization."""
     db = SessionLocal()
@@ -387,13 +443,31 @@ def get_analysis_by_id(
                 detail=f"Analysis '{analysis_id}' not found."
             )
 
-        # IDOR protection:
-        if sample.user_id is not None and current_user is not None:
-            if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied: You do not have permission to view this analysis."
-                )
+        _verify_sample_access(sample, current_user)
+
+        # Determine review state and rejection gate status (ML-13)
+        latest_review = sample.reviews[0] if (getattr(sample, "reviews", None) and len(sample.reviews) > 0) else None
+        if latest_review:
+            rev_status = latest_review.review_state
+            rev_gate_state = latest_review.review_state
+            rev_reason = (
+                f"Analyst review completed by '{latest_review.reviewer_username}' with verdict "
+                f"'{latest_review.verdict}'. Rationale: {latest_review.rationale}"
+            )
+            reviewed_by = latest_review.reviewer_username
+            reviewed_at = latest_review.created_at.isoformat() if latest_review.created_at else None
+            review_verdict = latest_review.verdict
+            review_rationale = latest_review.rationale
+            requires_review = False
+        else:
+            rev_status = "NOT_EVALUATED"
+            rev_gate_state = "NOT_EVALUATED"
+            rev_reason = "ML advisory signal was not evaluated for this historical record."
+            reviewed_by = None
+            reviewed_at = None
+            review_verdict = None
+            review_rationale = None
+            requires_review = False
 
         # Build full evidence response
         return {
@@ -573,11 +647,32 @@ def get_analysis_by_id(
                 "advisory_only": True,
                 "advisory_label": "EXPERIMENTAL_ADVISORY_PRIORITY",
                 "review_priority": "NOT_EVALUATED",
+                "rejection_gate_state": rev_gate_state,
+                "rejection_gate_reason": rev_reason,
+                "review_status": rev_status,
+                "requires_analyst_review": requires_review,
+                "reviewed_by": reviewed_by,
+                "reviewed_at": reviewed_at,
+                "review_verdict": review_verdict,
+                "review_rationale": review_rationale,
+                "active_blocking_inhibited": True,
                 "disclaimer": (
                     "Advisory-only analyst prioritization signal. Experimental model score is not a confirmed "
                     "malware verdict and does not alter heuristic risk scores or trigger autonomous actions."
                 ),
             },
+            "reviews": [
+                {
+                    "id": r.id,
+                    "reviewer": r.reviewer_username,
+                    "verdict": r.verdict,
+                    "review_state": r.review_state,
+                    "previous_state": r.previous_state,
+                    "rationale": r.rationale,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in (getattr(sample, "reviews", None) or [])
+            ],
         }
     finally:
         db.close()
@@ -591,7 +686,7 @@ def get_analysis_by_id(
 def ask_ai_about_analysis(
     analysis_id: str,
     payload: AskAIRequest,
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Answers analyst questions strictly grounded on the specific binary's static findings."""
     db = SessionLocal()
@@ -599,6 +694,7 @@ def ask_ai_about_analysis(
         sample = SampleRepository.get_by_analysis_id(db, analysis_id)
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+        _verify_sample_access(sample, current_user)
 
         # Build grounded evidence context
         susp_apis = [f"{i.dll}!{i.api}" for i in sample.imports if (i.risk_relevance or "").upper() in ("HIGH", "CRITICAL")]
@@ -644,7 +740,7 @@ def ask_ai_about_analysis(
 )
 def get_sample_notes(
     analysis_id: str,
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Fetches analyst notes for an analysis."""
     db = SessionLocal()
@@ -652,6 +748,7 @@ def get_sample_notes(
         sample = SampleRepository.get_by_analysis_id(db, analysis_id)
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+        _verify_sample_access(sample, current_user)
         notes = SampleRepository.get_notes_for_sample(db, sample.id)
         return [
             {
@@ -675,7 +772,7 @@ def get_sample_notes(
 def add_sample_note(
     analysis_id: str,
     payload: NoteCreateRequest,
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.ADD_ANALYST_CONCLUSIONS))
 ):
     """Adds a new persistent note to the sample analysis."""
     db = SessionLocal()
@@ -683,6 +780,7 @@ def add_sample_note(
         sample = SampleRepository.get_by_analysis_id(db, analysis_id)
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+        _verify_sample_access(sample, current_user)
         if not payload.content.strip():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Note content cannot be empty.")
         note = SampleRepository.add_note_to_sample(
@@ -692,6 +790,18 @@ def add_sample_note(
             author_username=current_user.username,
             content=payload.content.strip(),
             tag=payload.tag
+        )
+        audit_logger.log_event(
+            event=AuditEventType.ADMINISTRATIVE_CHANGES,
+            result=AuditResult.SUCCESS,
+            user_id=current_user.id,
+            analysis_id=sample.analysis_id,
+            details={
+                "action": "add_note",
+                "note_id": note.id,
+                "tag": note.tag,
+                "author": current_user.username
+            }
         )
         return {
             "id": note.id,
@@ -712,7 +822,7 @@ def add_sample_note(
 def delete_sample_note(
     analysis_id: str,
     note_id: int,
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.ADD_ANALYST_CONCLUSIONS))
 ):
     """Deletes an analyst note."""
     db = SessionLocal()
@@ -720,9 +830,34 @@ def delete_sample_note(
         sample = SampleRepository.get_by_analysis_id(db, analysis_id)
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
-        success = SampleRepository.delete_note(db, note_id)
-        if not success:
+        _verify_sample_access(sample, current_user)
+
+        note = db.query(AnalystNoteModel).filter(
+            AnalystNoteModel.id == note_id,
+            AnalystNoteModel.sample_id == sample.id
+        ).first()
+        if not note:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found.")
+
+        if current_user.role != UserRole.ADMIN.value and note.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You do not have permission to delete this note."
+            )
+
+        SampleRepository.delete_note(db, note_id)
+        audit_logger.log_event(
+            event=AuditEventType.ADMINISTRATIVE_CHANGES,
+            result=AuditResult.SUCCESS,
+            user_id=current_user.id,
+            analysis_id=sample.analysis_id,
+            details={
+                "action": "delete_note",
+                "note_id": note_id,
+                "author_user_id": note.user_id,
+                "deleted_by": current_user.username
+            }
+        )
         return {"status": "deleted", "note_id": note_id}
     finally:
         db.close()
@@ -733,10 +868,15 @@ def delete_sample_note(
     summary="Update case metadata for an analysis",
     description="Updates case ID, priority, and investigation status (OPEN, INVESTIGATING, CONTAINED, RESOLVED)."
 )
+@router.put(
+    "/{analysis_id}/case",
+    summary="Update case metadata for an analysis",
+    description="Updates case ID, priority, and investigation status (OPEN, INVESTIGATING, CONTAINED, RESOLVED)."
+)
 def update_sample_case(
     analysis_id: str,
     payload: CaseUpdateRequest,
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.ADD_ANALYST_CONCLUSIONS))
 ):
     """Updates case tracking information for the binary analysis."""
     db = SessionLocal()
@@ -744,18 +884,203 @@ def update_sample_case(
         sample = SampleRepository.get_by_analysis_id(db, analysis_id)
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found.")
+        _verify_sample_access(sample, current_user)
+
+        norm_status = None
+        if payload.case_status is not None:
+            norm_status = payload.case_status.strip().upper()
+            if norm_status not in VALID_CASE_STATUSES:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid case status '{payload.case_status}'. Must be one of: {', '.join(sorted(VALID_CASE_STATUSES))}."
+                )
+
+        norm_priority = None
+        if payload.case_priority is not None:
+            norm_priority = payload.case_priority.strip().upper()
+            if norm_priority not in VALID_CASE_PRIORITIES:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid case priority '{payload.case_priority}'. Must be one of: {', '.join(sorted(VALID_CASE_PRIORITIES))}."
+                )
+
         updated = SampleRepository.update_case_info(
             db=db,
             sample_id=sample.id,
             case_id=payload.case_id,
-            case_status=payload.case_status,
-            case_priority=payload.case_priority
+            case_status=norm_status,
+            case_priority=norm_priority
+        )
+        audit_logger.log_event(
+            event=AuditEventType.ADMINISTRATIVE_CHANGES,
+            result=AuditResult.SUCCESS,
+            user_id=current_user.id,
+            analysis_id=sample.analysis_id,
+            details={
+                "action": "update_case",
+                "case_id": payload.case_id,
+                "case_status": norm_status,
+                "case_priority": norm_priority,
+                "updated_by": current_user.username
+            }
         )
         return {
             "case_id": updated.case_id,
             "case_status": updated.case_status,
             "case_priority": updated.case_priority
         }
+    finally:
+        db.close()
+
+
+@router.post(
+    "/{analysis_id}/reviews",
+    response_model=AnalystReviewResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit analyst confirmation or rejection for ML finding",
+    description="Records an auditable analyst review decision for an analysis finding. Requires ANALYST or ADMIN role."
+)
+def create_analysis_review(
+    analysis_id: str,
+    payload: AnalystReviewCreate,
+    current_user: UserModel = Depends(require_permissions(Permission.ADD_ANALYST_CONCLUSIONS))
+):
+    """
+    ML-13: Records an auditable analyst decision on an ML finding requiring confirmation.
+
+    Validates:
+    - User has ADD_ANALYST_CONCLUSIONS permission (ANALYST or ADMIN).
+    - Non-empty rationale.
+    - Valid normalized verdict (CONFIRMED_MALWARE, REJECTED_FALSE_POSITIVE, BENIGN_UTILITY).
+    - Prevents duplicate review actions (HTTP 409 Conflict).
+    - Preserves deterministic evidence and emits structured audit log.
+    """
+    if not payload.rationale or not payload.rationale.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Review rationale cannot be empty."
+        )
+
+    verdict_raw = payload.verdict.strip().upper()
+    valid_verdicts = {
+        "CONFIRMED_MALWARE": "CONFIRMED_MALWARE",
+        "CONFIRMED_THREAT": "CONFIRMED_MALWARE",
+        "REJECTED_FALSE_POSITIVE": "REJECTED_FALSE_POSITIVE",
+        "REJECTED": "REJECTED_FALSE_POSITIVE",
+        "FALSE_POSITIVE": "REJECTED_FALSE_POSITIVE",
+        "BENIGN_UTILITY": "BENIGN_UTILITY",
+        "BENIGN": "BENIGN_UTILITY",
+    }
+    if verdict_raw not in valid_verdicts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verdict. Must be one of: CONFIRMED_MALWARE, REJECTED_FALSE_POSITIVE, BENIGN_UTILITY"
+        )
+    normalized_verdict = valid_verdicts[verdict_raw]
+
+    db = SessionLocal()
+    try:
+        sample = SampleRepository.get_by_analysis_id(db, analysis_id)
+        if not sample:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Analysis '{analysis_id}' not found."
+            )
+        _verify_sample_access(sample, current_user)
+
+        # Prevent duplicate reviews (Requirement 5)
+        existing = SampleRepository.get_latest_review_for_analysis_id(db, analysis_id)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Analysis '{analysis_id}' has already been reviewed by '{existing.reviewer_username}' with verdict '{existing.verdict}'."
+            )
+
+        try:
+            review = SampleRepository.add_analyst_review(
+                db=db,
+                sample_id=sample.id,
+                analysis_id=sample.analysis_id,
+                user_id=current_user.id,
+                reviewer_username=current_user.username,
+                verdict=normalized_verdict,
+                rationale=payload.rationale.strip(),
+                previous_state="PENDING_REVIEW"
+            )
+        except (IntegrityError, DuplicateReviewError):
+            db.rollback()
+            existing_after_race = SampleRepository.get_latest_review_for_analysis_id(db, analysis_id)
+            if existing_after_race:
+                detail_msg = f"Analysis '{analysis_id}' has already been reviewed by '{existing_after_race.reviewer_username}' with verdict '{existing_after_race.verdict}'."
+            else:
+                detail_msg = f"Analysis '{analysis_id}' has already been reviewed."
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=detail_msg
+            )
+
+        # Audit Trail (Requirement 5)
+        audit_logger.log_event(
+            event=AuditEventType.ANALYST_REVIEW,
+            user_id=current_user.id,
+            analysis_id=sample.analysis_id,
+            result=AuditResult.SUCCESS,
+            details={
+                "reviewer": current_user.username,
+                "verdict": review.verdict,
+                "review_state": review.review_state,
+                "rationale": review.rationale,
+            }
+        )
+
+        return AnalystReviewResponse(
+            id=review.id,
+            analysis_id=review.analysis_id,
+            reviewer_username=review.reviewer_username,
+            verdict=review.verdict,
+            review_state=review.review_state,
+            previous_state=review.previous_state,
+            rationale=review.rationale,
+            created_at=review.created_at.isoformat() if review.created_at else datetime.now(timezone.utc).isoformat(),
+        )
+    finally:
+        db.close()
+
+
+@router.get(
+    "/{analysis_id}/reviews",
+    response_model=List[AnalystReviewResponse],
+    summary="Get analyst review history for an analysis",
+    description="Returns all recorded analyst confirmation or rejection decisions for this sample."
+)
+def get_analysis_reviews(
+    analysis_id: str,
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
+):
+    """Fetches review history for the analysis record."""
+    db = SessionLocal()
+    try:
+        sample = SampleRepository.get_by_analysis_id(db, analysis_id)
+        if not sample:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Analysis '{analysis_id}' not found."
+            )
+        _verify_sample_access(sample, current_user)
+        reviews = SampleRepository.get_reviews_for_sample(db, sample.id)
+        return [
+            AnalystReviewResponse(
+                id=r.id,
+                analysis_id=r.analysis_id,
+                reviewer_username=r.reviewer_username,
+                verdict=r.verdict,
+                review_state=r.review_state,
+                previous_state=r.previous_state,
+                rationale=r.rationale,
+                created_at=r.created_at.isoformat() if r.created_at else "",
+            )
+            for r in reviews
+        ]
     finally:
         db.close()
 
@@ -776,7 +1101,7 @@ def get_analysis_strings(
     search: Optional[str] = Query(None, description="Search term for string value, category, or reason"),
     sort_by: Optional[str] = Query("severity", description="Sort field: severity, offset, value, category"),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """
     Retrieves rich categorized strings intelligence for a specific analysis with full pagination, search, and filtering.
@@ -790,13 +1115,7 @@ def get_analysis_strings(
                 detail=f"Analysis '{analysis_id}' not found."
             )
 
-        # IDOR protection:
-        if sample.user_id is not None and current_user is not None:
-            if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied: You do not have permission to view strings for this analysis."
-                )
+        _verify_sample_access(sample, current_user)
 
         skip = (page - 1) * page_size
         total_strings = len(sample.strings)
@@ -902,7 +1221,7 @@ def get_analysis_strings(
 )
 def get_analysis_pe_structure(
     analysis_id: str,
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Fetches structured PE headers and memory sections."""
     db = SessionLocal()
@@ -911,10 +1230,7 @@ def get_analysis_pe_structure(
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Analysis '{analysis_id}' not found.")
 
-        # IDOR protection
-        if sample.user_id is not None and current_user is not None:
-            if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+        _verify_sample_access(sample, current_user)
 
         sections = sample.sections or []
         file_entropy = sample.analysis_results.risk_score if False else (max([s.entropy for s in sections], default=0.0) if sections else 0.0)
@@ -971,7 +1287,7 @@ def get_analysis_imports(
     category: Optional[str] = Query(None, description="Category filter"),
     risk_relevance: Optional[str] = Query(None, description="Risk relevance filter"),
     search: Optional[str] = Query(None, description="Search API or DLL name"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Fetches categorized DLL imports and API functions."""
     db = SessionLocal()
@@ -980,10 +1296,7 @@ def get_analysis_imports(
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Analysis '{analysis_id}' not found.")
 
-        # IDOR protection
-        if sample.user_id is not None and current_user is not None:
-            if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+        _verify_sample_access(sample, current_user)
 
         all_imports = sample.imports or []
         
@@ -1046,7 +1359,7 @@ def get_analysis_imports(
 )
 def get_analysis_iocs(
     analysis_id: str,
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Fetches extracted IOCs and YARA matches."""
     db = SessionLocal()
@@ -1055,10 +1368,7 @@ def get_analysis_iocs(
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Analysis '{analysis_id}' not found.")
 
-        # IDOR protection
-        if sample.user_id is not None and current_user is not None:
-            if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+        _verify_sample_access(sample, current_user)
 
         db_iocs = sample.iocs or []
         db_indicators = sample.indicators or []
@@ -1128,7 +1438,7 @@ def get_analysis_iocs(
 def get_analysis_ai_assessment(
     analysis_id: str,
     language: str = Query("en", description="'en' or 'am'"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Fetches grounded AI security assessment."""
     db = SessionLocal()
@@ -1137,10 +1447,7 @@ def get_analysis_ai_assessment(
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Analysis '{analysis_id}' not found.")
 
-        # IDOR protection
-        if sample.user_id is not None and current_user is not None:
-            if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+        _verify_sample_access(sample, current_user)
 
         res = sample.analysis_results
         score = sample.risk_score or (res.risk_score if res else 0)
@@ -1231,7 +1538,7 @@ class IndicatorLookupPayload(BaseModel):
 )
 def lookup_threat_intelligence(
     payload: IndicatorLookupPayload,
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Executes safe threat intelligence query."""
     from app.analyzers.threat_intelligence import threat_intel_service
@@ -1247,7 +1554,7 @@ def get_analysis_ghidra(
     analysis_id: str,
     function_limit: int = Query(500, ge=1, le=5000),
     relationship_limit: int = Query(500, ge=1, le=5000),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES))
 ):
     """Fetches stored Ghidra reverse-engineering results for a sample."""
     db = SessionLocal()
@@ -1256,10 +1563,7 @@ def get_analysis_ghidra(
         if not sample:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Analysis '{analysis_id}' not found.")
 
-        # IDOR protection
-        if sample.user_id is not None and current_user is not None:
-            if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+        _verify_sample_access(sample, current_user)
 
         g = sample.ghidra_analysis
         functions = sample.ghidra_functions or []
@@ -1350,7 +1654,7 @@ def get_analysis_report(
     analysis_id: str,
     format: str = Query("json", description="Format: json, html, markdown, text"),
     language: str = Query("en", description="Language: en or am"),
-    current_user: Optional[UserModel] = Depends(get_optional_current_user)
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_REPORTS))
 ):
     """Exports structured security report and logs the audit event."""
     data = get_analysis_by_id(analysis_id, language=language, current_user=current_user)
@@ -1411,21 +1715,133 @@ def delete_analysis(
         db.close()
 
 
+def _escape_html_text(val: Any) -> str:
+    """Encodes untrusted data for safe insertion into HTML element text context.
+
+    Transforms '&', '<', '>', '"', and "'" to their respective HTML entities.
+    """
+    if val is None:
+        return ""
+    return html.escape(str(val), quote=True)
+
+
+def _escape_html_attr(val: Any) -> str:
+    """Encodes untrusted data for safe insertion into HTML attribute values.
+
+    Prevents attribute breakout by escaping quotes, ampersands, tag delimiters,
+    and backticks.
+    """
+    if val is None:
+        return ""
+    return html.escape(str(val), quote=True).replace("`", "&#96;")
+
+
+def _sanitize_url(url: Any) -> str:
+    """Validates and encodes URLs for safe placement in href and src attributes.
+
+    Restricts protocols to safe schemes (http, https, or relative paths),
+    neutralizing javascript:, data:, and other active pseudo-protocols.
+    """
+    if not url:
+        return "#"
+    s_url = str(url).strip()
+    lower = s_url.lower()
+    if lower.startswith(("http://", "https://", "/")):
+        return _escape_html_attr(s_url)
+    return "#"
+
+
+def _format_entropy(val: Any) -> str:
+    """Safely formats entropy value to float with 2 decimal places."""
+    try:
+        return f"{float(val):.2f}"
+    except (TypeError, ValueError):
+        return "0.00"
+
+
 def generate_html_report_view(data: Dict[str, Any], language: str = "en") -> str:
-    """Renders a clean, standalone HTML executive report."""
+    """Renders a clean, standalone HTML executive report with strict context-appropriate escaping."""
     fi = data.get("file_information", {})
     hashes = data.get("hashes", {})
     ts = data.get("threat_score", {})
     ai = data.get("ai_assessment", {})
-    sections = data.get("sections", {}).get("sections", [])
-    imports = data.get("imports", {}).get("imports", [])
-    indicators = data.get("indicators", {}).get("indicators", [])
+    sections_raw = data.get("sections", [])
+    if isinstance(sections_raw, dict):
+        sections = sections_raw.get("sections", [])
+    elif isinstance(sections_raw, list):
+        sections = sections_raw
+    else:
+        sections = []
+
+    indicators_raw = data.get("indicators", [])
+    if isinstance(indicators_raw, dict):
+        indicators = indicators_raw.get("indicators", [])
+    elif isinstance(indicators_raw, list):
+        indicators = indicators_raw
+    else:
+        indicators = []
+
+    safe_analysis_id = _escape_html_text(data.get("analysis_id"))
+    safe_created_at = _escape_html_text(fi.get("created_at", "N/A"))
+    safe_lang = _escape_html_attr(language or "en")
+
+    # Threat tier badge class is mapped to strict CSS identifier whitelist
+    risk_level_raw = ts.get("risk_level", "LOW")
+    risk_level_upper = str(risk_level_raw).upper().strip()
+    badge_class = (
+        "badge-crit" if risk_level_upper == "CRITICAL"
+        else ("badge-high" if risk_level_upper in ("HIGH", "SUSPICIOUS")
+        else "badge-low")
+    )
+    safe_risk_level = _escape_html_text(risk_level_raw)
+    try:
+        score_val = int(ts.get("score", 0))
+    except (TypeError, ValueError):
+        score_val = 0
+
+    safe_filename = _escape_html_text(fi.get("filename"))
+    safe_file_size = _escape_html_text(fi.get("file_size"))
+    safe_machine_type = _escape_html_text(fi.get("machine_type"))
+    safe_file_kind = _escape_html_text(fi.get("file_kind"))
+    safe_sha256 = _escape_html_text(hashes.get("sha256"))
+    safe_md5 = _escape_html_text(hashes.get("md5"))
+
+    safe_ai_summary = _escape_html_text(ai.get("summary"))
+    safe_ai_confidence = _escape_html_text(ai.get("confidence", "MEDIUM"))
+
+    if indicators:
+        indicator_rows = "".join(
+            f"<tr>"
+            f"<td>{_escape_html_text(ind.get('name'))}</td>"
+            f"<td>{_escape_html_text(ind.get('category'))}</td>"
+            f"<td>{_escape_html_text(ind.get('severity'))}</td>"
+            f"<td>{_escape_html_text(ind.get('evidence'))}</td>"
+            f"</tr>"
+            for ind in indicators
+        )
+    else:
+        indicator_rows = '<tr><td colspan="4">No high-risk indicators detected.</td></tr>'
+
+    if sections:
+        section_rows = "".join(
+            f"<tr>"
+            f"<td class='mono'>{_escape_html_text(s.get('name'))}</td>"
+            f"<td>{_escape_html_text(s.get('virtual_address'))}</td>"
+            f"<td>{_escape_html_text(s.get('virtual_size'))}</td>"
+            f"<td>{_escape_html_text(s.get('raw_size'))}</td>"
+            f"<td>{_format_entropy(s.get('entropy'))}</td>"
+            f"<td>{_escape_html_text(s.get('characteristics'))}</td>"
+            f"</tr>"
+            for s in sections
+        )
+    else:
+        section_rows = '<tr><td colspan="6">No memory sections extracted.</td></tr>'
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{safe_lang}">
 <head>
     <meta charset="UTF-8">
-    <title>ETHIO-AI Defender Security Report - {data.get("analysis_id")}</title>
+    <title>ETHIO-AI Defender Security Report - {safe_analysis_id}</title>
     <style>
         body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; background: #0f172a; color: #f8fafc; line-height: 1.6; }}
         .header {{ border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }}
@@ -1447,11 +1863,11 @@ def generate_html_report_view(data: Dict[str, Any], language: str = "en") -> str
     <div class="header">
         <div>
             <div class="title">ETHIO-AI DEFENDER | STATIC SECURITY REPORT</div>
-            <div style="color: #94a3b8; font-size: 13px;">Analysis ID: {data.get("analysis_id")} • Generated on: {fi.get("created_at", "N/A")}</div>
+            <div style="color: #94a3b8; font-size: 13px;">Analysis ID: {safe_analysis_id} • Generated on: {safe_created_at}</div>
         </div>
         <div>
-            <span class="badge {'badge-crit' if ts.get('risk_level') == 'CRITICAL' else ('badge-high' if ts.get('risk_level') == 'HIGH' else 'badge-low')}">
-                {ts.get('risk_level', 'LOW')} ({ts.get('score', 0)}/100)
+            <span class="badge {badge_class}">
+                {safe_risk_level} ({score_val}/100)
             </span>
         </div>
     </div>
@@ -1459,17 +1875,17 @@ def generate_html_report_view(data: Dict[str, Any], language: str = "en") -> str
     <div class="card">
         <div class="card-title">1. File Identification & Metadata</div>
         <table>
-            <tr><th>Filename</th><td>{fi.get("filename")}</td><th>File Size</th><td>{fi.get("file_size")} bytes</td></tr>
-            <tr><th>Architecture</th><td>{fi.get("machine_type")}</td><th>File Format</th><td>{fi.get("file_kind")}</td></tr>
-            <tr><th>SHA-256</th><td colspan="3" class="mono">{hashes.get("sha256")}</td></tr>
-            <tr><th>MD5</th><td colspan="3" class="mono">{hashes.get("md5")}</td></tr>
+            <tr><th>Filename</th><td>{safe_filename}</td><th>File Size</th><td>{safe_file_size} bytes</td></tr>
+            <tr><th>Architecture</th><td>{safe_machine_type}</td><th>File Format</th><td>{safe_file_kind}</td></tr>
+            <tr><th>SHA-256</th><td colspan="3" class="mono">{safe_sha256}</td></tr>
+            <tr><th>MD5</th><td colspan="3" class="mono">{safe_md5}</td></tr>
         </table>
     </div>
 
     <div class="card">
         <div class="card-title">2. AI Security Interpretation</div>
-        <p><strong>Executive Summary:</strong> {ai.get("summary")}</p>
-        <p><strong>Confidence:</strong> {ai.get("confidence", "MEDIUM")}</p>
+        <p><strong>Executive Summary:</strong> {safe_ai_summary}</p>
+        <p><strong>Confidence:</strong> {safe_ai_confidence}</p>
     </div>
 
     <div class="card">
@@ -1477,7 +1893,7 @@ def generate_html_report_view(data: Dict[str, Any], language: str = "en") -> str
         <table>
             <thead><tr><th>Indicator Name</th><th>Category</th><th>Severity</th><th>Evidence</th></tr></thead>
             <tbody>
-                {''.join(f"<tr><td>{ind.get('name')}</td><td>{ind.get('category')}</td><td>{ind.get('severity')}</td><td>{ind.get('evidence')}</td></tr>" for ind in indicators) if indicators else '<tr><td colspan="4">No high-risk indicators detected.</td></tr>'}
+                {indicator_rows}
             </tbody>
         </table>
     </div>
@@ -1487,7 +1903,7 @@ def generate_html_report_view(data: Dict[str, Any], language: str = "en") -> str
         <table>
             <thead><tr><th>Name</th><th>Virtual Addr</th><th>Virtual Size</th><th>Raw Size</th><th>Entropy</th><th>Permissions</th></tr></thead>
             <tbody>
-                {''.join(f"<tr><td class='mono'>{s.get('name')}</td><td>{s.get('virtual_address')}</td><td>{s.get('virtual_size')}</td><td>{s.get('raw_size')}</td><td>{s.get('entropy'):.2f}</td><td>{s.get('characteristics')}</td></tr>" for s in sections)}
+                {section_rows}
             </tbody>
         </table>
     </div>

@@ -64,6 +64,7 @@ class SampleModel(Base):
     risk_factors = relationship("RiskFactorModel", back_populates="sample", cascade="all, delete-orphan")
     analysis_results = relationship("AnalysisResultModel", back_populates="sample", uselist=False, cascade="all, delete-orphan")
     notes = relationship("AnalystNoteModel", back_populates="sample", cascade="all, delete-orphan")
+    reviews = relationship("AnalystReviewModel", back_populates="sample", cascade="all, delete-orphan", order_by="desc(AnalystReviewModel.created_at)")
     ghidra_analysis = relationship("GhidraAnalysisModel", back_populates="sample", uselist=False, cascade="all, delete-orphan")
     ghidra_functions = relationship("GhidraFunctionModel", back_populates="sample", cascade="all, delete-orphan")
     ghidra_relationships = relationship("GhidraRelationshipModel", back_populates="sample", cascade="all, delete-orphan")
@@ -512,6 +513,35 @@ class AnalystNoteModel(Base):
 
     # Relationships
     sample = relationship("SampleModel", back_populates="notes")
+    user = relationship("UserModel")
+
+
+class AnalystReviewModel(Base):
+    """
+    ML-13: Analyst confirmation review record for ML findings requiring human confirmation.
+
+    Provides an immutable, auditable log of analyst decisions:
+    - verdict: 'CONFIRMED_MALWARE', 'REJECTED_FALSE_POSITIVE', 'BENIGN_UTILITY'
+    - review_state: 'ANALYST_CONFIRMED', 'ANALYST_REJECTED', 'BENIGN_CONFIRMED'
+    - previous_state: 'PENDING_REVIEW'
+    - rationale: Detailed justification for the decision
+    - reviewer: User ID and username
+    """
+    __tablename__ = "analyst_reviews"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="CASCADE"), nullable=False, index=True)
+    analysis_id = Column(String(64), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    reviewer_username = Column(String(64), nullable=False)
+    verdict = Column(String(32), nullable=False)  # CONFIRMED_MALWARE, REJECTED_FALSE_POSITIVE, BENIGN_UTILITY
+    review_state = Column(String(32), nullable=False)  # ANALYST_CONFIRMED, ANALYST_REJECTED, BENIGN_CONFIRMED
+    previous_state = Column(String(32), nullable=False, default="PENDING_REVIEW")
+    rationale = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+
+    # Relationships
+    sample = relationship("SampleModel", back_populates="reviews")
     user = relationship("UserModel")
 
 

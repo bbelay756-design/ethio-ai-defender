@@ -30,7 +30,7 @@
         <!-- Public Top Header -->
         <header class="public-topbar">
             <div class="brand-header" style="border-bottom: none; padding: 0;">
-                <div class="brand-icon">🛡️</div>
+                <div class="brand-icon-box"><svg class="soc-icon soc-icon-lg" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
                 <div class="brand-text">
                     <h1 class="brand-name">ETHIO-AI Defender</h1>
                     <span class="brand-tagline">Defensive Static Malware Analysis & Reverse-Engineering Platform</span>
@@ -104,7 +104,7 @@
                 </div>
 
                 <div class="auth-card-footer">
-                    <span data-i18n="non_exec_guarantee">🛡️ Zero-Execution Static Analysis Guarantee Enforced</span>
+                    <span data-i18n="non_exec_guarantee">Zero-Execution Static Analysis Guarantee Enforced</span>
                 </div>
             </div>
         </main>
@@ -118,7 +118,7 @@
         <!-- Left Sidebar Navigation -->
         <aside class="app-sidebar" id="sidebar">
             <div class="brand-header">
-                <div class="brand-icon">🛡️</div>
+                <div class="brand-icon-box"><svg class="soc-icon soc-icon-lg" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
                 <div class="brand-text">
                     <h1 class="brand-name">ETHIO-AI Defender</h1>
                     <span class="brand-tagline">Defensive Security Platform</span>
@@ -131,67 +131,67 @@
                     <!-- Protected Navigation (Role Filtered) -->
                     <li id="nav-item-home" style="display: none;">
                         <button class="nav-link" data-tab="home" id="nav-home">
-                            <span class="nav-icon">🏠</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
                             <span class="nav-label" id="nav-label-home" data-i18n="nav_home">Home / Intake</span>
                         </button>
                     </li>
                     <li id="nav-item-history" style="display: none;">
                         <button class="nav-link" data-tab="history" id="nav-history">
-                            <span class="nav-icon">📜</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg></span>
                             <span class="nav-label" id="nav-label-history" data-i18n="nav_history">Analysis History</span>
                         </button>
                     </li>
                     <li id="nav-item-analysis" style="display: none;">
                         <button class="nav-link" data-tab="analysis" id="nav-analysis">
-                            <span class="nav-icon">📊</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
                             <span class="nav-label" id="nav-label-analysis" data-i18n="nav_analysis">Analysis Overview</span>
                         </button>
                     </li>
                     <li id="nav-item-pe" style="display: none;">
                         <button class="nav-link" data-tab="pe-analysis" id="nav-pe-analysis">
-                            <span class="nav-icon">🧩</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg></span>
                             <span class="nav-label" data-i18n="nav_pe">PE Analysis</span>
                         </button>
                     </li>
                     <li id="nav-item-imports" style="display: none;">
                         <button class="nav-link" data-tab="imports" id="nav-imports">
-                            <span class="nav-icon">🔌</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                             <span class="nav-label" data-i18n="nav_imports">Imports & APIs</span>
                         </button>
                     </li>
                     <li id="nav-item-strings" style="display: none;">
                         <button class="nav-link" data-tab="strings" id="nav-strings">
-                            <span class="nav-icon">🔤</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
                             <span class="nav-label" data-i18n="nav_strings">Strings</span>
                         </button>
                     </li>
                     <li id="nav-item-indicators" style="display: none;">
                         <button class="nav-link" data-tab="indicators" id="nav-indicators">
-                            <span class="nav-icon">⚠️</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                             <span class="nav-label" id="nav-label-indicators" data-i18n="nav_indicators">Suspicious Indicators</span>
                         </button>
                     </li>
                     <li id="nav-item-ai" style="display: none;">
                         <button class="nav-link" data-tab="ai-analyst" id="nav-ai-analyst">
-                            <span class="nav-icon">🤖</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
                             <span class="nav-label" id="nav-label-ai" data-i18n="nav_ai">AI Security Analyst</span>
                         </button>
                     </li>
                     <li id="nav-item-reports" style="display: none;">
                         <button class="nav-link" data-tab="reports" id="nav-reports">
-                            <span class="nav-icon">📄</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
                             <span class="nav-label" id="nav-label-reports" data-i18n="nav_reports">Security Reports</span>
                         </button>
                     </li>
                     <li id="nav-item-learning" style="display: none;">
                         <button class="nav-link" data-tab="learning" id="nav-learning">
-                            <span class="nav-icon">🎓</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg></span>
                             <span class="nav-label" id="nav-label-learning" data-i18n="nav_learning">Learning Center</span>
                         </button>
                     </li>
                     <li id="nav-item-admin" style="display: none;">
                         <button class="nav-link" data-tab="admin" id="nav-admin">
-                            <span class="nav-icon">🛡️</span>
+                            <span class="nav-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                             <span class="nav-label" id="nav-label-admin" data-i18n="nav_admin">Admin & Users</span>
                         </button>
                     </li>
@@ -213,9 +213,9 @@
             <!-- Header Top Bar -->
             <header class="app-topbar">
                 <div class="topbar-left">
-                    <button class="menu-toggle-btn" id="mobile-menu-toggle" aria-label="Toggle Sidebar">☰</button>
+                    <button class="menu-toggle-btn" id="mobile-menu-toggle" aria-label="Toggle Sidebar"><svg class="soc-icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
                     <div class="brand-text-inline" style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 18px;">🛡️</span>
+                        <span style="display: flex; align-items: center; color: var(--accent-blue);"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
                         <div>
                             <div style="font-size: 13px; font-weight: 800; color: var(--accent-cyan); letter-spacing: 0.5px;">ETHIO-AI DEFENDER</div>
                             <div style="font-size: 10px; color: var(--text-muted); font-weight: 600;">Defensive Security Platform</div>
@@ -250,10 +250,10 @@
 
                     <!-- User Profile & Role Info -->
                     <div class="user-profile-pill" id="user-profile-pill">
-                        <span class="user-avatar">👤</span>
+                        <span class="user-avatar"><svg class="soc-icon soc-icon-sm" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
                         <span class="user-name-text" id="user-display-name">User</span>
                         <span class="role-badge role-badge-student" id="user-role-badge">STUDENT</span>
-                        <button class="btn-logout-icon" onclick="logoutUser()" title="Logout" aria-label="Logout">🚪</button>
+                        <button class="btn-logout-icon" onclick="logoutUser()" title="Logout" aria-label="Logout"><svg class="soc-icon soc-icon-sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
                     </div>
 
                     <!-- Language Switcher -->
@@ -270,7 +270,7 @@
                 
                 <!-- Role Workspace Indicator Banner -->
                 <div class="role-workspace-banner" id="role-workspace-banner" style="display: none;">
-                    <div class="role-banner-icon" id="role-banner-icon">🎓</div>
+                    <div class="role-banner-icon" id="role-banner-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg></div>
                     <div class="role-banner-text">
                         <div class="role-banner-title" id="role-banner-title">Student Learning Lab Active</div>
                         <div class="role-banner-desc" id="role-banner-desc">Interactive reverse-engineering lessons, concept breakdowns, and safe sample practice.</div>
@@ -282,39 +282,82 @@
                 <!-- ============================================== -->
                 <section class="view-panel" id="view-home">
                     
+                    <!-- Top Summary Metric Cards Row -->
+                    <div class="dashboard-summary-bar">
+                        <div class="soc-metric-card" onclick="switchTab('history')" style="cursor: pointer;" title="View Analysis History">
+                            <div class="metric-header">
+                                <span class="metric-title">Total Samples Indexed</span>
+                                <span class="metric-icon"><svg class="soc-icon soc-icon-md" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+                            </div>
+                            <div class="metric-value" id="dash-total-analyses">0</div>
+                            <div class="metric-subtext">Persistent Static Archive</div>
+                        </div>
+
+                        <div class="soc-metric-card" onclick="switchTab('history')" style="cursor: pointer;" title="Filter High and Critical Threats">
+                            <div class="metric-header">
+                                <span class="metric-title">High & Critical Threats</span>
+                                <span class="metric-icon" style="color: var(--sev-crit);"><svg class="soc-icon soc-icon-md" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                            </div>
+                            <div class="metric-value" id="dash-high-critical" style="color: var(--sev-crit);">0</div>
+                            <div class="metric-subtext">Deterministic Heuristic Flags</div>
+                        </div>
+
+                        <div class="soc-metric-card" onclick="switchTab('indicators')" style="cursor: pointer;" title="Inspect Extracted IOCs">
+                            <div class="metric-header">
+                                <span class="metric-title">Correlated Artifacts</span>
+                                <span class="metric-icon" style="color: var(--accent-cyan);"><svg class="soc-icon soc-icon-md" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+                            </div>
+                            <div class="metric-value" id="dash-ioc-total-badge" style="color: var(--accent-cyan); font-size: 20px;">0 ARTIFACTS</div>
+                            <div class="metric-subtext">Domains, IPs, URLs & Hashes</div>
+                        </div>
+
+                        <div class="soc-metric-card" onclick="openSystemHealthModal()" style="cursor: pointer;" title="View Subsystem Health">
+                            <div class="metric-header">
+                                <span class="metric-title">Engine Posture</span>
+                                <span class="metric-icon" style="color: var(--sev-low);"><svg class="soc-icon soc-icon-md" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+                            </div>
+                            <div class="metric-value" style="color: var(--sev-low); font-size: 19px;">ZERO-EXEC</div>
+                            <div class="metric-subtext">Memory-Safe Static Triage</div>
+                        </div>
+                    </div>
+
                     <!-- 3-Column Futuristic Hero Section -->
                     <div class="cyber-hero-grid">
                         
                         <!-- Column 1: Brand Hero & Intake Dropzone -->
                         <div class="soc-card" style="display: flex; flex-direction: column; justify-content: space-between;">
                             <div class="card-head">
-                                <span class="card-icon">⚡</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
                                 <div>
-                                    <h2 class="card-heading" style="font-size: 15px; color: var(--accent-cyan); margin: 0;">ETHIO-AI DEFENDER</h2>
-                                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">AI-Powered Malware Analysis & Reverse Engineering</span>
+                                    <h2 class="card-heading" style="font-size: 13px; color: var(--text-primary); margin: 0;">File Intake & Static Triage</h2>
+                                    <span style="font-size: 10.5px; color: var(--text-muted); font-weight: 500;">Deterministic, Non-Executing Binary Analysis</span>
                                 </div>
                             </div>
-                            <div class="card-body" style="padding-top: 10px;">
-                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
-                                    Your digital shield against modern threats. Upload Windows executables for deterministic, non-executing static triage, deep string extraction, and heuristic scoring.
+                            <div class="card-body" style="padding-top: 12px;">
+                                <p style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
+                                    Upload Windows executables for isolated static parsing, header decomposition, import analysis, string decoding, and multi-factor heuristic scoring.
                                 </p>
 
                                 <div id="upload-error-box" class="auth-error-box" style="display: none; margin-bottom: 12px;"></div>
 
                                 <!-- Default Dropzone -->
-                                <div class="dropzone" id="upload-dropzone" style="padding: 20px 14px;">
-                                    <div class="dropzone-icon" style="font-size: 26px; margin-bottom: 6px;">📥</div>
-                                    <div class="dropzone-title" style="font-size: 13px; font-weight: 700;" data-i18n="dropzone_title">Drag & drop .exe or .dll here</div>
-                                    <div class="dropzone-subtitle" style="font-size: 11px; margin-bottom: 10px;" data-i18n="dropzone_subtitle">or click to browse local files</div>
+                                <div class="dropzone" id="upload-dropzone">
+                                    <div class="dropzone-icon">
+                                        <svg class="soc-icon soc-icon-xl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    </div>
+                                    <div class="dropzone-title" data-i18n="dropzone_title">Drag & drop .exe or .dll here</div>
+                                    <div class="dropzone-subtitle" data-i18n="dropzone_subtitle">or click to browse local files</div>
                                     <input type="file" id="file-upload-input" class="hidden-input" accept=".exe,.dll">
-                                    <button class="btn-primary" id="btn-browse-file" style="font-size: 12px; padding: 6px 14px;" data-i18n="btn_choose_file">Select File</button>
+                                    <button class="btn-primary" id="btn-browse-file" data-i18n="btn_choose_file">Select File</button>
                                 </div>
 
                                 <!-- File Selected State (Before Analysis) -->
-                                <div id="upload-selected-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-blue); margin-bottom: 10px;">
+                                <div id="upload-selected-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-blue); margin-bottom: 10px; margin-top: 10px;">
                                     <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px;">
                                         <div style="display: flex; align-items: center; gap: 10px;">
-                                            <div style="font-size: 20px;">📦</div>
+                                            <div style="color: var(--accent-blue);">
+                                                <svg class="soc-icon soc-icon-lg" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                            </div>
                                             <div>
                                                 <div style="font-weight: 700; color: var(--text-primary); font-size: 12px;" id="selected-file-name">sample.exe</div>
                                                 <div style="font-size: 10px; color: var(--text-muted);">
@@ -324,18 +367,18 @@
                                         </div>
                                         <div style="display: flex; gap: 6px;">
                                             <button class="btn-secondary" onclick="clearSelectedFile()" style="font-size: 11px; padding: 4px 8px;">✕ Cancel</button>
-                                            <button class="btn-primary" id="btn-start-analysis" onclick="startSelectedFileAnalysis()" style="font-size: 11px; padding: 4px 12px;">🚀 Analyze</button>
+                                            <button class="btn-primary" id="btn-start-analysis" onclick="startSelectedFileAnalysis()" style="font-size: 11px; padding: 4px 12px;">Analyze</button>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Analysis In-Progress Staged Feedback -->
-                                <div id="upload-progress-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-cyan); margin-bottom: 12px;">
+                                <div id="upload-progress-card" class="soc-card" style="display: none; background: var(--bg-card-alt); border-color: var(--accent-blue); margin-bottom: 12px; margin-top: 10px;">
                                     <div class="card-body" style="padding: 12px;">
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                             <div style="display: flex; align-items: center; gap: 8px;">
                                                 <span class="auth-loading-spinner" style="width: 14px; height: 14px; border-width: 2px;"></span>
-                                                <span style="font-weight: 700; font-size: 12px; color: var(--accent-cyan);" id="upload-progress-current-text">Executing Zero-Execution Analysis Pipeline...</span>
+                                                <span style="font-weight: 700; font-size: 12px; color: var(--accent-blue);" id="upload-progress-current-text">Executing Zero-Execution Analysis Pipeline...</span>
                                             </div>
                                             <span class="badge badge-low" style="font-size: 9px;">STATIC INTAKE</span>
                                         </div>
@@ -354,90 +397,153 @@
                                     </div>
                                 </div>
 
-                                <div class="quick-demo-row" style="margin-top: 10px; font-size: 11px;">
-                                    <span data-i18n="or_try_demo">Or test with safe synthetic sample:</span>
-                                    <button class="btn-secondary" id="btn-load-demo" onclick="loadDemoSample()" style="font-size: 11px; padding: 4px 10px;">🧪 Load Demo</button>
+                                <div class="quick-demo-row" style="margin-top: 10px; font-size: 11px; display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="color: var(--text-muted);" data-i18n="or_try_demo">Or test with safe synthetic sample:</span>
+                                    <button class="btn-secondary" id="btn-load-demo" onclick="loadDemoSample()" style="font-size: 11px; padding: 4px 10px;">Load Demo</button>
                                 </div>
                             </div>
-                            <div class="card-foot" style="padding: 10px 16px; font-size: 10px; color: var(--text-dim); display: flex; justify-content: space-between;">
+                            <div class="card-foot flex-between">
                                 <span>Windows PE (.exe, .dll) • x86/x64</span>
-                                <span style="color: var(--sev-low);">Max: 50 MB • Static Only</span>
+                                <span style="color: var(--sev-low); font-weight: 600;">Max: 50 MB • Static Only</span>
                             </div>
                         </div>
 
-                        <!-- Column 2: Central Cyber Lock & Shield HUD Visualization -->
-                        <div class="cyber-lock-column">
-                            <div class="cyber-lock-hud">
-                                <!-- Layered Concentric HUD Rings -->
-                                <svg class="hud-ring-svg" viewBox="0 0 240 240">
-                                    <!-- Outer Technical Track & Tick Marks -->
-                                    <circle class="hud-ring-outer" cx="120" cy="120" r="108" fill="none" stroke="rgba(0, 240, 255, 0.2)" stroke-width="1.5" stroke-dasharray="6 8 14 8" />
-                                    <!-- Mid Segmented Arcs -->
-                                    <circle class="hud-ring-mid" cx="120" cy="120" r="88" fill="none" stroke="rgba(14, 165, 233, 0.35)" stroke-width="2" stroke-dasharray="32 14 18 14" />
-                                    <!-- Inner Glowing Boundary -->
-                                    <circle class="hud-ring-inner" cx="120" cy="120" r="66" fill="none" stroke="rgba(0, 240, 255, 0.5)" stroke-width="1.5" stroke-dasharray="4 6" />
-                                </svg>
-
-                                <!-- Central Glowing Cyber Core -->
-                                <div class="cyber-lock-core">
-                                    <div class="center-shield-icon">🛡️</div>
-                                </div>
-                            </div>
-
-                            <!-- Central HUD Telemetry Badges -->
-                            <div class="hud-status-badges">
-                                <span class="hud-badge">🛡️ SHIELD: ACTIVE</span>
-                                <span class="hud-badge">⚡ ZERO-EXECUTION</span>
-                                <span class="hud-badge">🔍 HEURISTIC ENGINE</span>
-                            </div>
-                        </div>
-
-                        <!-- Column 3: Real Threat Overview Posture -->
+                        <!-- Column 2: Platform Engine & Verified Subsystems Matrix -->
                         <div class="soc-card" style="display: flex; flex-direction: column; justify-content: space-between;">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">📊</span>
-                                    <h3 class="card-heading" style="font-size: 14px;">THREAT OVERVIEW</h3>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+                                    <h3 class="card-heading">Platform System Status</h3>
                                 </div>
-                                <span class="badge badge-low" style="font-size: 10px; display: flex; align-items: center; gap: 4px;">
-                                    <span class="status-pulse-dot" style="width: 6px; height: 6px;"></span> LIVE
-                                </span>
+                                <span class="badge badge-low" style="font-size: 10px;">● OPERATIONAL</span>
                             </div>
                             <div class="card-body">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                                    <div class="stat-card" style="padding: 12px; background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2);">
-                                        <div class="stat-label" style="font-size: 10px;">Total Analyses</div>
-                                        <div class="stat-val" id="dash-total-analyses" style="font-size: 24px; color: var(--accent-cyan);">0</div>
+                                <div class="platform-subsystems-grid">
+                                    <div class="subsystem-status-item">
+                                        <span class="subsystem-name">PE Parser</span>
+                                        <span class="subsystem-badge-online">✓ ONLINE</span>
                                     </div>
-                                    <div class="stat-card" style="padding: 12px; background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.2);">
-                                        <div class="stat-label" style="font-size: 10px;">High & Critical</div>
-                                        <div class="stat-val" id="dash-high-critical" style="font-size: 24px; color: var(--sev-crit);">0</div>
+                                    <div class="subsystem-status-item">
+                                        <span class="subsystem-name">Hash Engine</span>
+                                        <span class="subsystem-badge-online">✓ ONLINE</span>
+                                    </div>
+                                    <div class="subsystem-status-item">
+                                        <span class="subsystem-name">IOC Scorer</span>
+                                        <span class="subsystem-badge-online">✓ ONLINE</span>
+                                    </div>
+                                    <div class="subsystem-status-item">
+                                        <span class="subsystem-name">YARA Engine</span>
+                                        <span class="subsystem-badge-online">✓ ONLINE</span>
+                                    </div>
+                                    <div class="subsystem-status-item">
+                                        <span class="subsystem-name">AI Gateway</span>
+                                        <span class="subsystem-badge-online">✓ ONLINE</span>
+                                    </div>
+                                    <div class="subsystem-status-item">
+                                        <span class="subsystem-name">Database</span>
+                                        <span class="subsystem-badge-online">✓ ONLINE</span>
+                                    </div>
+                                    <div class="subsystem-status-item">
+                                        <span class="subsystem-name">Ghidra RE</span>
+                                        <span class="subsystem-badge-unavail">⚠ UNAVAILABLE</span>
+                                    </div>
+                                    <div class="subsystem-status-item">
+                                        <span class="subsystem-name">ML Shadow</span>
+                                        <span class="subsystem-badge-shadow">⚡ SHADOW</span>
                                     </div>
                                 </div>
 
-                                <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">Risk Distribution:</div>
-                                <div style="display: flex; gap: 6px; margin-bottom: 12px;">
-                                    <div style="flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 6px; text-align: center;">
-                                        <div style="font-size: 9px; color: var(--sev-low);">LOW</div>
-                                        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);" id="dash-count-low">0</div>
+                                <div style="margin-top: 14px; background: rgba(59, 130, 246, 0.05); border: 1px solid var(--border-subtle); border-radius: var(--radius-xs); padding: 8px 10px; font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+                                    <strong style="color: var(--text-secondary);">Defensive Invariant:</strong> Binaries undergo strictly static byte dissection and PE section parsing. Code is never loaded into an execution thread.
+                                </div>
+
+                                <div class="quick-actions-bar">
+                                    <button class="btn-secondary" onclick="switchTab('history')" style="font-size: 11px; padding: 4px 9px;">Archive</button>
+                                    <button class="btn-secondary" onclick="switchTab('ai-analyst')" style="font-size: 11px; padding: 4px 9px;">AI Review</button>
+                                    <button class="btn-secondary" onclick="switchTab('reports')" style="font-size: 11px; padding: 4px 9px;">Reports</button>
+                                    <button class="btn-secondary" onclick="openSystemHealthModal()" style="font-size: 11px; padding: 4px 9px;">Subsystems</button>
+                                </div>
+                            </div>
+                            <div class="card-foot flex-between">
+                                <span>Zero-Execution Guarantee Enforced</span>
+                                <span style="color: var(--sev-low); font-weight: 600;">Defensive Core Active</span>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Real Threat Distribution & Overview Posture -->
+                        <div class="soc-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                            <div class="card-head flex-between">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
+                                    <h3 class="card-heading">Risk Posture Distribution</h3>
+                                </div>
+                                <span class="badge badge-low" id="dash-overall-risk-badge">CALCULATED</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; align-items: center; justify-content: space-around; gap: 12px; margin-bottom: 12px;">
+                                    <!-- Donut Chart -->
+                                    <div class="donut-chart-container">
+                                        <svg class="donut-svg" viewBox="0 0 100 100">
+                                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(16, 28, 52, 0.8)" stroke-width="12" />
+                                            <circle id="donut-segment-low" cx="50" cy="50" r="40" fill="none" stroke="var(--sev-low)" stroke-width="12" stroke-dasharray="0 251.2" stroke-dashoffset="0" />
+                                            <circle id="donut-segment-med" cx="50" cy="50" r="40" fill="none" stroke="var(--sev-susp)" stroke-width="12" stroke-dasharray="0 251.2" stroke-dashoffset="0" />
+                                            <circle id="donut-segment-high" cx="50" cy="50" r="40" fill="none" stroke="var(--sev-high)" stroke-width="12" stroke-dasharray="0 251.2" stroke-dashoffset="0" />
+                                            <circle id="donut-segment-crit" cx="50" cy="50" r="40" fill="none" stroke="var(--sev-crit)" stroke-width="12" stroke-dasharray="0 251.2" stroke-dashoffset="0" />
+                                        </svg>
+                                        <div class="donut-center-text">
+                                            <div class="donut-center-val" id="dash-donut-avg-score">0</div>
+                                            <div class="donut-center-sub" id="dash-donut-avg-label">AVG RISK</div>
+                                        </div>
                                     </div>
-                                    <div style="flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 6px; text-align: center;">
-                                        <div style="font-size: 9px; color: var(--sev-susp);">SUSP</div>
-                                        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);" id="dash-count-med">0</div>
+
+                                    <!-- Percent Legend -->
+                                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="display: inline-block; width: 8px; height: 8px; background: var(--sev-low); border-radius: 2px;"></span>
+                                            <span style="color: var(--text-secondary);">Low (0-39)</span>
+                                            <strong style="color: var(--text-primary); margin-left: auto;" id="dash-legend-low">0%</strong>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="display: inline-block; width: 8px; height: 8px; background: var(--sev-susp); border-radius: 2px;"></span>
+                                            <span style="color: var(--text-secondary);">Susp (40-69)</span>
+                                            <strong style="color: var(--text-primary); margin-left: auto;" id="dash-legend-med">0%</strong>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="display: inline-block; width: 8px; height: 8px; background: var(--sev-high); border-radius: 2px;"></span>
+                                            <span style="color: var(--text-secondary);">High (70-84)</span>
+                                            <strong style="color: var(--text-primary); margin-left: auto;" id="dash-legend-high">0%</strong>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span style="display: inline-block; width: 8px; height: 8px; background: var(--sev-crit); border-radius: 2px;"></span>
+                                            <span style="color: var(--text-secondary);">Crit (85-100)</span>
+                                            <strong style="color: var(--text-primary); margin-left: auto;" id="dash-legend-crit">0%</strong>
+                                        </div>
                                     </div>
-                                    <div style="flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 6px; text-align: center;">
-                                        <div style="font-size: 9px; color: var(--sev-high);">HIGH</div>
-                                        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);" id="dash-count-high">0</div>
+                                </div>
+
+                                <!-- Risk Count Grid -->
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 5px; text-align: center;">
+                                        <div style="font-size: 8.5px; color: var(--sev-low); font-weight: 700;">LOW</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: var(--text-primary);" id="dash-count-low">0</div>
                                     </div>
-                                    <div style="flex: 1; background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 6px; text-align: center;">
-                                        <div style="font-size: 9px; color: var(--sev-crit);">CRIT</div>
-                                        <div style="font-size: 14px; font-weight: 800; color: var(--text-primary);" id="dash-count-crit">0</div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 5px; text-align: center;">
+                                        <div style="font-size: 8.5px; color: var(--sev-susp); font-weight: 700;">SUSP</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: var(--text-primary);" id="dash-count-med">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 5px; text-align: center;">
+                                        <div style="font-size: 8.5px; color: var(--sev-high); font-weight: 700;">HIGH</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: var(--text-primary);" id="dash-count-high">0</div>
+                                    </div>
+                                    <div style="background: var(--bg-card-alt); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 5px; text-align: center;">
+                                        <div style="font-size: 8.5px; color: var(--sev-crit); font-weight: 700;">CRIT</div>
+                                        <div style="font-size: 13px; font-weight: 800; color: var(--text-primary);" id="dash-count-crit">0</div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="card-foot flex-between" style="padding: 10px 16px;">
-                                <span style="font-size: 10px; color: var(--text-muted);">Database: Persistent SQLite</span>
-                                <button class="btn-secondary" onclick="loadDashboardOverviewStats()" style="font-size: 10px; padding: 2px 8px;">🔄 Refresh</button>
+                            <div class="card-foot flex-between">
+                                <span>Database: Persistent SQLite</span>
+                                <button class="btn-secondary" onclick="loadDashboardOverviewStats()" style="font-size: 10px; padding: 2px 8px;">Refresh</button>
                             </div>
                         </div>
 
@@ -447,7 +553,7 @@
                     <div class="soc-card" style="margin-bottom: 24px;">
                         <div class="card-head flex-between">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">🔄</span>
+                                <span class="card-icon"><svg class="soc-icon soc-icon-xs" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></span>
                                 <h3 class="card-heading" style="font-size: 13px;">DEFENSIVE STATIC ANALYSIS PIPELINE</h3>
                             </div>
                             <span class="badge badge-low" style="font-size: 10px;">10 DETERMINISTIC STAGES</span>
@@ -475,7 +581,7 @@
                         <div class="soc-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🎯</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
                                     <h3 class="card-heading" style="font-size: 13px;">RISK POSTURE DISTRIBUTION</h3>
                                 </div>
                                 <span class="badge badge-low" id="dash-overall-risk-badge">CALCULATED</span>
@@ -525,7 +631,7 @@
                         <div class="soc-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">⚠️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                                     <h3 class="card-heading" style="font-size: 13px;">TOP THREAT INDICATORS</h3>
                                 </div>
                                 <span class="badge badge-susp" style="font-size: 10px;">HEURISTIC CORRELATION</span>
@@ -580,7 +686,7 @@
                         <div class="soc-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🌐</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
                                     <h3 class="card-heading" style="font-size: 13px;">IOC INTELLIGENCE</h3>
                                 </div>
                                 <span class="badge badge-low" style="font-size: 10px;" id="dash-ioc-total-badge">0 ARTIFACTS</span>
@@ -617,7 +723,7 @@
                         <div class="soc-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">⚡</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                                     <h3 class="card-heading" style="font-size: 13px;">RECENT ACTIVITY</h3>
                                 </div>
                                 <span class="badge badge-low" style="font-size: 10px;">● REAL-TIME</span>
@@ -638,7 +744,7 @@
                         <div class="soc-card" style="border-color: rgba(0, 240, 255, 0.3);">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🤖</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
                                     <h3 class="card-heading" style="font-size: 13px; color: var(--accent-cyan);">AI SECURITY ANALYST</h3>
                                 </div>
                                 <span class="badge badge-low" style="font-size: 10px;">● READY</span>
@@ -651,7 +757,7 @@
                                     🛡️ <strong>Defensive Safeguard:</strong> Static presence alone does not establish confirmed runtime compromise. AI insights are accompanied by explicit confidence levels.
                                 </div>
                                 <button class="btn-primary" onclick="switchTab('ai-analyst')" style="font-size: 12px; padding: 8px 16px;">
-                                    ⚡ Ask Analysis Insight
+                                    Ask Analysis Insight
                                 </button>
                             </div>
                         </div>
@@ -660,7 +766,7 @@
                         <div class="soc-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🛡️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
                                     <h3 class="card-heading" style="font-size: 13px;">PLATFORM SYSTEM STATUS</h3>
                                 </div>
                                 <span class="badge badge-low" style="font-size: 10px;">● OPERATIONAL</span>
@@ -724,7 +830,7 @@
                             <h2>Analysis History & Workspace Archive</h2>
                             <p>Browse and load previously analyzed binaries, export reports, and inspect threat records.</p>
                         </div>
-                        <button class="btn-primary" onclick="loadAnalysisHistory()">🔄 Refresh History</button>
+                        <button class="btn-primary" onclick="loadAnalysisHistory()">Refresh History</button>
                     </div>
 
                     <!-- Search & Filter Bar -->
@@ -746,6 +852,13 @@
                                     <option value="ANALYZED">ANALYZED</option>
                                     <option value="FAILED">FAILED</option>
                                 </select>
+                                <select id="history-filter-ml" class="dropdown-select" style="width: auto;" onchange="filterHistoryTable()">
+                                    <option value="">All ML Signals</option>
+                                    <option value="ELEVATED">⚡ Elevated Review (Score >= 0.80)</option>
+                                    <option value="NORMAL">✓ Normal Review (Score < 0.80)</option>
+                                    <option value="AVAILABLE">ML Evaluated</option>
+                                    <option value="UNAVAILABLE">ML Unavailable</option>
+                                </select>
                             </div>
                             <span id="history-count-badge" style="font-size: 11px; color: var(--text-muted);">0 analyses</span>
                         </div>
@@ -754,7 +867,7 @@
                     <!-- History Table -->
                     <div class="soc-card">
                         <div class="card-head">
-                            <span class="card-icon">📜</span>
+                            <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg></span>
                             <h3 class="card-heading">Analyzed Binaries History</h3>
                         </div>
                         <div class="card-body">
@@ -767,13 +880,14 @@
                                             <th>Format / Arch</th>
                                             <th>SHA-256 Hash</th>
                                             <th>Risk Posture</th>
+                                            <th>Advisory ML Signal</th>
                                             <th>Analyzed (UTC)</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="history-tbody">
                                         <tr>
-                                            <td colspan="7" class="empty-state-cell">Loading analysis history...</td>
+                                            <td colspan="8" class="empty-state-cell">Loading analysis history...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -797,25 +911,25 @@
                             <p data-i18n="analysis_overview_subtitle">Cryptographic identity, architectural classification, and heuristic threat score.</p>
                         </div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                            <button class="btn-secondary" onclick="exportCurrentReport('json')" title="Download raw JSON analysis artifact">📥 JSON</button>
-                            <button class="btn-primary" onclick="exportCurrentReport('html')" title="Generate standalone HTML security report">📄 HTML Report</button>
-                            <button class="btn-secondary" onclick="exportCurrentReport('text')" title="Export readable text report">📝 Text</button>
-                            <button class="btn-secondary" onclick="exportCurrentReport('markdown')" title="Export Markdown forensic report">📑 Markdown</button>
-                            <button class="btn-secondary" onclick="openCompareModal()" title="Compare with another analysis">⚖️ Compare</button>
-                            <button class="btn-secondary" onclick="switchTab('history')" title="View previous analysis history">📜 History</button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('json')" title="Download raw JSON analysis artifact">JSON</button>
+                            <button class="btn-primary" onclick="exportCurrentReport('html')" title="Generate standalone HTML security report">HTML Report</button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('text')" title="Export readable text report">Text</button>
+                            <button class="btn-secondary" onclick="exportCurrentReport('markdown')" title="Export Markdown forensic report">Markdown</button>
+                            <button class="btn-secondary" onclick="openCompareModal()" title="Compare with another analysis">Compare</button>
+                            <button class="btn-secondary" onclick="switchTab('history')" title="View previous analysis history">History</button>
                         </div>
                     </div>
 
                     <!-- Empty State Notice (Shown when no sample loaded) -->
                     <div id="analysis-empty-state" class="soc-card" style="display: none; text-align: center; padding: 40px 20px;">
-                        <div style="font-size: 36px; margin-bottom: 12px;">🛡️</div>
+                        <div style="margin-bottom: 12px; color: var(--accent-blue); display: flex; justify-content: center;"><svg class="soc-icon" style="width: 44px; height: 44px;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
                         <h3 style="font-size: 16px; color: var(--accent-cyan); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
                         <p style="font-size: 12px; color: var(--text-muted); max-width: 480px; margin: 0 auto 20px auto;">
                             Select an existing binary from analysis history or upload a supported Windows PE (.exe / .dll) sample to begin static inspection.
                         </p>
                         <div style="display: flex; gap: 12px; justify-content: center;">
-                            <button class="btn-primary" onclick="switchTab('home')">📤 Start New Analysis</button>
-                            <button class="btn-secondary" onclick="switchTab('history')">📜 Open History</button>
+                            <button class="btn-primary" onclick="switchTab('home')">Start New Analysis</button>
+                            <button class="btn-secondary" onclick="switchTab('history')">Open History</button>
                         </div>
                     </div>
 
@@ -833,7 +947,7 @@
                                         <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">SHA-256 Digest</div>
                                         <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                                             <span id="ov-sha256-short">Not available</span>
-                                            <button class="btn-secondary" onclick="copyAnalysisHash()" style="font-size: 9px; padding: 2px 6px;" title="Copy full SHA-256">📋 Copy</button>
+                                            <button class="btn-secondary" onclick="copyAnalysisHash()" style="font-size: 9px; padding: 2px 6px;" title="Copy full SHA-256">Copy</button>
                                         </div>
                                     </div>
                                     <div>
@@ -858,7 +972,7 @@
                         <!-- 10-Stage Interactive Defensive Pipeline -->
                         <div class="analysis-pipeline-container" id="overview-analysis-pipeline" style="margin-bottom: 20px;">
                             <div class="pipeline-header">
-                                <div class="pipeline-title"><span>⚡</span> Defensive Static Analysis Pipeline Flow</div>
+                                <div class="pipeline-title"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg> Defensive Static Analysis Pipeline Flow</div>
                                 <div class="pipeline-status-text" id="overview-pipeline-status-text">ANALYSIS COMPLETED</div>
                             </div>
                             <div class="pipeline-stages-flow" id="overview-pipeline-stages">
@@ -878,7 +992,7 @@
                         <!-- 7 Threat Evidence Quick Breakdown Cards -->
                         <div class="evidence-grid" id="evidence-cards-grid">
                             <div class="evidence-card" onclick="jumpToAnalysisStage('imports')" id="ev-card-apis">
-                                <div class="evidence-card-title"><span>⚙️</span> Suspicious APIs</div>
+                                <div class="evidence-card-title"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Suspicious APIs</div>
                                 <div class="evidence-card-count" id="ev-apis-count">0</div>
                                 <div class="evidence-card-foot">
                                     <span class="badge badge-low" id="ev-apis-badge">LOW</span>
@@ -886,7 +1000,7 @@
                                 </div>
                             </div>
                             <div class="evidence-card" onclick="jumpToAnalysisStage('strings')" id="ev-card-strings">
-                                <div class="evidence-card-title"><span>🔤</span> Suspicious Strings</div>
+                                <div class="evidence-card-title"><svg class="soc-icon" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg> Suspicious Strings</div>
                                 <div class="evidence-card-count" id="ev-strings-count">0</div>
                                 <div class="evidence-card-foot">
                                     <span class="badge badge-low" id="ev-strings-badge">LOW</span>
@@ -894,7 +1008,7 @@
                                 </div>
                             </div>
                             <div class="evidence-card" onclick="jumpToAnalysisStage('iocs')" id="ev-card-net">
-                                <div class="evidence-card-title"><span>🌐</span> Network IOCs</div>
+                                <div class="evidence-card-title"><svg class="soc-icon soc-icon-xs" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Network IOCs</div>
                                 <div class="evidence-card-count" id="ev-net-count">0</div>
                                 <div class="evidence-card-foot">
                                     <span class="badge badge-low" id="ev-net-badge">LOW</span>
@@ -902,7 +1016,7 @@
                                 </div>
                             </div>
                             <div class="evidence-card" onclick="jumpToAnalysisStage('iocs')" id="ev-card-reg">
-                                <div class="evidence-card-title"><span>🗝️</span> Registry Indicators</div>
+                                <div class="evidence-card-title"><svg class="soc-icon soc-icon-xs" viewBox="0 0 24 24"><path d="m21 2-2 2m-6 6 7 7-3 3-7-7m-4-4a5 5 0 1 1 7-7 5 5 0 0 1-7 7Z"/></svg> Registry Indicators</div>
                                 <div class="evidence-card-count" id="ev-reg-count">0</div>
                                 <div class="evidence-card-foot">
                                     <span class="badge badge-low" id="ev-reg-badge">LOW</span>
@@ -910,7 +1024,7 @@
                                 </div>
                             </div>
                             <div class="evidence-card" onclick="jumpToAnalysisStage('sections')" id="ev-card-entropy">
-                                <div class="evidence-card-title"><span>📈</span> High Entropy</div>
+                                <div class="evidence-card-title"><svg class="soc-icon soc-icon-xs" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> High Entropy</div>
                                 <div class="evidence-card-count" id="ev-entropy-count">0</div>
                                 <div class="evidence-card-foot">
                                     <span class="badge badge-low" id="ev-entropy-badge">NORMAL</span>
@@ -918,7 +1032,7 @@
                                 </div>
                             </div>
                             <div class="evidence-card" onclick="jumpToAnalysisStage('sections')" id="ev-card-packing">
-                                <div class="evidence-card-title"><span>📦</span> Packing Indicators</div>
+                                <div class="evidence-card-title"><svg class="soc-icon soc-icon-xs" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Packing Indicators</div>
                                 <div class="evidence-card-count" id="ev-packing-count">0</div>
                                 <div class="evidence-card-foot">
                                     <span class="badge badge-low" id="ev-packing-badge">NONE</span>
@@ -926,7 +1040,7 @@
                                 </div>
                             </div>
                             <div class="evidence-card" onclick="jumpToAnalysisStage('imports')" id="ev-card-persistence">
-                                <div class="evidence-card-title"><span>🔒</span> Persistence Vectors</div>
+                                <div class="evidence-card-title"><svg class="soc-icon soc-icon-xs" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Persistence Vectors</div>
                                 <div class="evidence-card-count" id="ev-persistence-count">0</div>
                                 <div class="evidence-card-foot">
                                     <span class="badge badge-low" id="ev-persistence-badge">LOW</span>
@@ -942,7 +1056,7 @@
                             <div class="soc-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px; text-align: center;">
                                 <div class="card-head" style="width: 100%; border: none; padding: 0 0 12px 0; justify-content: space-between;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">🎯</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
                                         <h3 class="card-heading">Automated Threat Risk Score</h3>
                                     </div>
                                     <span class="badge badge-low" id="ov-risk-level"><span id="ov-risk-level-text">LOW</span></span>
@@ -967,7 +1081,7 @@
                             <div class="soc-card">
                                 <div class="card-head flex-between">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">⚖️</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
                                         <h3 class="card-heading">WHY THIS SCORE? (Contributing Factors)</h3>
                                     </div>
                                     <span class="badge badge-low" id="ov-factors-count-badge">0 FACTORS</span>
@@ -1001,7 +1115,7 @@
                             <!-- Binary Structure & Identity -->
                             <div class="soc-card">
                                 <div class="card-head">
-                                    <span class="card-icon">📦</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
                                     <h3 class="card-heading">Binary Structure & Identity</h3>
                                 </div>
                                 <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
@@ -1035,7 +1149,7 @@
                             <!-- Cryptographic Hashes -->
                             <div class="soc-card" id="sec-hashes">
                                 <div class="card-head">
-                                    <span class="card-icon">🔑</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m21 2-2 2m-6 6 7 7-3 3-7-7m-4-4a5 5 0 1 1 7-7 5 5 0 0 1-7 7Z"/></svg></span>
                                     <h3 class="card-heading">Cryptographic Hashes</h3>
                                 </div>
                                 <div class="card-body">
@@ -1060,7 +1174,7 @@
                         <div class="soc-card" style="margin-bottom: 20px;" id="sec-sections">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">📑</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></span>
                                     <h3 class="card-heading">PE MEMORY SECTIONS & ENTROPY</h3>
                                 </div>
                                 <span class="badge badge-low" id="pe-sections-count-badge">0 SECTIONS</span>
@@ -1083,7 +1197,7 @@
                                 </table>
                             </div>
                             <div class="card-foot" style="font-size: 11px; color: var(--text-muted); padding: 8px 16px;">
-                                🛡️ <em>Entropy interpretation: &lt;6.0 Normal • 6.0–7.0 Unusual • &gt;7.0 High entropy (packed/compressed). Entropy is an indicator, not proof of maliciousness.</em>
+                                <em>Entropy interpretation: &lt;6.0 Normal • 6.0–7.0 Unusual • &gt;7.0 High entropy (packed/compressed). Entropy is an indicator, not proof of maliciousness.</em>
                             </div>
                         </div>
 
@@ -1091,7 +1205,7 @@
                         <div class="soc-card" style="margin-bottom: 20px;" id="sec-imports">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">⚙️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                                     <h3 class="card-heading">IMPORT & API INTELLIGENCE</h3>
                                 </div>
                                 <div style="display: flex; gap: 8px; align-items: center;">
@@ -1120,11 +1234,11 @@
                         <div class="soc-card" style="margin-bottom: 20px;" id="sec-strings">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🔤</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
                                     <h3 class="card-heading">STRING INTELLIGENCE SUMMARY</h3>
                                 </div>
                                 <button class="btn-secondary" onclick="switchTab('strings')" style="font-size: 11px; padding: 4px 10px;">
-                                    🔍 Open Full String Intelligence &rarr;
+                                    Open Full String Intelligence &rarr;
                                 </button>
                             </div>
                             <div class="card-body">
@@ -1177,11 +1291,11 @@
                         <div class="soc-card" style="margin-bottom: 20px;" id="sec-iocs">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🌐</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
                                     <h3 class="card-heading">INDICATORS OF COMPROMISE (IOCs)</h3>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="btn-secondary" onclick="copyAllIOCs()" style="font-size: 10px; padding: 3px 8px;">📋 Copy All</button>
+                                    <button class="btn-secondary" onclick="copyAllIOCs()" style="font-size: 10px; padding: 3px 8px;">Copy All</button>
                                     <button class="btn-secondary" onclick="exportIOCsAsCSV()" style="font-size: 10px; padding: 3px 8px;">📦 Export CSV</button>
                                     <span class="badge badge-low" id="ov-iocs-count-badge">0 IOCs</span>
                                 </div>
@@ -1211,7 +1325,7 @@
                             <div class="soc-card">
                                 <div class="card-head flex-between">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">🎯</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
                                         <h3 class="card-heading">YARA RULE DETECTIONS</h3>
                                     </div>
                                     <span class="badge badge-low" id="ov-yara-count-badge">0 MATCHES</span>
@@ -1236,7 +1350,7 @@
                             <div class="soc-card">
                                 <div class="card-head flex-between">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">🗺️</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></span>
                                         <h3 class="card-heading">MITRE ATT&CK MAPPING</h3>
                                     </div>
                                     <span class="badge badge-low" id="ov-mitre-count-badge">0 TECHNIQUES</span>
@@ -1256,7 +1370,7 @@
                                     </table>
                                 </div>
                                 <div class="card-foot" style="font-size: 10px; color: var(--text-muted); padding: 6px 14px;">
-                                    ⚠️ <em>Potential techniques inferred from static presence. Static presence alone does not establish confirmed runtime execution.</em>
+                                    <em>Potential techniques inferred from static presence. Static presence alone does not establish confirmed runtime execution.</em>
                                 </div>
                             </div>
 
@@ -1266,7 +1380,7 @@
                         <div class="soc-card" style="margin-bottom: 20px; border-color: rgba(0, 240, 255, 0.3);" id="sec-ai-analyst">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🤖</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
                                     <h3 class="card-heading" style="color: var(--accent-cyan);">AI SECURITY ANALYST INTERPRETATION</h3>
                                 </div>
                                 <span class="badge badge-low" id="ov-ai-conf-badge">CONFIDENCE: MEDIUM</span>
@@ -1318,7 +1432,7 @@
                         <div class="soc-card" style="margin-bottom: 20px; border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.02);" id="sec-ml-shadow">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🤖</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
                                     <h3 class="card-heading" style="color: #f59e0b;">EXPERIMENTAL ML ADVISORY SIGNAL</h3>
                                 </div>
                                 <span class="badge badge-susp" id="ov-ml-badge">ADVISORY ONLY • NON-AUTHORITATIVE</span>
@@ -1352,9 +1466,36 @@
                                         <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Inference Latency</div>
                                         <div style="font-weight: 700; color: var(--text-secondary); margin-top: 4px; font-family: var(--font-mono);" id="ov-ml-latency">-</div>
                                     </div>
+                                    <div style="background: rgba(255, 255, 255, 0.02); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">ML-13 Rejection Gate</div>
+                                        <div style="font-weight: 700; color: #f59e0b; margin-top: 4px;" id="ov-ml-gate-state">NOT_EVALUATED</div>
+                                    </div>
+                                    <div style="background: rgba(255, 255, 255, 0.02); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                        <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">Analyst Confirmation Status</div>
+                                        <div style="font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="ov-ml-review-status">NOT_EVALUATED</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                                <div style="margin-top: 14px; padding: 10px 14px; border-radius: 4px; font-size: 11px; background: rgba(59, 130, 246, 0.06); border-left: 3px solid #3b82f6; color: var(--text-primary);" id="ov-ml-gate-explanation">
+                                    <strong>GATE STATUS:</strong> Machine learning inference is non-authoritative. Elevated scores lacking corroborating YARA signatures or heuristics require manual analyst review before any response.
+                                </div>
+
+                                <!-- ML-13 Analyst Review & Decision Action Panel -->
+                                <div id="sec-ml-review-panel" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">🛡️ ML-13 Human-in-the-Loop Confirmation Gate</span>
+                                        <span class="badge badge-low" id="ov-ml-review-badge">NO REVIEW ACTION NEEDED</span>
+                                    </div>
+                                    <div id="ml-review-active-form" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                        <select id="ml-review-verdict-select" class="search-input" style="width: 190px; font-size: 11px;">
+                                            <option value="CONFIRMED_MALWARE">⚠️ Confirm Threat (Malicious)</option>
+                                            <option value="REJECTED_FALSE_POSITIVE">🛡️ Reject False Positive (Benign)</option>
+                                            <option value="BENIGN_UTILITY">💼 Confirm Legitimate Admin Tool</option>
+                                        </select>
+                                        <input type="text" id="ml-review-rationale-input" class="search-input" placeholder="Enter analyst justification rationale (required)..." style="flex: 1; min-width: 250px; font-size: 11px;">
+                                        <button class="btn-primary" onclick="submitAnalystReview()" style="font-size: 11px; padding: 5px 12px;">Submit Decision</button>
+                                    </div>
+                                    <div id="ml-review-history-display" style="font-size: 11px; color: var(--text-muted); margin-top: 6px;"></div>
+                                </div>
 
                         <!-- 2-Column Grid: Analyst Notes & Case Management -->
                         <div class="grid-2col" style="margin-bottom: 20px;">
@@ -1363,7 +1504,7 @@
                             <div class="soc-card">
                                 <div class="card-head flex-between">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">📁</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg></span>
                                         <h3 class="card-heading">CASE MANAGEMENT</h3>
                                     </div>
                                     <button class="btn-secondary" onclick="saveCaseInfo()" style="font-size: 10px; padding: 3px 8px;">💾 Save Case</button>
@@ -1406,7 +1547,7 @@
                             <div class="soc-card">
                                 <div class="card-head flex-between">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">📝</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span>
                                         <h3 class="card-heading">ANALYST INVESTIGATION NOTES</h3>
                                     </div>
                                     <span class="badge badge-low" id="notes-count-badge">0 NOTES</span>
@@ -1435,7 +1576,7 @@
                         <div class="soc-card" style="margin-top: 20px; background: rgba(14, 28, 56, 0.5); border-color: var(--border-strong);">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🛡️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
                                     <h3 class="card-heading">DEFENSIVE RECOMMENDATIONS & ACTIONS</h3>
                                 </div>
                                 <span class="badge badge-low">SOC OPERATIONAL PLAYBOOK</span>
@@ -1444,7 +1585,7 @@
                                 <button class="btn-primary" onclick="exportCurrentReport('html')">📄 Export Forensic Report</button>
                                 <button class="btn-secondary" onclick="switchTab('strings')">🔤 Inspect String Intelligence</button>
                                 <button class="btn-secondary" onclick="exportCurrentReport('json')">📦 Export SIEM JSON</button>
-                                <button class="btn-secondary" onclick="openCompareModal()">⚖️ Compare Analysis</button>
+                                <button class="btn-secondary" onclick="openCompareModal()">Compare Analysis</button>
                                 <button class="btn-danger" id="btn-quarantine-action" onclick="showSocNotification('File Quarantined', 'Sample has been safely isolated in the zero-execution vault.', 'success')">🔒 Quarantine File</button>
                             </div>
                         </div>
@@ -1530,7 +1671,7 @@
 
                     <!-- No Analysis Selected State -->
                     <div id="pe-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-cyan);">
-                        <div style="font-size: 48px; margin-bottom: 14px;">🧩</div>
+                        <div style="margin-bottom: 14px; color: var(--accent-blue); display: flex; justify-content: center;"><svg class="soc-icon" style="width: 48px; height: 48px;" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></div>
                         <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
                         <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
                             Please select a completed analysis from history or upload a binary to inspect its Portable Executable headers, memory sections, and Shannon entropy.
@@ -1608,7 +1749,7 @@
                             <!-- Card 1: PE Header Parameters -->
                             <div class="soc-card">
                                 <div class="card-head">
-                                    <span class="card-icon">📄</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
                                     <h3 class="card-heading" data-i18n="lbl_pe_headers">PE Header Parameters</h3>
                                 </div>
                                 <div class="card-body">
@@ -1624,7 +1765,7 @@
                             <!-- Card 2: Entropy & Packing Anomaly Summary -->
                             <div class="soc-card">
                                 <div class="card-head">
-                                    <span class="card-icon">📊</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
                                     <h3 class="card-heading" data-i18n="lbl_entropy_summary">Entropy & Anomaly Summary</h3>
                                 </div>
                                 <div class="card-body">
@@ -1643,7 +1784,7 @@
                         <div class="soc-card" style="margin-bottom: 20px;">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">📑</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></span>
                                     <h3 class="card-heading" data-i18n="lbl_sections_table">PE Memory Sections Table</h3>
                                 </div>
                                 <span class="badge badge-rule" id="pe-sections-count-badge">0 SECTIONS</span>
@@ -1701,7 +1842,7 @@
 
                     <!-- No Analysis Selected State -->
                     <div id="imports-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-cyan);">
-                        <div style="font-size: 48px; margin-bottom: 14px;">🔌</div>
+                        <div style="margin-bottom: 14px; color: var(--accent-blue); display: flex; justify-content: center;"><svg class="soc-icon" style="width: 48px; height: 48px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
                         <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
                         <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
                             Please select a completed analysis from history or upload a binary to inspect its imported Windows APIs and DLL capabilities.
@@ -1786,16 +1927,16 @@
                                 🔄 Process & Thread (<span id="pill-import-proc-count">0</span>)
                             </button>
                             <button class="btn-secondary quick-import-pill" id="import-pill-mem" onclick="applyImportQuickFilter('MEMORY')" style="font-size: 11px; padding: 4px 10px; color: #ec4899; border-color: rgba(236, 72, 153, 0.3);">
-                                🧠 Memory & Injection (<span id="pill-import-mem-count">0</span>)
+                                Memory & Injection (<span id="pill-import-mem-count">0</span>)
                             </button>
                             <button class="btn-secondary quick-import-pill" id="import-pill-net" onclick="applyImportQuickFilter('NETWORK')" style="font-size: 11px; padding: 4px 10px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.3);">
-                                🌐 Network & Web (<span id="pill-import-net-count">0</span>)
+                                Network & Web (<span id="pill-import-net-count">0</span>)
                             </button>
                             <button class="btn-secondary quick-import-pill" id="import-pill-reg" onclick="applyImportQuickFilter('REGISTRY')" style="font-size: 11px; padding: 4px 10px; color: #a855f7; border-color: rgba(168, 85, 247, 0.3);">
-                                🗝️ Registry & Config (<span id="pill-import-reg-count">0</span>)
+                                Registry & Config (<span id="pill-import-reg-count">0</span>)
                             </button>
                             <button class="btn-secondary quick-import-pill" id="import-pill-crypto" onclick="applyImportQuickFilter('CRYPTO')" style="font-size: 11px; padding: 4px 10px; color: #fb923c; border-color: rgba(251, 146, 60, 0.3);">
-                                🔐 Crypto & Security (<span id="pill-import-crypto-count">0</span>)
+                                Crypto & Security (<span id="pill-import-crypto-count">0</span>)
                             </button>
                         </div>
 
@@ -1848,7 +1989,7 @@
                         <div class="soc-card" style="margin-bottom: 20px;">
                             <div class="card-head flex-between" style="padding-bottom: 10px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🔌</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                                     <h3 class="card-heading">Imported API Functions</h3>
                                 </div>
                                 <div style="font-size: 12px; color: var(--text-muted);" id="imports-filter-match-count">
@@ -1924,7 +2065,7 @@
 
                     <!-- No Analysis Selected State -->
                     <div id="strings-no-analysis-banner" class="soc-card" style="display: none; text-align: center; padding: 48px 24px; border-left: 4px solid var(--accent-blue);">
-                        <div style="font-size: 48px; margin-bottom: 14px;">🔤</div>
+                        <div style="margin-bottom: 14px; color: var(--accent-blue); display: flex; justify-content: center;"><svg class="soc-icon" style="width: 48px; height: 48px;" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
                         <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">NO ANALYSIS SELECTED</h3>
                         <p style="color: var(--text-secondary); max-width: 540px; margin: 0 auto 20px auto; font-size: 13px; line-height: 1.6;">
                             Please select a completed analysis to inspect extracted strings, review suspicious forensic indicators, and query AI intelligence.
@@ -2020,7 +2161,7 @@
                         <div class="soc-card" style="margin-bottom: 20px; background: rgba(0, 240, 255, 0.03); border-left: 3px solid var(--accent-cyan);">
                             <div class="card-head flex-between" style="padding-bottom: 6px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🤖</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
                                     <h3 class="card-heading" style="font-size: 14px;">AI String Intelligence Summary</h3>
                                 </div>
                                 <span class="badge badge-low" id="strings-ai-status-badge" style="font-size: 10px;">DEFENSIVE STATIC SCOPING</span>
@@ -2044,13 +2185,13 @@
                                 🌐 URLs & Domains (<span id="pill-net-count">0</span>)
                             </button>
                             <button class="btn-secondary quick-string-pill" id="pill-ips" onclick="applyStringQuickFilter('IP_ADDRESS')" style="font-size: 11px; padding: 4px 10px; color: #fb923c; border-color: rgba(251, 146, 60, 0.3);">
-                                📍 IP Addresses (<span id="pill-ips-count">0</span>)
+                                IP Addresses (<span id="pill-ips-count">0</span>)
                             </button>
                             <button class="btn-secondary quick-string-pill" id="pill-reg" onclick="applyStringQuickFilter('REGISTRY')" style="font-size: 11px; padding: 4px 10px; color: #a855f7; border-color: rgba(168, 85, 247, 0.3);">
                                 🗝️ Registry Paths (<span id="pill-reg-count">0</span>)
                             </button>
                             <button class="btn-secondary quick-string-pill" id="pill-cmd" onclick="applyStringQuickFilter('COMMAND')" style="font-size: 11px; padding: 4px 10px; color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);">
-                                💻 Commands & Scripts (<span id="pill-cmd-count">0</span>)
+                                Commands & Scripts (<span id="pill-cmd-count">0</span>)
                             </button>
                             <button class="btn-secondary quick-string-pill" id="pill-api" onclick="applyStringQuickFilter('API')" style="font-size: 11px; padding: 4px 10px; color: #ec4899; border-color: rgba(236, 72, 153, 0.3);">
                                 ⚙️ Windows APIs (<span id="pill-api-count">0</span>)
@@ -2123,7 +2264,7 @@
                                         📥 Export JSON
                                     </button>
                                     <button class="btn-secondary" onclick="exportStringsTXT()" title="Export investigation summary to TXT" style="font-size: 12px; padding: 6px 10px;">
-                                        📝 Export TXT
+                                        Export TXT
                                     </button>
                                 </div>
                             </div>
@@ -2133,7 +2274,7 @@
                         <div class="soc-card" style="margin-bottom: 20px;">
                             <div class="card-head flex-between" style="padding-bottom: 10px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🔤</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
                                     <h3 class="card-heading">Extracted Binary Strings</h3>
                                 </div>
                                 <div style="font-size: 12px; color: var(--text-muted);" id="strings-filter-match-count">
@@ -2296,7 +2437,7 @@
                         <div class="soc-card" style="margin-bottom: 24px;">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">⚠️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                                     <h3 class="card-heading">Correlated Threat Indicators</h3>
                                 </div>
                                 <span class="badge badge-high" id="indicators-count-badge">0 DETECTED</span>
@@ -2314,7 +2455,7 @@
                         <div class="soc-card" style="margin-bottom: 24px;">
                             <div class="card-head flex-between" style="flex-wrap: wrap; gap: 10px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🎯</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
                                     <h3 class="card-heading">Extracted Indicators of Compromise (IOCs)</h3>
                                 </div>
                                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
@@ -2354,7 +2495,7 @@
                         <div class="soc-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🛡️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
                                     <h3 class="card-heading">YARA Rule Matches</h3>
                                 </div>
                                 <span id="yara-status-badge" class="badge badge-low">YARA Engine: Active</span>
@@ -2454,7 +2595,7 @@
                         <div class="soc-card ai-report-card" style="margin-bottom: 24px;">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🤖</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
                                     <h3 class="card-heading" data-i18n="ai_summary_head">Executive Security Summary</h3>
                                 </div>
                                 <span class="badge badge-rule" id="ai-confidence-badge">Confidence: HIGH</span>
@@ -2500,7 +2641,7 @@
                         <div class="soc-card" style="margin-bottom: 24px;">
                             <div class="card-head">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">💬</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
                                     <h3 class="card-heading">Grounded AI Security Consultation</h3>
                                 </div>
                             </div>
@@ -2537,7 +2678,7 @@
                                 <div id="ai-analyst-view-response-box" style="display: none; background: rgba(0, 240, 255, 0.04); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 6px; padding: 14px;">
                                     <div class="flex-between" style="margin-bottom: 8px;">
                                         <strong style="color: var(--accent-cyan); font-size: 12px;">AI Security Analyst Response:</strong>
-                                        <button class="btn-secondary" onclick="copyAiAnalystResponse()" style="font-size: 10px; padding: 2px 6px;">📋 Copy</button>
+                                        <button class="btn-secondary" onclick="copyAiAnalystResponse()" style="font-size: 10px; padding: 2px 6px;">Copy</button>
                                     </div>
                                     <div id="ai-analyst-view-response-text" style="font-size: 13px; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap;"></div>
                                 </div>
@@ -2548,7 +2689,7 @@
                         <div class="soc-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🗺️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></span>
                                     <h3 class="card-heading">MITRE ATT&CK Technique Alignment (Heuristic)</h3>
                                 </div>
                                 <span class="badge badge-rule" id="ai-mitre-count-badge">0 TECHNIQUES</span>
@@ -2657,7 +2798,7 @@
                             <!-- Dynamic Skill Matrix -->
                             <div class="soc-card">
                                 <div class="card-head">
-                                    <span class="card-icon">📈</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
                                     <h3 class="card-heading">Cybersecurity Skill Mastery Matrix</h3>
                                 </div>
                                 <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
@@ -2713,7 +2854,7 @@
                             <div class="soc-card">
                                 <div class="card-head" style="justify-content: space-between;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">🏆</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span>
                                         <h3 class="card-heading">Hands-On Practice Challenges</h3>
                                     </div>
                                     <button class="btn-secondary" onclick="switchStudentTab('labs')" style="font-size: 11px; padding: 2px 8px;">Open Practice Labs →</button>
@@ -2754,7 +2895,7 @@
                         <!-- Achievement Badges Showcase -->
                         <div class="soc-card" style="margin-bottom: 20px;">
                             <div class="card-head">
-                                <span class="card-icon">🎖️</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg></span>
                                 <h3 class="card-heading">Cybersecurity Student Achievement Badges</h3>
                             </div>
                             <div class="card-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;">
@@ -2785,7 +2926,7 @@
                         <div class="soc-card" style="margin-bottom: 20px; background: rgba(14, 28, 56, 0.5); border-left: 3px solid var(--accent-cyan);">
                             <div class="card-head" style="justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🤖</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="3"/></svg></span>
                                     <h3 class="card-heading">AI Reverse-Engineering Mentor</h3>
                                 </div>
                                 <span class="badge badge-low">EDUCATIONAL SCAFFOLDING</span>
@@ -2810,7 +2951,7 @@
                         <div class="grid-2col" style="margin-bottom: 20px;">
                             <div class="soc-card">
                                 <div class="card-head">
-                                    <span class="card-icon">📚</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg></span>
                                     <h3 class="card-heading" data-i18n="select_concept">Select Reverse-Engineering Concept</h3>
                                 </div>
                                 <div class="card-body">
@@ -2835,7 +2976,7 @@
 
                             <div class="soc-card" style="background: rgba(16, 185, 129, 0.04); border-color: rgba(16, 185, 129, 0.2);">
                                 <div class="card-head">
-                                    <span class="card-icon">💡</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span>
                                     <h3 class="card-heading" style="color: #10b981;">Defensive Static Invariant</h3>
                                 </div>
                                 <div class="card-body" style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
@@ -2848,7 +2989,7 @@
                         <div class="soc-card" id="lesson-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">💡</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span>
                                     <h3 class="card-heading" id="lesson-title">Concept Breakdown</h3>
                                 </div>
                                 <span class="badge badge-low" id="lesson-level-badge">Beginner Level</span>
@@ -2912,7 +3053,7 @@
                     <div id="student-panel-labs" class="student-subpanel" style="display: none;">
                         <div class="soc-card" style="margin-bottom: 20px; background: rgba(14, 165, 233, 0.05); border-color: rgba(14, 165, 233, 0.25);">
                             <div class="card-head">
-                                <span class="card-icon">🧪</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M9 3h6M10 9h4M10 3v6l-4 9a2 2 0 0 0 1.7 3h8.6a2 2 0 0 0 1.7-3l-4-9V3"/></svg></span>
                                 <h3 class="card-heading" style="color: var(--accent-blue);">Hands-On Safe Practice Lab Suite</h3>
                             </div>
                             <div class="card-body" style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
@@ -2929,7 +3070,7 @@
                         <div id="student-active-lab-result" style="display: none;" class="soc-card">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🔬</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m6 18 8-8"/><path d="m14 2 6 6"/><circle cx="17" cy="5" r="3"/><circle cx="7" cy="19" r="4"/><path d="M12 18h6"/></svg></span>
                                     <h3 class="card-heading" id="lab-active-title">Practice Lab Inspection</h3>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
@@ -2989,7 +3130,7 @@
                         <div class="soc-card" style="margin-bottom: 20px;">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🧩</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></span>
                                     <h3 class="card-heading">Reverse Engineering Mastery Check</h3>
                                 </div>
                                 <span class="badge badge-low" id="quiz-status-badge">Ready</span>
@@ -3032,7 +3173,7 @@
                     <div id="student-panel-anatomy" class="student-subpanel" style="display: none;">
                         <div class="soc-card" style="margin-bottom: 20px;">
                             <div class="card-head">
-                                <span class="card-icon">📐</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/></svg></span>
                                 <h3 class="card-heading">Windows Portable Executable (PE) Structural Map</h3>
                             </div>
                             <div class="card-body">
@@ -3182,7 +3323,7 @@
                         <div class="soc-card" style="margin-bottom: 24px;">
                             <div class="card-head">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🏛️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
                                     <h3 class="card-heading">Institutional & Case Information (Custom Report Header)</h3>
                                 </div>
                             </div>
@@ -3225,7 +3366,7 @@
                         <div class="soc-card" style="margin-bottom: 24px;">
                             <div class="card-head flex-between">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">👁️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></span>
                                     <h3 class="card-heading">Live Forensic Report Document Preview</h3>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
@@ -3250,7 +3391,7 @@
                             <p class="view-subtitle" data-i18n="admin_subtitle">SOC platform oversight, user role provisioning, RBAC permissions matrix, system health, and immutable audit logs.</p>
                         </div>
                         <div class="admin-subtabs">
-                            <button class="diff-btn active" id="admin-subtab-overview" onclick="switchAdminTab('overview')">📊 SOC Overview</button>
+                            <button class="diff-btn active" id="admin-subtab-overview" onclick="switchAdminTab('overview')">SOC Overview</button>
                             <button class="diff-btn" id="admin-subtab-users" onclick="switchAdminTab('users')">👥 User Management</button>
                             <button class="diff-btn" id="admin-subtab-rbac" onclick="switchAdminTab('rbac')">🛡️ RBAC & Permissions</button>
                             <button class="diff-btn" id="admin-subtab-audit" onclick="switchAdminTab('audit')">📜 Audit Trail & SIEM</button>
@@ -3265,7 +3406,7 @@
                             <div class="role-banner-title">Administrator Control Center Active</div>
                             <div class="role-banner-desc">Full platform administrative authority: manage credentials, configure RBAC permissions, audit SOC events, and monitor sandbox quarantine health.</div>
                         </div>
-                        <button class="btn-secondary" onclick="loadAdminOverview()" style="font-size: 11px; padding: 4px 10px;">🔄 Sync Status</button>
+                        <button class="btn-secondary" onclick="loadAdminOverview()" style="font-size: 11px; padding: 4px 10px;">Sync Status</button>
                     </div>
 
                     <!-- ========================================== -->
@@ -3301,7 +3442,7 @@
                             <div class="soc-metric-card" style="border-top: 2px solid var(--sev-high);">
                                 <div class="metric-header">
                                     <span class="metric-title">High-Risk Files</span>
-                                    <span class="metric-icon" style="color: var(--sev-high);">⚠️</span>
+                                    <span class="metric-icon" style="color: var(--sev-high);"><svg class="soc-icon soc-icon-md" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                                 </div>
                                 <div class="metric-value" id="admin-overview-high-risk" style="color: var(--sev-high);">0</div>
                                 <div class="metric-subtext">Score 70-84 Indicators</div>
@@ -3309,7 +3450,7 @@
                             <div class="soc-metric-card" style="border-top: 2px solid var(--sev-crit);">
                                 <div class="metric-header">
                                     <span class="metric-title">Critical Threats</span>
-                                    <span class="metric-icon" style="color: var(--sev-crit);">🛑</span>
+                                    <span class="metric-icon" style="color: var(--sev-crit);"><svg class="soc-icon soc-icon-md" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>
                                 </div>
                                 <div class="metric-value" id="admin-overview-critical" style="color: var(--sev-crit);">0</div>
                                 <div class="metric-subtext">Score 85-100 Criticals</div>
@@ -3330,7 +3471,7 @@
                             <div class="soc-card">
                                 <div class="card-head" style="justify-content: space-between;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">⚙️</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                                         <h3 class="card-heading">Defensive Engine Subsystems Health</h3>
                                     </div>
                                     <button class="btn-secondary" onclick="loadSystemHealth()" style="font-size: 11px; padding: 2px 8px;">🔄 Health Check</button>
@@ -3341,7 +3482,7 @@
                                         <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
                                     </div>
                                     <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
-                                        <span>🗄️ SQLite Database Layer</span>
+                                        <span>SQLite Database Layer</span>
                                         <span style="color: var(--sev-low); font-weight: 700;" id="admin-health-db-status">● ONLINE</span>
                                     </div>
                                     <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
@@ -3349,7 +3490,7 @@
                                         <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
                                     </div>
                                     <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
-                                        <span>🔑 Cryptographic Hash Engine</span>
+                                        <span>Cryptographic Hash Engine</span>
                                         <span style="color: var(--sev-low); font-weight: 700;">● ONLINE</span>
                                     </div>
                                     <div class="flex-between" style="font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(56, 189, 248, 0.08);">
@@ -3374,7 +3515,7 @@
                             <!-- Real-Time Threat Risk Distribution Chart -->
                             <div class="soc-card">
                                 <div class="card-head">
-                                    <span class="card-icon">📊</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
                                     <h3 class="card-heading">Database Risk Posture Distribution</h3>
                                 </div>
                                 <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
@@ -3421,7 +3562,7 @@
                         <!-- Defensive Architecture Data-Flow Diagram -->
                         <div class="soc-card" style="margin-bottom: 20px;">
                             <div class="card-head">
-                                <span class="card-icon">⚡</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                                 <h3 class="card-heading">Defensive Platform Architecture Data-Flow</h3>
                             </div>
                             <div class="card-body" style="display: flex; align-items: center; justify-content: space-around; gap: 12px; flex-wrap: wrap; padding: 24px 20px;">
@@ -3456,7 +3597,7 @@
                             <!-- Quick Admin Actions -->
                             <div class="soc-card">
                                 <div class="card-head">
-                                    <span class="card-icon">⚡</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                                     <h3 class="card-heading">Administrative Operations</h3>
                                 </div>
                                 <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
@@ -3485,7 +3626,7 @@
                             <div class="soc-card">
                                 <div class="card-head" style="justify-content: space-between;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">👥</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                                         <h3 class="card-heading">Recently Provisioned Users</h3>
                                     </div>
                                     <button class="btn-secondary" onclick="switchAdminTab('users')" style="font-size: 11px; padding: 3px 8px;">Manage All Users →</button>
@@ -3519,7 +3660,7 @@
                         <div class="soc-card" id="admin-create-user-card" style="display: none; margin-bottom: 20px; border-color: var(--accent-blue);">
                             <div class="card-head" style="justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">➕</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
                                     <h3 class="card-heading">Provision New User Account</h3>
                                 </div>
                                 <button class="btn-secondary" onclick="toggleNewUserForm(false)" style="font-size: 11px; padding: 2px 8px;">✕ Cancel</button>
@@ -3576,7 +3717,7 @@
                                     </select>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="btn-secondary" onclick="loadUsersList()">🔄 Refresh</button>
+                                    <button class="btn-secondary" onclick="loadUsersList()">Refresh</button>
                                     <button class="btn-primary" onclick="toggleNewUserForm(true)">➕ Provision User</button>
                                 </div>
                             </div>
@@ -3586,7 +3727,7 @@
                         <div class="soc-card">
                             <div class="card-head" style="justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">👥</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                                     <h3 class="card-heading">Platform Identity & Access List</h3>
                                 </div>
                                 <span id="admin-users-count-badge" style="font-size: 11px; color: var(--text-muted);">0 users</span>
@@ -3622,7 +3763,7 @@
                     <div id="admin-panel-rbac" style="display: none;">
                         <div class="soc-card" style="margin-bottom: 20px;">
                             <div class="card-head">
-                                <span class="card-icon">🛡️</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
                                 <h3 class="card-heading">Role-Based Access Control (RBAC) Architecture</h3>
                             </div>
                             <div class="card-body">
@@ -3651,7 +3792,7 @@
                         <div class="soc-card">
                             <div class="card-head" style="justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">🗺️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></span>
                                     <h3 class="card-heading">Granular Capabilities & Permissions Matrix</h3>
                                 </div>
                                 <button class="btn-secondary" onclick="loadRbacMatrix()" style="font-size: 11px; padding: 2px 8px;">🔄 Reload Matrix</button>
@@ -3734,7 +3875,7 @@
                                     <input type="text" id="audit-search-input" class="form-control" style="width: 220px;" placeholder="Search user, IP, action..." onkeyup="handleAuditSearch(event)">
                                 </div>
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="btn-secondary" onclick="loadAuditLogs()">🔄 Refresh</button>
+                                    <button class="btn-secondary" onclick="loadAuditLogs()">Refresh</button>
                                     <button class="btn-secondary" onclick="exportAuditLogsJson()">📦 Export JSON</button>
                                     <button class="btn-primary" onclick="exportAuditLogsCsv()">📥 Export CSV</button>
                                 </div>
@@ -3745,7 +3886,7 @@
                         <div class="soc-card">
                             <div class="card-head" style="justify-content: space-between;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="card-icon">📜</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg></span>
                                     <h3 class="card-heading">Immutable Security Audit Trail</h3>
                                 </div>
                                 <span style="font-size: 11px; color: var(--text-muted);">SOC 2 / ISO 27001 Compliant</span>
@@ -3783,7 +3924,7 @@
                             <!-- Defensive Engines Status -->
                             <div class="soc-card">
                                 <div class="card-head">
-                                    <span class="card-icon">🛡️</span>
+                                    <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
                                     <h3 class="card-heading">Static Analysis Engine Pipeline</h3>
                                 </div>
                                 <div class="card-body">
@@ -3831,10 +3972,10 @@
                             <div class="soc-card">
                                 <div class="card-head" style="justify-content: space-between;">
                                     <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="card-icon">🗄️</span>
+                                        <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="10" y1="6" x2="14" y2="6"/><line x1="10" y1="12" x2="14" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg></span>
                                         <h3 class="card-heading">Sandbox Quarantine & Storage Health</h3>
                                     </div>
-                                    <button class="btn-secondary" onclick="loadSystemStatus()" style="font-size: 11px; padding: 2px 8px;">🔄 Refresh</button>
+                                    <button class="btn-secondary" onclick="loadSystemStatus()" style="font-size: 11px; padding: 2px 8px;">Refresh</button>
                                 </div>
                                 <div class="card-body">
                                     <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
@@ -3870,7 +4011,7 @@
 
                                     <div style="display: flex; justify-content: flex-end; gap: 8px;">
                                         <button class="btn-secondary" onclick="purgeQuarantineCache()" style="font-size: 12px;">
-                                            🧹 Purge Temp Quarantine Cache
+                                            Purge Temp Quarantine Cache
                                         </button>
                                     </div>
                                 </div>
@@ -3888,7 +4029,7 @@
                     <div class="soc-card" style="max-width: 480px; width: 90%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
                         <div class="card-head" style="justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">🎭</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>
                                 <h3 class="card-heading">Modify User Role & Privileges</h3>
                             </div>
                             <button class="btn-secondary" onclick="closeAdminRoleModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -3922,7 +4063,7 @@
                     <div class="soc-card" style="max-width: 480px; width: 90%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
                         <div class="card-head" style="justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">🔑</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="m21 2-2 2m-6 6 7 7-3 3-7-7m-4-4a5 5 0 1 1 7-7 5 5 0 0 1-7 7Z"/></svg></span>
                                 <h3 class="card-heading">Admin Password Reset</h3>
                             </div>
                             <button class="btn-secondary" onclick="closeAdminResetPassModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -3952,7 +4093,7 @@
                     <div class="soc-card" style="max-width: 650px; width: 90%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
                         <div class="card-head" style="justify-content: space-between;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">🔍</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
                                 <h3 class="card-heading">SOC Audit Event Forensic Details</h3>
                             </div>
                             <button class="btn-secondary" onclick="closeAuditDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -3971,7 +4112,7 @@
                     <div class="soc-card" style="max-width: 760px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
                         <div class="card-head flex-between">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <span class="card-icon">🔤</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span>
                                 <h3 class="card-heading" style="font-size: 15px;">String Forensic Intelligence Inspection</h3>
                             </div>
                             <button class="btn-secondary" onclick="closeStringDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -3986,7 +4127,7 @@
                                             Wrap Text
                                         </button>
                                         <button class="btn-secondary" id="btn-modal-copy-string" onclick="copyModalStringValue()" style="font-size: 10px; padding: 2px 8px; display: flex; align-items: center; gap: 4px;">
-                                            📋 Copy String
+                                            Copy String
                                         </button>
                                     </div>
                                 </div>
@@ -4073,7 +4214,7 @@
                     <div class="soc-card" style="max-width: 820px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
                         <div class="card-head flex-between">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <span class="card-icon">📂</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg></span>
                                 <h3 class="card-heading" style="font-size: 15px;">Select Analysis Record for String Intelligence</h3>
                             </div>
                             <button class="btn-secondary" onclick="closeStringsSelectAnalysisModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -4081,7 +4222,7 @@
                         <div class="card-body" style="padding: 16px;">
                             <div style="margin-bottom: 12px; display: flex; gap: 10px; align-items: center;">
                                 <input type="text" id="strings-modal-search" class="soc-input" placeholder="Search by filename, analysis ID, or SHA-256..." oninput="filterStringsModalAnalyses()" style="flex: 1; font-size: 12px;">
-                                <button class="btn-secondary" onclick="loadAnalysesForStringsModal()" style="font-size: 12px; padding: 6px 12px;">🔄 Refresh</button>
+                                <button class="btn-secondary" onclick="loadAnalysesForStringsModal()" style="font-size: 12px; padding: 6px 12px;">Refresh</button>
                             </div>
                             <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
                                 <table class="soc-table" id="strings-modal-table">
@@ -4140,7 +4281,7 @@
                         <!-- Dynamically populated by JS openInvestigationDrawer() -->
                     </div>
                     <div class="drawer-footer">
-                        <button class="btn-primary" id="btn-drawer-copy" onclick="copyDrawerContent()">📋 Copy Artifact</button>
+                        <button class="btn-primary" id="btn-drawer-copy" onclick="copyDrawerContent()">Copy Artifact</button>
                         <button class="btn-secondary" onclick="closeInvestigationDrawer()">Close</button>
                     </div>
                 </aside>
@@ -4150,7 +4291,7 @@
                     <div class="soc-card" style="max-width: 620px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
                         <div class="card-head flex-between">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">⚙️</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                                 <h3 class="card-heading">Platform Defensive Subsystems Health</h3>
                             </div>
                             <button class="btn-secondary" onclick="closeSystemHealthModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -4173,7 +4314,7 @@
                     <div class="soc-card" style="max-width: 680px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
                         <div class="card-head flex-between">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">📑</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></span>
                                 <h3 class="card-heading">PE Section Forensic Inspection</h3>
                             </div>
                             <button class="btn-secondary" onclick="closePeSectionDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -4227,7 +4368,7 @@
                             </div>
                         </div>
                         <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
-                            <button class="btn-secondary" onclick="copyPeSectionDetails()">📋 Copy Section Details</button>
+                            <button class="btn-secondary" onclick="copyPeSectionDetails()">Copy Section Details</button>
                             <button class="btn-primary" onclick="closePeSectionDetailModal()">Close</button>
                         </div>
                     </div>
@@ -4238,7 +4379,7 @@
                     <div class="soc-card" style="max-width: 680px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
                         <div class="card-head flex-between">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">🔌</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                                 <h3 class="card-heading">Windows API Forensic Inspection</h3>
                             </div>
                             <button class="btn-secondary" onclick="closeImportApiDetailModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -4283,7 +4424,7 @@
                             </div>
                         </div>
                         <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
-                            <button class="btn-secondary" onclick="copyImportApiName()">📋 Copy API Name</button>
+                            <button class="btn-secondary" onclick="copyImportApiName()">Copy API Name</button>
                             <button class="btn-primary" onclick="closeImportApiDetailModal()">Close</button>
                         </div>
                     </div>
@@ -4294,7 +4435,7 @@
                     <div class="soc-card" style="max-width: 650px; width: 92%; margin: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.85); border-top: 3px solid var(--accent-cyan);">
                         <div class="card-head flex-between">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="card-icon">🌐</span>
+                                <span class="card-icon"><svg class="soc-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
                                 <h3 class="card-heading">Threat Intelligence Indicator Lookup</h3>
                             </div>
                             <button class="btn-secondary" onclick="closeThreatIntelLookupModal()" style="font-size: 12px; padding: 2px 8px;">✕</button>
@@ -4335,7 +4476,7 @@
                             </div>
                         </div>
                         <div class="card-foot flex-between" style="padding: 12px 18px; border-top: 1px solid var(--border-color);">
-                            <button class="btn-secondary" onclick="copyThreatIntelIndicator()">📋 Copy Indicator</button>
+                            <button class="btn-secondary" onclick="copyThreatIntelIndicator()">Copy Indicator</button>
                             <button class="btn-primary" onclick="closeThreatIntelLookupModal()">Close</button>
                         </div>
                     </div>

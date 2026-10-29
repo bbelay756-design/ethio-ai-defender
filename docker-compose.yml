@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  ghidra-sidecar:
+    build:
+      context: .
+      dockerfile: docker/ghidra-sidecar/Dockerfile
+    image: ethio-ai-defender/ghidra-sidecar:11.1
+    container_name: ethio-defender-ghidra-sidecar
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=2g
+    volumes:
+      # Quarantined binaries are strictly mounted READ-ONLY (:ro)
+      - ./storage/quarantine:/samples:ro
+    ports:
+      # Bound strictly to local loopback interface
+      - "127.0.0.1:8089:8089"
+    environment:
+      - GHIDRA_SIDECAR_PORT=8089
+      - GHIDRA_MAX_FUNCTIONS=2000
+      - SAMPLES_DIR=/samples
+      - DEFAULT_TIMEOUT_SECONDS=180.0
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4096M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8089/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3

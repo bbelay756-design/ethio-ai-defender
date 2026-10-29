@@ -193,6 +193,14 @@ def init_db() -> None:
                 cursor.execute("CREATE INDEX IF NOT EXISTS ix_yara_matches_rule_version ON yara_matches(rule_version_id)")
                 conn.connection.commit()
 
+            # ML-13 / SEC-06 lightweight migration: Ensure unique index on analyst_reviews.analysis_id
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='analyst_reviews'")
+            if cursor.fetchone():
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_analyst_reviews_analysis_id'")
+                if not cursor.fetchone():
+                    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_analyst_reviews_analysis_id ON analyst_reviews(analysis_id)")
+                    conn.connection.commit()
+
             cursor.close()
 
     logger.info("Database tables initialized successfully.")

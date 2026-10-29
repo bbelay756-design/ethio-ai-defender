@@ -26,6 +26,7 @@ from app.analyzers.string_analyzer import (
 from app.db.session import Base, engine, SessionLocal, init_db
 from app.db.models import SampleModel, StringModel, UserModel
 from app.auth.roles import UserRole
+from app.auth.security import hash_password, create_access_token
 from app.db.schemas import StringCreate, SampleCreate
 from app.db.repository import SampleRepository
 from fastapi.testclient import TestClient
@@ -333,6 +334,23 @@ class TestStringIntelligenceApi(unittest.TestCase):
         self.client = TestClient(app)
         self.db = SessionLocal()
 
+        # Create or fetch an analyst user for authorized API testing
+        analyst = self.db.query(UserModel).filter(UserModel.username == "test_analyst_strings").first()
+        if not analyst:
+            s, h = hash_password("AnalystPass123!")
+            analyst = UserModel(
+                username="test_analyst_strings",
+                email="analyst_strings@defender.et",
+                hashed_password=h,
+                salt=s,
+                role=UserRole.ANALYST.value,
+            )
+            self.db.add(analyst)
+            self.db.commit()
+            self.db.refresh(analyst)
+        token, _, _ = create_access_token({"sub": str(analyst.id), "username": analyst.username, "role": analyst.role})
+        self.headers = {"Authorization": f"Bearer {token}"}
+
         self.analysis_id = f"ANL-API-STR-{int(datetime.now().timestamp() * 1000)}"
         self.sample = SampleModel(
             analysis_id=self.analysis_id,
@@ -372,9 +390,14 @@ class TestStringIntelligenceApi(unittest.TestCase):
         self.db.commit()
         self.db.close()
 
+    def test_get_strings_unauthenticated_returns_401(self):
+        """Tests that unauthenticated request to /strings returns 401."""
+        resp = self.client.get(f"/api/analyses/{self.analysis_id}/strings")
+        self.assertEqual(resp.status_code, 401)
+
     def test_get_strings_success(self):
         """Tests successful retrieval of strings with statistics and metadata."""
-        resp = self.client.get(f"/api/analyses/{self.analysis_id}/strings")
+        resp = self.client.get(f"/api/analyses/{self.analysis_id}/strings", headers=self.headers)
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
 
@@ -398,7 +421,7 @@ class TestStringIntelligenceApi(unittest.TestCase):
 
     def test_get_strings_pagination(self):
         """Tests pagination parameters on the strings endpoint."""
-        resp = self.client.get(f"/api/analyses/{self.analysis_id}/strings?page=1&page_size=4")
+        resp = self.client.get(f"/api/analyses/{self.analysis_id}/strings?page=1&page_size=4", headers=self.headers)
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
 
@@ -409,7 +432,7 @@ class TestStringIntelligenceApi(unittest.TestCase):
 
     def test_get_strings_suspicious_filter(self):
         """Tests filtering by suspicious_only=true."""
-        resp = self.client.get(f"/api/analyses/{self.analysis_id}/strings?suspicious_only=true")
+        resp = self.client.get(f"/api/analyses/{self.analysis_id}/strings?suspicious_only=true", headers=self.headers)
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
 
@@ -419,7 +442,7 @@ class TestStringIntelligenceApi(unittest.TestCase):
 
     def test_get_strings_not_found(self):
         """Tests 404 response for nonexistent analysis ID."""
-        resp = self.client.get("/api/analyses/NON_EXISTENT_ANALYSIS_ID_9999/strings")
+        resp = self.client.get("/api/analyses/NON_EXISTENT_ANALYSIS_ID_9999/strings", headers=self.headers)
         self.assertEqual(resp.status_code, 404)
 
 

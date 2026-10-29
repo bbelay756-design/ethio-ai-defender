@@ -432,5 +432,118 @@ class TestGhidraTransactionPersistence(unittest.TestCase):
         self.assertEqual(stored.ghidra_relationships[0].to_name, "FUN_2")
 
 
+class TestGhidraSidecarIntegration(unittest.TestCase):
+    """OPS-02: Unit and integration tests for containerized Ghidra sidecar service."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = Path(self._tmp.name)
+        self.sample_file = self.tmp_path / "quarantined_test.exe"
+        self.sample_file.write_bytes(b"MZ" + b"\x00" * 126 + b"PE\x00\x00")
+        self.service = GhidraAnalyzerService()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _mock_http_response(self, status_code: int, data: dict):
+        mock_resp = mock.MagicMock()
+        mock_resp.getcode.return_value = status_code
+        mock_resp.read.return_value = json.dumps(data).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+        mock_resp.__exit__.return_value = None
+        return mock_resp
+
+    def test_01_sidecar_probe_healthy(self):
+        """When sidecar is enabled and /health returns healthy, is_available returns True."""
+        with mock.patch.object(settings, "GHIDRA_SIDECAR_ENABLED", True), \
+             mock.patch("urllib.request.urlopen") as mock_url:
+            mock_url.return_value = self._mock_http_response(200, {"status": "healthy", "ghidra_available": True})
+            avail, reason = self.service.is_available()
+            self.assertTrue(avail)
+            self.assertIn("healthy and available", reason)
+
+    def test_02_sidecar_probe_connection_refused_graceful_degradation(self):
+        """When sidecar is enabled but daemon/container is down, report UNAVAILABLE."""
+        import urllib.error
+        with mock.patch.object(settings, "GHIDRA_SIDECAR_ENABLED", True), \
+             mock.patch("urllib.request.urlopen", side_effect=urllib.error.URLError("Connection refused")):
+            avail, reason = self.service.is_available()
+            self.assertFalse(avail)
+            self.assertIn("unavailable", reason.lower())
+
+    def test_03_sidecar_successful_analysis(self):
+        """Test successful structured extraction via sidecar RPC with zero binary detonation."""
+        with mock.patch.object(settings, "GHIDRA_SIDECAR_ENABLED", True), \
+             mock.patch.object(self.service, "is_available", return_value=(True, "ok")), \
+             mock.patch("urllib.request.urlopen") as mock_url:
+            mock_url.return_value = self._mock_http_response(200, SAMPLE_PAYLOAD)
+            result = self.service.analyze_file(self.sample_file, analysis_id="ANL-SIDECAR-01")
+
+            self.assertTrue(result.available)
+            self.assertEqual(result.status, "SUCCESS")
+            self.assertEqual(result.program_name, "threat_sample.exe")
+            self.assertEqual(len(result.functions), 2)
+            self.assertEqual(result.functions[0].name, "FUN_00401000")
+            self.assertEqual(len(result.relationships), 1)
+            self.assertEqual(len(result.strings), 3)
+
+    def test_04_sidecar_timeout_handling(self):
+        """Sidecar timeout gracefully returns TIMEOUT status without crashing."""
+        import urllib.error
+        with mock.patch.object(settings, "GHIDRA_SIDECAR_ENABLED", True), \
+             mock.patch.object(self.service, "is_available", return_value=(True, "ok")), \
+             mock.patch("urllib.request.urlopen", side_effect=TimeoutError("Request timed out")):
+            result = self.service.analyze_file(self.sample_file, analysis_id="ANL-SIDECAR-TO")
+
+            self.assertEqual(result.status, "UNAVAILABLE")
+            self.assertFalse(result.available)
+
+    def test_05_sidecar_http_503_graceful_fallback(self):
+        """Sidecar returning HTTP 503 results in UNAVAILABLE without failing pipeline."""
+        import urllib.error
+        err = urllib.error.HTTPError(
+            url="http://127.0.0.1:8089/analyze",
+            code=503,
+            msg="Service Unavailable",
+            hdrs={},
+            fp=mock.MagicMock(read=lambda: b'{"detail": "Launcher missing"}')
+        )
+        with mock.patch.object(settings, "GHIDRA_SIDECAR_ENABLED", True), \
+             mock.patch.object(self.service, "is_available", return_value=(True, "ok")), \
+             mock.patch("urllib.request.urlopen", side_effect=err):
+            result = self.service.analyze_file(self.sample_file, analysis_id="ANL-SIDECAR-503")
+
+            self.assertEqual(result.status, "UNAVAILABLE")
+            self.assertFalse(result.available)
+
+    def test_06_sidecar_malformed_json_response(self):
+        """Malformed JSON payload from sidecar handled defensively as FAILED."""
+        mock_resp = mock.MagicMock()
+        mock_resp.getcode.return_value = 200
+        mock_resp.read.return_value = b"<html>502 Bad Gateway</html>"
+        mock_resp.__enter__.return_value = mock_resp
+        mock_resp.__exit__.return_value = None
+
+        with mock.patch.object(settings, "GHIDRA_SIDECAR_ENABLED", True), \
+             mock.patch.object(self.service, "is_available", return_value=(True, "ok")), \
+             mock.patch("urllib.request.urlopen", return_value=mock_resp):
+            result = self.service.analyze_file(self.sample_file, analysis_id="ANL-SIDECAR-MAL")
+
+            self.assertEqual(result.status, "FAILED")
+            self.assertIn("invalid response format", result.message)
+
+    def test_07_sidecar_token_header_sent(self):
+        """Auth token header correctly passed when configured."""
+        with mock.patch.object(settings, "GHIDRA_SIDECAR_ENABLED", True), \
+             mock.patch.object(settings, "GHIDRA_SIDECAR_TOKEN", "test-secret-token"), \
+             mock.patch.object(self.service, "is_available", return_value=(True, "ok")), \
+             mock.patch("urllib.request.urlopen") as mock_url:
+            mock_url.return_value = self._mock_http_response(200, SAMPLE_PAYLOAD)
+            self.service.analyze_file(self.sample_file, analysis_id="ANL-SIDECAR-AUTH")
+
+            req_arg = mock_url.call_args[0][0]
+            self.assertEqual(req_arg.get_header("X-sidecar-token"), "test-secret-token")
+
+
 if __name__ == "__main__":
     unittest.main()

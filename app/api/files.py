@@ -5,6 +5,7 @@ File Management and Secure Intake API Endpoints.
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.logger import logger
@@ -13,8 +14,10 @@ from app.analyzers.file_intake import secure_intake_service, IntakeStatus
 from app.audit.logger import audit_logger
 from app.audit.events import AuditResult
 from app.auth.dependencies import require_permissions
-from app.auth.roles import Permission
+from app.auth.roles import Permission, UserRole
+from app.db.session import get_db
 from app.db.models import UserModel
+from app.db.repository import SampleRepository
 from app.utils.upload_guard import read_upload_bounded
 
 router = APIRouter(prefix="/api/files", tags=["File Intake"])
@@ -127,23 +130,46 @@ async def upload_file(
     summary="Retrieve file intake status and metadata",
     description="Returns metadata and current status for a previously submitted analysis ID.",
 )
-async def get_file_record(analysis_id: str):
+async def get_file_record(
+    analysis_id: str,
+    current_user: UserModel = Depends(require_permissions(Permission.VIEW_AUTHORIZED_ANALYSES)),
+    db: Session = Depends(get_db)
+):
     """
-    Fetches the intake record and hashes for a given analysis ID.
+    Fetches the intake record and hashes for a given analysis ID with RBAC and object-level scoping.
     """
+    sample = SampleRepository.get_by_analysis_id(db, analysis_id)
     record = analysis_store.get_record(analysis_id)
-    if not record:
+
+    if not sample and not record:
         logger.warning(f"File lookup failed: Analysis ID '{analysis_id}' not found.")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Analysis record '{analysis_id}' not found."
         )
 
+    if sample is not None and sample.user_id is not None:
+        if current_user.role != UserRole.ADMIN.value and sample.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You do not have permission to view file metadata for this analysis."
+            )
+
+    if record:
+        return FileUploadResponse(
+            analysis_id=record.analysis_id,
+            filename=record.filename,
+            size=record.size,
+            sha256=record.sha256,
+            md5=record.md5,
+            status=record.status,
+        )
+
     return FileUploadResponse(
-        analysis_id=record.analysis_id,
-        filename=record.filename,
-        size=record.size,
-        sha256=record.sha256,
-        md5=record.md5,
-        status=record.status,
+        analysis_id=sample.analysis_id,
+        filename=sample.filename,
+        size=sample.size,
+        sha256=sample.sha256,
+        md5=sample.md5 or "",
+        status=sample.status,
     )

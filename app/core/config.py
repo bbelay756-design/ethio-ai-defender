@@ -78,11 +78,19 @@ class Settings:
     # Retain the isolated Ghidra workspace after analysis for troubleshooting (default: cleaned up).
     GHIDRA_KEEP_WORKSPACE: bool = os.getenv("GHIDRA_KEEP_WORKSPACE", "false").lower() in ("true", "1", "yes")
 
+    # OPS-02: Containerized Ghidra Sidecar Service Configuration
+    GHIDRA_SIDECAR_ENABLED: bool = os.getenv("GHIDRA_SIDECAR_ENABLED", "false").lower() in ("true", "1", "yes")
+    GHIDRA_SIDECAR_URL: str = os.getenv("GHIDRA_SIDECAR_URL", "http://127.0.0.1:8089")
+    GHIDRA_SIDECAR_TOKEN: Optional[str] = os.getenv("GHIDRA_SIDECAR_TOKEN", None)
+    GHIDRA_SIDECAR_TIMEOUT_SECONDS: float = float(os.getenv("GHIDRA_SIDECAR_TIMEOUT_SECONDS", "180.0"))
+
     # Machine Learning Static Analysis Configuration (Milestone ML-04 Shadow Mode)
     # Defaults to disabled (False) or safe shadow mode (True); does not alter blocking decisions.
     ML_ENABLED: bool = os.getenv("ML_ENABLED", "false").lower() in ("true", "1", "yes")
     ML_SHADOW_MODE: bool = os.getenv("ML_SHADOW_MODE", "true").lower() in ("true", "1", "yes")
     ML_TIMEOUT_SECONDS: int = int(os.getenv("ML_TIMEOUT_SECONDS", "10"))
+    # PERF-01: ONNX Runtime Inference Acceleration (Non-authoritative shadow / offline acceleration)
+    ML_ONNX_ENABLED: bool = os.getenv("ML_ONNX_ENABLED", "false").lower() in ("true", "1", "yes")
 
     # Database Configuration (SQLite default)
     DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'storage' / 'defender.db'}")

@@ -52,7 +52,7 @@ class SecurityAuditLogger:
         self._logger = self._setup_internal_logger()
 
     def _setup_internal_logger(self) -> logging.Logger:
-        audit_logger = logging.getLogger("ethio_audit_engine")
+        audit_logger = logging.getLogger(f"ethio_audit_engine_{id(self)}")
         audit_logger.setLevel(logging.INFO)
         audit_logger.propagate = False
 

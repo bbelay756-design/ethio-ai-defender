@@ -21,12 +21,17 @@ from typing import Any, Dict, List, Optional, Union
 import joblib
 import numpy as np
 
-from app.core.config import BASE_DIR
+from app.core.config import BASE_DIR, settings
 from app.core.logger import logger
 from app.ml.ember_v2 import EMBERFeatureExtractor, EMBER_V2_TOTAL_DIM
 
 # Cryptographically verified trusted baseline model SHA-256 digest
 TRUSTED_BASELINE_MODEL_SHA256 = "f2fd3ed4e4fc0b482600bb92fe24e36d23a93617bf214f62019def5c352bd684"
+
+# Trusted ONNX model digests for PERF-01 optimization
+TRUSTED_ONNX_PRIMARY_SHA256 = "ab09494d6cb753d089fb978eca8def6cbdec0190bbe63740641b4a7a4b62ff38"
+TRUSTED_ONNX_SECONDARY_SHA256 = "f43b2d4f915d9467cbb306e58bee59f8b80ee5cd9108259930a6e0cce0a0a232"
+TRUSTED_ONNX_MODEL_SHA256_SET = {TRUSTED_ONNX_PRIMARY_SHA256, TRUSTED_ONNX_SECONDARY_SHA256}
 
 # Default primary and fallback approved artifact storage directories
 DEFAULT_PRIMARY_MODEL_DIR = Path(r"D:\ethio_ai_defender_artifacts\ember_baseline_v1")
@@ -101,6 +106,7 @@ class EmberModelClassifier:
         verify_checksum: bool = True,
         trusted_sha256: Optional[str] = None,
         allow_custom_path: bool = False,
+        use_onnx: Optional[bool] = None,
     ) -> None:
         """
         Initialize and load the trained baseline model from model_dir.
@@ -112,6 +118,7 @@ class EmberModelClassifier:
             trusted_sha256: Expected cryptographic digest. If None, uses TRUSTED_BASELINE_MODEL_SHA256
                             or the ETHIO_ML_TRUSTED_MODEL_SHA256 environment variable.
             allow_custom_path: If True, permits non-standard directories (used strictly in test fixtures).
+            use_onnx: If True, activates ONNX Runtime acceleration if model.onnx is available.
         """
         # Resolve target model directory
         if model_dir is None:
@@ -152,6 +159,14 @@ class EmberModelClassifier:
         self.model_file_sha256: str = ""
         self._malicious_class_index: int = 1
         self.extractor = EMBERFeatureExtractor(feature_version=2, print_warning=False)
+
+        # PERF-01: ONNX Runtime acceleration state
+        self.use_onnx = use_onnx if use_onnx is not None else getattr(settings, "ML_ONNX_ENABLED", False)
+        self.onnx_session: Optional[Any] = None
+        self.onnx_sha256: str = ""
+        self._onnx_input_name: str = "X"
+        self.onnx_path = self.model_dir / "model.onnx"
+        self.onnx_checksum_path = self.model_dir / "model.onnx.sha256"
 
         if self.model_path.exists():
             self._load_model(verify_checksum=verify_checksum)
@@ -273,6 +288,68 @@ class EmberModelClassifier:
             f"(SHA-256: {computed_sha}, malicious class index: {self._malicious_class_index})"
         )
 
+        # Attempt ONNX session initialization if requested
+        if self.use_onnx:
+            self._load_onnx_session()
+
+    def _load_onnx_session(self) -> None:
+        """
+        Loads and verifies the ONNX Runtime session if model.onnx is present.
+        Falls back gracefully to scikit-learn without crashing if ONNX is missing or invalid.
+        """
+        if not self.onnx_path.exists():
+            logger.info(f"ONNX model not found at {self.onnx_path}; using scikit-learn baseline.")
+            return
+
+        try:
+            import onnxruntime as ort
+        except ImportError:
+            logger.warning("onnxruntime is not installed; falling back to scikit-learn.")
+            return
+
+        # Compute and verify ONNX SHA-256
+        hasher = hashlib.sha256()
+        with open(self.onnx_path, "rb") as f:
+            while chunk := f.read(1048576):
+                hasher.update(chunk)
+        computed_sha = hasher.hexdigest().lower()
+        self.onnx_sha256 = computed_sha
+
+        if self.verify_checksum:
+            expected_sha = None
+            if self.onnx_checksum_path.exists():
+                raw = self.onnx_checksum_path.read_text(encoding="utf-8").strip().lower()
+                expected_sha = raw.split()[0] if raw else None
+
+            # Verify against trusted known digests or sidecar
+            if expected_sha and computed_sha != expected_sha:
+                logger.warning(
+                    f"ONNX checksum mismatch! Computed {computed_sha} != expected {expected_sha}. "
+                    "Falling back to scikit-learn."
+                )
+                return
+
+            if not self.allow_custom_path and computed_sha not in TRUSTED_ONNX_MODEL_SHA256_SET and (expected_sha != computed_sha):
+                logger.warning(
+                    f"ONNX model digest {computed_sha} is not in trusted allowlist. "
+                    "Falling back to scikit-learn."
+                )
+                return
+
+        try:
+            sess_opts = ort.SessionOptions()
+            sess_opts.intra_op_num_threads = 1
+            self.onnx_session = ort.InferenceSession(
+                str(self.onnx_path),
+                sess_opts,
+                providers=["CPUExecutionProvider"],
+            )
+            self._onnx_input_name = self.onnx_session.get_inputs()[0].name
+            logger.info(f"ONNX Runtime inference session successfully initialized ({self.onnx_path.name}).")
+        except Exception as exc:
+            logger.warning(f"Failed to initialize ONNX Runtime session: {exc}; falling back to scikit-learn.")
+            self.onnx_session = None
+
     def _validate_metadata(self, metadata: Dict[str, Any]) -> None:
         """
         Validate model metadata contract against EMBER v2 specifications.
@@ -371,6 +448,7 @@ class EmberModelClassifier:
         """
         Predict probability of being malicious for input feature vector(s).
         Dynamically uses the malicious-class index discovered from estimator.classes_.
+        Leverages ONNX Runtime if initialized, with transparent scikit-learn fallback.
 
         Args:
             X: Feature array of shape (N, 2381) or (2381,).
@@ -382,6 +460,23 @@ class EmberModelClassifier:
             raise EmberModelError("Model is not loaded. Cannot perform inference.")
 
         validated_X = self.validate_features(X)
+
+        # Fast-path: ONNX Runtime execution if available
+        if self.onnx_session is not None:
+            try:
+                ort_outs = self.onnx_session.run(None, {self._onnx_input_name: validated_X})
+                if len(ort_outs) > 1:
+                    probs_container = ort_outs[1]
+                    if isinstance(probs_container, list):
+                        return np.array(
+                            [d[self._malicious_class_index] for d in probs_container],
+                            dtype=np.float64,
+                        )
+                    elif isinstance(probs_container, np.ndarray):
+                        return probs_container[:, self._malicious_class_index].astype(np.float64)
+            except Exception as exc:
+                logger.warning(f"ONNX inference failed: {exc}; falling back to scikit-learn.")
+
         try:
             proba = self.model.predict_proba(validated_X)
         except Exception as e:

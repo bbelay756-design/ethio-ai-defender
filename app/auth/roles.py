@@ -31,6 +31,7 @@ class Permission(str, Enum):
     # Viewer Permissions
     VIEW_AUTHORIZED_REPORTS = "view_authorized_reports"
     VIEW_AUTHORIZED_ANALYSES = "view_authorized_analyses"
+    VIEW_REPORTS = "view_authorized_reports"
 
 
 # Exact Role-to-Permissions Matrix

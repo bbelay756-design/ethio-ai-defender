@@ -171,10 +171,35 @@ class GhidraAnalyzerService:
                 return candidate
         return None
 
+    def _check_sidecar_health(self) -> tuple[bool, str]:
+        """Probes the sidecar /health endpoint with a 3-second timeout."""
+        import urllib.request
+        import urllib.error
+
+        url = f"{settings.GHIDRA_SIDECAR_URL.rstrip('/')}/health"
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=3.0) as resp:
+                if resp.getcode() == 200:
+                    payload = json.loads(resp.read().decode("utf-8"))
+                    if payload.get("status") == "healthy" or payload.get("ghidra_available"):
+                        return True, "Sidecar is healthy and Ghidra is available."
+                    return False, f"Sidecar reported degraded state: {payload}"
+                return False, f"Sidecar /health returned HTTP {resp.getcode()}"
+        except Exception as exc:
+            return False, f"Sidecar connection failed: {exc}"
+
     def is_available(self) -> Any:
         """Returns (available: bool, reason: str) without invoking Ghidra."""
         if not getattr(settings, "GHIDRA_ENABLED", True):
             return False, "Ghidra integration is disabled (GHIDRA_ENABLED=false)."
+
+        if getattr(settings, "GHIDRA_SIDECAR_ENABLED", False):
+            healthy, reason = self._check_sidecar_health()
+            if healthy:
+                return True, "Ghidra containerized sidecar is healthy and available."
+            return False, f"Ghidra sidecar unavailable: {reason}"
+
         if not self.ghidra_home or not self.ghidra_home.is_dir():
             return False, (
                 "Ghidra is not configured. Set GHIDRA_HOME to your extracted Ghidra "
@@ -237,6 +262,10 @@ class GhidraAnalyzerService:
                 status="FAILED",
                 message="Quarantined sample file could not be found for Ghidra analysis.",
             )
+
+        # OPS-02: Route to containerized sidecar service if enabled
+        if getattr(settings, "GHIDRA_SIDECAR_ENABLED", False):
+            return self._call_sidecar(source, analysis_id)
 
         headless = self._resolve_headless()
         workspace = self._safe_workspace(analysis_id or source.stem)
@@ -339,6 +368,106 @@ class GhidraAnalyzerService:
     # ------------------------------------------------------------------ #
     # Internal helpers
     # ------------------------------------------------------------------ #
+    def _call_sidecar(
+        self,
+        source: Path,
+        analysis_id: Optional[str] = None,
+    ) -> GhidraScanResult:
+        """
+        Invokes containerized Ghidra sidecar service over internal HTTP RPC.
+        Defensively handles timeouts, network failures, and malformed responses.
+        """
+        import urllib.request
+        import urllib.error
+
+        url = f"{settings.GHIDRA_SIDECAR_URL.rstrip('/')}/analyze"
+        headers = {"Content-Type": "application/json"}
+        if getattr(settings, "GHIDRA_SIDECAR_TOKEN", None):
+            headers["X-Sidecar-Token"] = settings.GHIDRA_SIDECAR_TOKEN
+
+        payload_req = {
+            "sample_path": source.name,
+            "analysis_id": analysis_id or source.stem,
+            "max_functions": settings.GHIDRA_MAX_FUNCTIONS,
+            "timeout_seconds": settings.GHIDRA_SIDECAR_TIMEOUT_SECONDS,
+        }
+
+        data_bytes = json.dumps(payload_req).encode("utf-8")
+        req = urllib.request.Request(url, data=data_bytes, headers=headers, method="POST")
+
+        try:
+            with urllib.request.urlopen(req, timeout=settings.GHIDRA_SIDECAR_TIMEOUT_SECONDS) as resp:
+                resp_bytes = resp.read()
+                resp_payload = json.loads(resp_bytes.decode("utf-8"))
+
+                if resp_payload.get("status") == "TIMEOUT":
+                    return GhidraScanResult(
+                        available=True,
+                        status="TIMEOUT",
+                        message=resp_payload.get("message", "Ghidra sidecar analysis timed out."),
+                        errors=resp_payload.get("errors", []),
+                    )
+                if resp_payload.get("status") == "FAILED" or not resp_payload.get("ok", True):
+                    return GhidraScanResult(
+                        available=True,
+                        status="FAILED",
+                        message=resp_payload.get("message", "Ghidra sidecar analysis failed."),
+                        errors=resp_payload.get("errors", []),
+                    )
+
+                return self._build_result(resp_payload)
+
+        except urllib.error.HTTPError as exc:
+            err_body = ""
+            try:
+                err_body = exc.read().decode("utf-8")
+            except Exception:
+                pass
+            logger.warning(f"Ghidra sidecar HTTP error {exc.code} for '{source.name}': {err_body}")
+            if exc.code == 408:
+                return GhidraScanResult(
+                    available=True,
+                    status="TIMEOUT",
+                    message="Ghidra sidecar request timed out.",
+                    errors=[f"HTTP 408: {err_body}"],
+                )
+            if exc.code in (502, 503, 504):
+                return GhidraScanResult(
+                    available=False,
+                    status="UNAVAILABLE",
+                    message=f"Ghidra sidecar service unavailable (HTTP {exc.code}).",
+                    errors=[err_body],
+                )
+            return GhidraScanResult(
+                available=True,
+                status="FAILED",
+                message=f"Ghidra sidecar returned HTTP {exc.code}.",
+                errors=[err_body],
+            )
+        except (urllib.error.URLError, ConnectionRefusedError, OSError) as exc:
+            logger.warning(f"Ghidra sidecar connection failed for '{source.name}': {exc}")
+            return GhidraScanResult(
+                available=False,
+                status="UNAVAILABLE",
+                message=f"Ghidra sidecar service unreachable: {exc}",
+                errors=[str(exc)],
+            )
+        except (json.JSONDecodeError, ValueError) as exc:
+            logger.warning(f"Ghidra sidecar returned malformed response for '{source.name}': {exc}")
+            return GhidraScanResult(
+                available=True,
+                status="FAILED",
+                message=f"Ghidra sidecar returned invalid response format: {exc}",
+                errors=[str(exc)],
+            )
+        except Exception as exc:
+            logger.warning(f"Unexpected error communicating with Ghidra sidecar for '{source.name}': {exc}")
+            return GhidraScanResult(
+                available=False,
+                status="UNAVAILABLE",
+                message=f"Ghidra sidecar error: {exc}",
+                errors=[str(exc)],
+            )
     @staticmethod
     def _tail(text: str, limit: int = 500) -> str:
         """Returns a trimmed tail of captured process output for diagnostics."""

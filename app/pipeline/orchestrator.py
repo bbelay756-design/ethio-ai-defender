@@ -397,6 +397,53 @@ class UnifiedPipelineOrchestrator:
             "malware verdict and does not alter heuristic risk scores or trigger autonomous actions."
         )
 
+        # ML-13: Cascaded Rejection Gate and Analyst-Confirmation Evaluation
+        yara_matches_count = len(yara_data.get("matches", []))
+        heuristic_score = score_data.get("score", 0)
+        has_deterministic_evidence = (yara_matches_count > 0) or (heuristic_score >= 70)
+
+        if not ml_data.get("available") or mal_score is None:
+            rejection_gate_state = "NOT_EVALUATED"
+            rejection_gate_reason = (
+                f"ML inference was not evaluated ({ml_data.get('status', 'DISABLED')}). "
+                "Cascaded rejection gate is inactive."
+            )
+            review_status = "NOT_EVALUATED"
+            requires_analyst_review = False
+        elif mal_score >= 0.800395:
+            if has_deterministic_evidence:
+                rejection_gate_state = "DETERMINISTIC_ALERT"
+                rejection_gate_reason = (
+                    f"Corroborated by deterministic indicators (YARA matches: {yara_matches_count}, "
+                    f"Heuristic Threat Score: {heuristic_score}/100). Deterministic detection rules govern."
+                )
+                review_status = "NOT_REQUIRED"
+                requires_analyst_review = False
+            else:
+                rejection_gate_state = "PENDING_REVIEW"
+                rejection_gate_reason = (
+                    f"Elevated ML advisory score ({mal_score:.6f} >= 0.800395) without corroborating deterministic "
+                    f"evidence (0 YARA matches, Heuristic Threat Score: {heuristic_score}/100 < 70). "
+                    "Under the ML-13 Cascaded Rejection Gate, autonomous blocking is inhibited to mitigate the "
+                    "documented 3.73% base-rate precision collapse (LIM-01). Human analyst review is required."
+                )
+                review_status = "PENDING_REVIEW"
+                requires_analyst_review = True
+        else:
+            rejection_gate_state = "NORMAL_MONITORING"
+            rejection_gate_reason = (
+                f"ML advisory score ({mal_score:.6f} < 0.800395) does not exceed the target threshold. "
+                "Standard non-elevated monitoring applies."
+            )
+            review_status = "NOT_REQUIRED"
+            requires_analyst_review = False
+
+        ml_data["rejection_gate_state"] = rejection_gate_state
+        ml_data["rejection_gate_reason"] = rejection_gate_reason
+        ml_data["review_status"] = review_status
+        ml_data["requires_analyst_review"] = requires_analyst_review
+        ml_data["active_blocking_inhibited"] = True  # Always inhibited for ML alone
+
         # =========================================================================
         # Stage 11c: IOC Extraction & MITRE ATT&CK Mapping
         # =========================================================================

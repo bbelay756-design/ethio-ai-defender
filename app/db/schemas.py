@@ -354,6 +354,28 @@ class AnalysisSummaryResponse(BaseModel):
     ml_status: Optional[str] = "UNAVAILABLE"
     ml_review_priority: Optional[str] = "NOT_EVALUATED"
     is_reliable: bool = False
+    rejection_gate_state: Optional[str] = "NOT_EVALUATED"
+    review_status: Optional[str] = "NOT_EVALUATED"
+
+
+class AnalystReviewCreate(BaseModel):
+    """Request schema for submitting an analyst confirmation or rejection review."""
+    verdict: str  # CONFIRMED_MALWARE, REJECTED_FALSE_POSITIVE, BENIGN_UTILITY
+    rationale: str
+
+
+class AnalystReviewResponse(BaseModel):
+    """Response schema for an analyst review record."""
+    id: int
+    analysis_id: str
+    reviewer_username: str
+    verdict: str
+    review_state: str
+    previous_state: str
+    rationale: str
+    created_at: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SampleWithRelations(SampleRead):

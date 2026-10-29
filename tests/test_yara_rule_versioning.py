@@ -51,7 +51,7 @@ from app.db.schemas import SampleCreate, YaraMatchCreate
 from app.db.repository import SampleRepository
 
 ROOT = Path(__file__).resolve().parents[1]
-ALEMBIC_VERSION_HEAD = "a1b2c3d4e5f6"
+ALEMBIC_VERSION_HEAD = "b2c3d4e5f6a7"
 LEGACY_STAMP = "5655c33dba69"
 REAL_DB_PATH = ROOT / "storage" / "defender.db"
 

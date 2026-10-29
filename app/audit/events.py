@@ -19,6 +19,7 @@ class AuditEventType(str, Enum):
     REPORT_GENERATION = "report generation"
     ADMINISTRATIVE_CHANGES = "administrative changes"
     SECURITY_ALERT = "security alert"
+    ANALYST_REVIEW = "analyst review"
 
 
 class AuditResult(str, Enum):
