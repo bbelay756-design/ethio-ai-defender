@@ -4165,7 +4165,7 @@ async function loadAnalysisHistory() {
 
         if (tbody) {
 
-            tbody.innerHTML = `<tr data-analysis-id="${escapeHtml(item.analysis_id)}" data-sha256="${escapeHtml(item.sha256)}" data-url="/api/analyses/${encodeURIComponent(item.analysis_id)}/report?format=html&language=${state.currentLanguage}"><td colspan="7" class="empty-state-cell" style="color: var(--sev-high);">Error loading history: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="empty-state-cell" style="color: var(--sev-high);">Error loading history: ${escapeHtml(err.message || String(err))}</td></tr>`;
 
         }
 
